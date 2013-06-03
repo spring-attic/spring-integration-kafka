@@ -1,11 +1,8 @@
-description = 'Spring Integration Kafka Adapter'
+description = 'Spring Integration Kafka Support'
 
 buildscript {
 	repositories {
 		maven { url 'https://repo.springsource.org/plugins-snapshot' }
-	}
-	dependencies {
-		classpath 'org.springframework.build.gradle:docbook-reference-plugin:0.1.5'
 	}
 }
 
@@ -17,24 +14,28 @@ apply plugin: 'idea'
 group = 'org.springframework.integration'
 
 repositories {
-    mavenLocal()
-    		mavenCentral()
-	maven { url 'http://repo.springsource.org/libs-milestone' }
-	maven { url 'http://repo.springsource.org/plugins-release' }
-    maven { url 'https://repo.springsource.org/libs-snapshot' }
+	maven { url 'https://repo.springsource.org/libs-snapshot' }
 }
 
 sourceCompatibility=1.6
 targetCompatibility=1.6
 
 ext {
-	junitVersion = '4.10'
+	junitVersion = '4.11'
 	log4jVersion = '1.2.12'
-	mockitoVersion = '1.9.0'
+	mockitoVersion = '1.9.5'
 	springVersion = '3.1.3.RELEASE'
-	springIntegrationVersion = '2.2.0.RELEASE'
+	springIntegrationVersion = '2.2.3.RELEASE'
 
 	idPrefix = 'kafka'
+
+	linkHomepage = 'https://github.com/SpringSource/spring-integration-extensions'
+	linkCi       = 'https://build.springsource.org/browse/INTEXT'
+	linkIssue    = 'https://jira.springsource.org/browse/INTEXT'
+	linkScmUrl           = 'https://github.com/SpringSource/spring-integration-extensions'
+	linkScmConnection    = 'https://github.com/SpringSource/spring-integration-extensions.git'
+	linkScmDevConnection = 'git@github.com:SpringSource/spring-integration-extensions.git'
+
 }
 
 eclipse {
@@ -61,47 +62,48 @@ dependencies {
 	compile "org.springframework:spring-beans:$springVersion"
 	compile "org.springframework:spring-context:$springVersion"
 	compile "org.springframework:spring-expression:$springVersion"
-	compile     "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
-        compile("org.apache:kafka_2.9.2:0.8.0-SNAPSHOT") {
-  	  exclude module: 'log4j'
-        }
-    compile("org.apache.zookeeper:zookeeper:3.3.4") {
-	exclude module: 'log4j'
-	exclude module: 'jline'
-    }
-    compile "org.scala-lang:scala-library:2.9.2"
-    compile "org.scala-lang:scala-compiler:2.9.2"
-    compile("log4j:log4j:1.2.15") {
-	exclude module: 'jms'
-	exclude module: 'jmx'
-	exclude module: 'jmxtools'
-	exclude module: 'jmxri'
+	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
+	compile("org.apache:kafka_2.9.2:0.8.0-SNAPSHOT") {
+		exclude module: 'log4j'
+	}
+	compile("org.apache.zookeeper:zookeeper:3.3.4") {
+		exclude module: 'log4j'
+		exclude module: 'jline'
+	}
+	compile "org.scala-lang:scala-library:2.9.2"
+	compile "org.scala-lang:scala-compiler:2.9.2"
+	compile("log4j:log4j:1.2.15") {
+		exclude module: 'jms'
+		exclude module: 'jmx'
+		exclude module: 'jmxtools'
+		exclude module: 'jmxri'
+	}
+	compile "org.slf4j:slf4j-simple:1.6.4"
+	compile "net.sf.jopt-simple:jopt-simple:3.2"
+	compile "org.xerial.snappy:snappy-java:1.0.4.1"
+	//runtime "zkclient:zkclient:20120522"
 
-    }
-    compile "org.slf4j:slf4j-simple:1.6.4"
-    compile "net.sf.jopt-simple:jopt-simple:3.2"
-    compile "org.xerial.snappy:snappy-java:1.0.4.1"
-    //runtime "zkclient:zkclient:20120522"
+	runtime "com.101tec:zkclient:0.2"
+	runtime "com.yammer.metrics:metrics-core:2.2.0"
+	runtime "com.yammer.metrics:metrics-annotation:2.2.0"
 
-    runtime "com.101tec:zkclient:0.2"
-    runtime "com.yammer.metrics:metrics-core:2.2.0"
-    runtime "com.yammer.metrics:metrics-annotation:2.2.0"
-
-    compile "org.apache.avro:avro:1.7.3"
-    compile "org.apache.avro:avro-compiler:1.7.3"
+	compile "org.apache.avro:avro:1.7.3"
+	compile "org.apache.avro:avro-compiler:1.7.3"
 
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
 	testCompile "junit:junit-dep:$junitVersion"
 	testCompile("log4j:log4j:$log4jVersion") {
-	  exclude module: 'jms'
-	  exclude module: 'jmx'
-	exclude module: 'jmxtools'
-	exclude module: 'jmxri'
-}
+		exclude module: 'jms'
+		exclude module: 'jmx'
+		exclude module: 'jmxtools'
+		exclude module: 'jmxri'
+	}
+
 	testCompile "org.mockito:mockito-all:$mockitoVersion"
 	testCompile "org.springframework:spring-test:$springVersion"
-    testCompile "org.springframework.integration:spring-integration-stream:$springIntegrationVersion"
-	jacoco group: "org.jacoco", name: "org.jacoco.agent", version: "0.5.6.201201232323", classifier: "runtime"
+	testCompile "org.springframework.integration:spring-integration-stream:$springIntegrationVersion"
+
+	jacoco group: "org.jacoco", name: "org.jacoco.agent", version: "0.6.2.201302030002", classifier: "runtime"
 }
 
 
@@ -130,44 +132,18 @@ artifacts {
 	archives javadocJar
 }
 
-apply plugin: 'docbook-reference'
+apply plugin: 'sonar-runner'
 
-reference {
-	sourceDir = file('src/reference/docbook')
-}
-
-apply plugin: 'sonar'
-
-sonar {
-
-	if (rootProject.hasProperty('sonarHostUrl')) {
-		server.url = rootProject.sonarHostUrl
+sonarRunner {
+	sonarProperties {
+		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
+		property "sonar.links.homepage", linkHomepage
+		property "sonar.links.ci", linkCi
+		property "sonar.links.issue", linkIssue
+		property "sonar.links.scm", linkScmUrl
+		property "sonar.links.scm_dev", linkScmDevConnection
+		property "sonar.java.coveragePlugin", "jacoco"
 	}
-
-	database {
-		if (rootProject.hasProperty('sonarJdbcUrl')) {
-			url = rootProject.sonarJdbcUrl
-		}
-		if (rootProject.hasProperty('sonarJdbcDriver')) {
-			driverClassName = rootProject.sonarJdbcDriver
-		}
-		if (rootProject.hasProperty('sonarJdbcUsername')) {
-			username = rootProject.sonarJdbcUsername
-		}
-		if (rootProject.hasProperty('sonarJdbcPassword')) {
-			password = rootProject.sonarJdbcPassword
-		}
-	}
-
-	project {
-		dynamicAnalysis  = "reuseReports"
-		withProjectProperties { props ->
-			props["sonar.core.codeCoveragePlugin"] = "jacoco"
-			props["sonar.jacoco.reportPath"]       = "${buildDir.name}/jacoco.exec"
-		}
-	}
-
-	logger.info("Sonar parameters used: server.url='${server.url}'; database.url='${database.url}'; database.driverClassName='${database.driverClassName}'; database.username='${database.username}'")
 }
 
 task api(type: Javadoc) {
@@ -212,7 +188,7 @@ task schemaZip(type: Zip) {
 task docsZip(type: Zip) {
 	group = 'Distribution'
 	classifier = 'docs'
-	description = "Builds -${classifier} archive containing api and reference " +
+	description = "Builds -${classifier} archive containing api " +
 			"for deployment at static.springframework.org/spring-integration/docs."
 
 	from('src/dist') {
@@ -221,10 +197,6 @@ task docsZip(type: Zip) {
 
 	from (api) {
 		into 'api'
-	}
-
-	from (reference) {
-		into 'reference'
 	}
 }
 
@@ -300,5 +272,5 @@ task dist(dependsOn: assemble) {
 
 task wrapper(type: Wrapper) {
 	description = 'Generates gradlew[.bat] scripts'
-	gradleVersion = '1.3'
+	gradleVersion = '1.6'
 }

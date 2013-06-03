@@ -31,7 +31,7 @@ def customizePom(pom, gradleProject) {
 		generatedPom.project {
 			name = gradleProject.description
 			description = gradleProject.description
-			url = 'https://github.com/SpringSource/spring-integration-extensions'
+			url = linkHomepage
 			organization {
 				name = 'SpringSource'
 				url = 'http://springsource.org'
@@ -43,10 +43,11 @@ def customizePom(pom, gradleProject) {
 					distribution 'repo'
 				}
 			}
+
 			scm {
-				url = 'https://github.com/SpringSource/spring-integration-extensions'
-				connection = 'scm:git:git://github.com/SpringSource/spring-integration-extensions'
-				developerConnection = 'scm:git:git://github.com/SpringSource/spring-integration-extensions'
+				url = linkScmUrl
+				connection = 'scm:git:' + linkScmConnection
+				developerConnection = 'scm:git:' + linkScmDevConnection
 			}
 
 			developers {
