@@ -86,6 +86,9 @@ Producer context is at the heart of the kafka outbound adapter. Here is an examp
 					   topic="test2"
 					   compression-codec="default"
 					   async="true"/>
+			<int-kafka:producer-configuration broker-list="localhost:9092"
+						topic="regextopic.*"
+						compression-codec="default"/>
 		</int-kafka:producer-configurations>
 	</int-kafka:producer-context>
 ```
@@ -97,7 +100,7 @@ If you go by the above example, there are two producers generated from this conf
 test1 and another for test2. Each producer can take the following:
 
 	broker-list				List of comma separated brokers that this producer connects to
-	topic					Topic name
+	topic					Topic name or Java regex pattern of topic name
 	compression-codec		Compression method to be used. Default is no compression. Supported compression codec are gzip and snappy.
 							Anything else would result in no compression
 	value-encoder			Serializer to be used for encoding messages.
@@ -180,7 +183,7 @@ currently supports only the High Level Consumer. Here are the details of configu
 										   auto-startup="false"
 										   channel="inputFromKafka">
 			<int:poller fixed-delay="10" time-unit="MILLISECONDS" max-messages-per-poll="5"/>
-		</int-kafka:inbound-channel-adapter>
+	</int-kafka:inbound-channel-adapter>
 ```
 
 Since this inbound channel adapter uses a Polling Channel under the hood, it must be configured with a Poller. A notable difference
@@ -204,9 +207,17 @@ Inbound Kafka Adapter must specify a kafka-consumer-context-ref element and here
 				   <int-kafka:topic id="test1" streams="4"/>
 				   <int-kafka:topic id="test2" streams="4"/>
 			   </int-kafka:consumer-configuration>
+			   <int-kafka:consumer-configuration group-id="default3"
+						value-decoder="kafkaSpecificDecoder"
+						key-decoder="kafkaReflectionDecoder"
+						max-messages="10">
+				   <int-kafka:topic-filter pattern="regextopic.*" streams="4" exclude="false"/>
+			   </int-kafka:consumer-configuration>
 		   </int-kafka:consumer-configurations>
-	   </int-kafka:consumer-context>
+   </int-kafka:consumer-context>
 ```
+
+`consumer-configuration` supports consuming from specific topic using a `topic` child element or from multiple topics matching a topic regex using `topic-filter` child element. `topic-filter` supports both whitelist and blacklist filter based on `exclude` attribute.
 
 Consumer context requires a reference to a zookeeper-connect which dictates all the zookeeper specific configuration details.
 Here is how a zookeeper-connect is configured.
@@ -315,8 +326,3 @@ Map.
 
 If your use case does not require ordering of messages during consumption, then you can easily pass this
 payload to a standard SI transformer and just get a full dump of the actual payload sent by Kafka.
-
-
-
-
-
