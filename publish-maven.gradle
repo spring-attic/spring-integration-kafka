@@ -34,7 +34,7 @@ def customizePom(pom, gradleProject) {
 			url = linkHomepage
 			organization {
 				name = 'SpringSource'
-				url = 'http://springsource.org'
+				url = 'http://spring.io'
 			}
 			licenses {
 				license {
@@ -52,9 +52,9 @@ def customizePom(pom, gradleProject) {
 
 			developers {
 				developer {
-					id = 'not specified'
+					id = 'schacko'
 					name = 'Soby Chacko'
-					email = 'not specified'
+					email = 'schacko@gopivotal.com'
 				}
 			}
 		}
