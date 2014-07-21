@@ -22,7 +22,7 @@ ext {
 	kafkaVersion = '0.8.0'
 	metricsVersion = '2.2.0'
 	scalaVersion = '2.10'
-	springIntegrationVersion = '4.0.2.RELEASE'
+	springIntegrationVersion = '4.0.3.RELEASE'
 
 	idPrefix = 'kafka'
 
