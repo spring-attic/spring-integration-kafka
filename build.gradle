@@ -19,7 +19,7 @@ sourceCompatibility = targetCompatibility = 1.6
 ext {
 	avroVersion = '1.7.6'
 	jacocoVersion = '0.7.0.201403182114'
-	kafkaVersion = '0.8.0'
+	kafkaVersion = '0.8.1.1'
 	metricsVersion = '2.2.0'
 	scalaVersion = '2.10'
 	springIntegrationVersion = '4.0.3.RELEASE'
