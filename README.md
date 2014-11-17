@@ -33,32 +33,46 @@ Outbound Channel Adapter:
 The Outbound channel adapter is used to send messages to Kafka. Messages are read from a Spring Integration channel. One can specify this channel in the application context and then wire
 this in the application where messages are sent to kafka.
 
-Once a channel is configured, then messages can be sent to Kafka through this channel. Obviously, Spring Integration specific messages are sent to the adapter and then it will
-internally get converted into Kafka messages before sending. In the current version of the outbound adapter,
-you have to specify a message key and the topic as header values and the message to send as the payload.
+Once a channel is configured, then messages can be sent to Kafka through this channel. Spring Integration messages are sent to the adapter and they will
+internally be converted to Kafka messages before sending. You can specify a `message key` and the `topic` as
+header values and the message to send as the payload.
 Here is an example.
 
 ```java
-	final MessageChannel channel = ctx.getBean("inputToKafka", MessageChannel.class);
+    final MessageChannel channel = ctx.getBean("inputToKafka", MessageChannel.class);
 
-	channel.send(
-			MessageBuilder.withPayload(payload)
-					.setHeader("messageKey", "key")
-					.setHeader("topic", "test").build());
+    channel.send(
+            MessageBuilder.withPayload(payload)
+                    .setHeader(KafkaHeaders.MESSAGE_KEY, "key")  // Note: the header was `messageKey` in earlier versions
+                    .setHeader(KafkaHeaders.TOPIC, "test")       // Note: the header was `topic` in earlier versions
+                    .build()
+            );
 ```
 
-This would create a message with a payload. In addition to this, it also creates two header entries as key/value pairs - one for
-the message key and another for the topic that this message belongs to.
+This will create a message with a payload and two header entries as key/value pairs - one for
+the `message key` and another for the `topic` that this message will be sent to.
+
+In addition, the `<int-kafka:outbound-channel-adapter>` provides `topic` (`topic-expression`) and
+ `message-key` (`message-key-expression`) mutually exclusive optional pairs of attributes to allow the specification of
+ `topic` and/or `message-key` as static values on the adapter, or to dynamically evaluate their values at runtime against
+ the request message.
+
+**Important. Since the last Milestone, we have introduced the `KafkaHeaders` interface with constants. The `messageKey` and `topic`
+default headers now require a `kafka_` prefix. When migrating from an earlier version, you need to specify
+`message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
+the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`. Or, of course, configure them on the adapter if you are using constant values.** 
 
 Here is how kafka outbound channel adapter is configured:
 
 ```xml
-	<int-kafka:outbound-channel-adapter id="kafkaOutboundChannelAdapter"
-										kafka-producer-context-ref="kafkaProducerContext"
-										auto-startup="false"
-										channel="inputToKafka">
-		<int:poller fixed-delay="1000" time-unit="MILLISECONDS" receive-timeout="0" task-executor="taskExecutor"/>
-	</int-kafka:outbound-channel-adapter>
+    <int-kafka:outbound-channel-adapter id="kafkaOutboundChannelAdapter"
+                                        kafka-producer-context-ref="kafkaProducerContext"
+                                        auto-startup="false"
+                                        channel="inputToKafka"
+                                        topic="foo"
+                                        message-key-expression="header.messageKey">
+        <int:poller fixed-delay="1000" time-unit="MILLISECONDS" receive-timeout="0" task-executor="taskExecutor"/>
+    </int-kafka:outbound-channel-adapter>
 ```
 
 The key aspect in this configuration is the producer-context-ref. Producer context contains all the producer configuration for all the topics that this adapter is expected to handle.
@@ -72,24 +86,24 @@ the receive-timeout configuration. Then it will poll again with a delay of 1 sec
 Producer context is at the heart of the kafka outbound adapter. Here is an example of how it is configured.
 
 ```xml
-	<int-kafka:producer-context id="kafkaProducerContext">
-		<int-kafka:producer-configurations>
-			<int-kafka:producer-configuration broker-list="localhost:9092"
-					   key-class-type="java.lang.String"
-					   value-class-type="java.lang.String"
-					   topic="test1"
-					   value-encoder="kafkaEncoder"
-					   key-encoder="kafkaEncoder"
-					   compression-codec="default"/>
-			<int-kafka:producer-configuration broker-list="localhost:9092"
-					   topic="test2"
-					   compression-codec="default"
-					   async="true"/>
-			<int-kafka:producer-configuration broker-list="localhost:9092"
-						topic="regextopic.*"
-						compression-codec="default"/>
-		</int-kafka:producer-configurations>
-	</int-kafka:producer-context>
+    <int-kafka:producer-context id="kafkaProducerContext">
+        <int-kafka:producer-configurations>
+            <int-kafka:producer-configuration broker-list="localhost:9092"
+                       key-class-type="java.lang.String"
+                       value-class-type="java.lang.String"
+                       topic="test1"
+                       value-encoder="kafkaEncoder"
+                       key-encoder="kafkaEncoder"
+                       compression-codec="default"/>
+            <int-kafka:producer-configuration broker-list="localhost:9092"
+                       topic="test2"
+                       compression-codec="default"
+                       async="true"/>
+            <int-kafka:producer-configuration broker-list="localhost:9092"
+                        topic="regextopic.*"
+                        compression-codec="default"/>
+        </int-kafka:producer-configurations>
+    </int-kafka:producer-context>
 ```
 
 There are a few things going on here. So, lets go one by one. First of all, producer context is simply a holder of, as the name
@@ -141,9 +155,9 @@ based on SpecificDatum. The encoding using reflection is fairly simple as you on
 along with the XML. Here is an example.
 
 ```xml
-	<bean id="kafkaEncoder" class="org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaEncoder">
-		<constructor-arg value="java.lang.String" />
-	</bean>
+    <bean id="kafkaEncoder" class="org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaEncoder">
+        <constructor-arg value="java.lang.String" />
+    </bean>
 ```
 
 Reflection based encoding may not be appropriate for large scale systems and Avro's SpecificDatum based encoders can be a better fit. In this case, you can
@@ -172,23 +186,23 @@ To specify those properties, `producer-context` element supports optional `produ
 These properties will be applied to all Producer Configurations within the producer context. For example:
 
 ```xml
-	<bean id="producerProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
-		<property name="properties">
-			<props>
-				<prop key="topic.metadata.refresh.interval.ms">3600000</prop>
-				<prop key="message.send.max.retries">5</prop>
-				<prop key="send.buffer.bytes">5242880</prop>
-			</props>
-		</property>
-	</bean>
+    <bean id="producerProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="properties">
+            <props>
+                <prop key="topic.metadata.refresh.interval.ms">3600000</prop>
+                <prop key="message.send.max.retries">5</prop>
+                <prop key="send.buffer.bytes">5242880</prop>
+            </props>
+        </property>
+    </bean>
 
-	<int-kafka:producer-context id="kafkaProducerContext" producer-properties="producerProperties">
-		<int-kafka:producer-configurations>
-			<int-kafka:producer-configuration ... > ... </int-kafka:producer-configuration>
-			<int-kafka:producer-configuration ... > ... </int-kafka:producer-configuration>
-			...
-		<int-kafka:producer-configurations>
-	</int-kafka:producer-context>
+    <int-kafka:producer-context id="kafkaProducerContext" producer-properties="producerProperties">
+        <int-kafka:producer-configurations>
+            <int-kafka:producer-configuration ... > ... </int-kafka:producer-configuration>
+            <int-kafka:producer-configuration ... > ... </int-kafka:producer-configuration>
+            ...
+        <int-kafka:producer-configurations>
+    </int-kafka:producer-context>
 ```
 
 Inbound Channel Adapter:
@@ -203,12 +217,12 @@ or re-reading messages from the same consumer, then high level consumer is a per
 currently supports only the High Level Consumer. Here are the details of configuring one.
 
 ```xml
-	<int-kafka:inbound-channel-adapter id="kafkaInboundChannelAdapter"
-										   kafka-consumer-context-ref="consumerContext"
-										   auto-startup="false"
-										   channel="inputFromKafka">
-			<int:poller fixed-delay="10" time-unit="MILLISECONDS" max-messages-per-poll="5"/>
-	</int-kafka:inbound-channel-adapter>
+    <int-kafka:inbound-channel-adapter id="kafkaInboundChannelAdapter"
+                                           kafka-consumer-context-ref="consumerContext"
+                                           auto-startup="false"
+                                           channel="inputFromKafka">
+            <int:poller fixed-delay="10" time-unit="MILLISECONDS" max-messages-per-poll="5"/>
+    </int-kafka:inbound-channel-adapter>
 ```
 
 Since this inbound channel adapter uses a Polling Channel under the hood, it must be configured with a Poller. A notable difference
@@ -222,23 +236,23 @@ Inbound Kafka Adapter must specify a kafka-consumer-context-ref element and here
 
 ```xml
    <int-kafka:consumer-context id="consumerContext"
-								   consumer-timeout="4000"
-								   zookeeper-connect="zookeeperConnect">
-		   <int-kafka:consumer-configurations>
-			   <int-kafka:consumer-configuration group-id="default"
-					   value-decoder="valueDecoder"
-					   key-decoder="valueDecoder"
-					   max-messages="5000">
-				   <int-kafka:topic id="test1" streams="4"/>
-				   <int-kafka:topic id="test2" streams="4"/>
-			   </int-kafka:consumer-configuration>
-			   <int-kafka:consumer-configuration group-id="default3"
-						value-decoder="kafkaSpecificDecoder"
-						key-decoder="kafkaReflectionDecoder"
-						max-messages="10">
-				   <int-kafka:topic-filter pattern="regextopic.*" streams="4" exclude="false"/>
-			   </int-kafka:consumer-configuration>
-		   </int-kafka:consumer-configurations>
+                                   consumer-timeout="4000"
+                                   zookeeper-connect="zookeeperConnect">
+           <int-kafka:consumer-configurations>
+               <int-kafka:consumer-configuration group-id="default"
+                       value-decoder="valueDecoder"
+                       key-decoder="valueDecoder"
+                       max-messages="5000">
+                   <int-kafka:topic id="test1" streams="4"/>
+                   <int-kafka:topic id="test2" streams="4"/>
+               </int-kafka:consumer-configuration>
+               <int-kafka:consumer-configuration group-id="default3"
+                        value-decoder="kafkaSpecificDecoder"
+                        key-decoder="kafkaReflectionDecoder"
+                        max-messages="10">
+                   <int-kafka:topic-filter pattern="regextopic.*" streams="4" exclude="false"/>
+               </int-kafka:consumer-configuration>
+           </int-kafka:consumer-configurations>
    </int-kafka:consumer-context>
 ```
 
@@ -248,9 +262,9 @@ Consumer context requires a reference to a zookeeper-connect which dictates all 
 Here is how a zookeeper-connect is configured.
 
 ```xml
-	<int-kafka:zookeeper-connect id="zookeeperConnect" zk-connect="localhost:2181" zk-connection-timeout="6000"
-						zk-session-timeout="6000"
-						zk-sync-time="2000" />
+    <int-kafka:zookeeper-connect id="zookeeperConnect" zk-connect="localhost:2181" zk-connection-timeout="6000"
+                        zk-session-timeout="6000"
+                        zk-sync-time="2000" />
 ```
 
 zk-connect attribute is where you would specify the zookeeper connection. All the other attributes get translated into their
@@ -297,7 +311,7 @@ Using Avro Specific support:
 
 ```xml
    <bean id="kafkaDecoder" class="org.springframework.integration.kafka.serializer.avro.AvroSpecificDatumBackedKafkaDecoder">
-		   <constructor-arg value="com.domain.AvroGeneratedSpecificRecord" />
+           <constructor-arg value="com.domain.AvroGeneratedSpecificRecord" />
    </bean>
 ```
 
@@ -305,7 +319,7 @@ Using Reflection support:
 
 ```xml
    <bean id="kafkaDecoder" class="org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaDecoder">
-		   <constructor-arg value="java.lang.String" />
+           <constructor-arg value="java.lang.String" />
    </bean>
 ```
 
@@ -359,24 +373,24 @@ This properties will be applied to all Consumer Configurations within the consum
 
 ```xml
 
-	<bean id="consumerProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
-		<property name="properties">
-			<props>
-				<prop key="auto.offset.reset">smallest</prop>
+    <bean id="consumerProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="properties">
+            <props>
+                <prop key="auto.offset.reset">smallest</prop>
                 <prop key="socket.receive.buffer.bytes">10485760</prop> <!-- 10M -->
                 <prop key="fetch.message.max.bytes">5242880</prop>
                 <prop key="auto.commit.interval.ms">1000</prop>
-			</props>
-		</property>
-	</bean>
+            </props>
+        </property>
+    </bean>
 
-	<int-kafka:consumer-context id="consumerContext"
-			consumer-timeout="1000"
-			zookeeper-connect="zookeeperConnect" consumer-properties="consumerProperties">
-		<int-kafka:consumer-configurations>
-			<int-kafka:consumer-configuration ... > ... </int-kafka:consumer-configuration>
-			<int-kafka:consumer-configuration ... > ... </int-kafka:consumer-configuration>
-			...
-		</<int-kafka:consumer-configurations>>
-	</int-kafka:producer-context>
+    <int-kafka:consumer-context id="consumerContext"
+            consumer-timeout="1000"
+            zookeeper-connect="zookeeperConnect" consumer-properties="consumerProperties">
+        <int-kafka:consumer-configurations>
+            <int-kafka:consumer-configuration ... > ... </int-kafka:consumer-configuration>
+            <int-kafka:consumer-configuration ... > ... </int-kafka:consumer-configuration>
+            ...
+        </<int-kafka:consumer-configurations>>
+    </int-kafka:producer-context>
 ```
