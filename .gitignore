@@ -1,8 +1,11 @@
+target
+.settings
+.springBeans
 .classpath
 .project
-.settings/
-.gradle
-build
-target/
-bin/
-derby.log
+/.idea
+/.gradle
+/build
+/*.iml
+/*.ipr
+/*.iws
