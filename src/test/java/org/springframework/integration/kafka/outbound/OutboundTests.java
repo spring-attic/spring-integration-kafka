@@ -34,6 +34,7 @@ import org.springframework.integration.kafka.support.ConsumerConfiguration;
 import org.springframework.integration.kafka.support.ConsumerConnectionProvider;
 import org.springframework.integration.kafka.support.ConsumerMetadata;
 import org.springframework.integration.kafka.support.KafkaConsumerContext;
+import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.integration.kafka.support.KafkaProducerContext;
 import org.springframework.integration.kafka.support.MessageLeftOverTracker;
 import org.springframework.integration.kafka.support.ProducerConfiguration;
@@ -83,8 +84,8 @@ public class OutboundTests {
 		KafkaProducerMessageHandler<String, String> handler = new KafkaProducerMessageHandler<String, String>(kafkaProducerContext);
 
 		handler.handleMessage(MessageBuilder.withPayload("foo")
-				.setHeader("messagekey", "3")
-				.setHeader("topic", TOPIC)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC)
 				.build());
 
 		kafkaProducerContext.stop();
