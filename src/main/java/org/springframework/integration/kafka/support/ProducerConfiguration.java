@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
+import kafka.javaapi.producer.Producer;
+import kafka.producer.KeyedMessage;
+import kafka.serializer.DefaultEncoder;
+
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHandlingException;
 
-import kafka.javaapi.producer.Producer;
-import kafka.producer.KeyedMessage;
-import kafka.serializer.DefaultEncoder;
-
 /**
  * @author Soby Chacko
  * @author Rajasekar Elango
  * @author Ilayaperumal Gopinathan
+ * @author Gary Russell
  * @since 0.5
  */
 public class ProducerConfiguration<K, V> {
@@ -118,6 +119,12 @@ public class ProducerConfiguration<K, V> {
 	@Override
 	public String toString() {
 		return "ProducerConfiguration [producerMetadata=" + this.producerMetadata + "]";
+	}
+
+	public void stop() {
+		if (this.producer != null) {
+			this.producer.close();
+		}
 	}
 
 }
