@@ -33,7 +33,7 @@ def customizePom(pom, gradleProject) {
 			description = gradleProject.description
 			url = linkHomepage
 			organization {
-				name = 'SpringSource'
+				name = 'SpringIO'
 				url = 'http://spring.io'
 			}
 			licenses {
