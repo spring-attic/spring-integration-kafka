@@ -24,11 +24,13 @@ import kafka.javaapi.producer.Producer;
 import kafka.serializer.Encoder;
 
 import org.junit.Assert;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.integration.kafka.rule.KafkaRunning;
 import org.springframework.integration.kafka.support.KafkaProducerContext;
 import org.springframework.integration.kafka.support.ProducerConfiguration;
 import org.springframework.integration.kafka.support.ProducerMetadata;
@@ -44,6 +46,9 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration
 public class KafkaProducerContextParserTests<K,V,T> {
+
+	@ClassRule
+	public static KafkaRunning kafkaRunning = KafkaRunning.isRunning();
 
 	@Autowired
 	private ApplicationContext appContext;

@@ -57,6 +57,12 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 		parseProducerConfigurations(topics, parserContext, builder, element);
 	}
 
+
+	@Override
+	protected boolean isEligibleAttribute(String attributeName) {
+		return "producer-properties".equals(attributeName) ? false : super.isEligibleAttribute(attributeName);
+	}
+
 	private void parseProducerConfigurations(Element topics, ParserContext parserContext,
 			BeanDefinitionBuilder builder, Element parentElem) {
 		Map<String, BeanMetadataElement> producerConfigurationsMap = new ManagedMap<String, BeanMetadataElement>();
