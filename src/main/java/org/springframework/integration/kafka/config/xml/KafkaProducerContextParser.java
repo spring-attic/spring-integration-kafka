@@ -50,8 +50,17 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 	protected void doParse(final Element element, final ParserContext parserContext, final BeanDefinitionBuilder builder) {
 		super.doParse(element, parserContext, builder);
 
+		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "phase");
+		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "auto-startup");
+
 		final Element topics = DomUtils.getChildElementByTagName(element, "producer-configurations");
 		parseProducerConfigurations(topics, parserContext, builder, element);
+	}
+
+
+	@Override
+	protected boolean isEligibleAttribute(String attributeName) {
+		return "producer-properties".equals(attributeName) ? false : super.isEligibleAttribute(attributeName);
 	}
 
 	private void parseProducerConfigurations(Element topics, ParserContext parserContext,
