@@ -23,6 +23,8 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import org.springframework.integration.kafka.core.ZookeeperConnectDefaults;
+
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 
@@ -43,7 +45,7 @@ import kafka.utils.ZkUtils;
  */
 public class KafkaRunning extends TestWatcher {
 
-	private static final String ZOOKEEPER_CONNECT_STRING = "localhost:2181";
+	private static final String ZOOKEEPER_CONNECT_STRING = ZookeeperConnectDefaults.ZK_CONNECT;
 
 	private static final Log logger = LogFactory.getLog(KafkaRunning.class);
 

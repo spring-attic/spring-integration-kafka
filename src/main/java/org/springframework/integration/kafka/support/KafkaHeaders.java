@@ -18,6 +18,7 @@ package org.springframework.integration.kafka.support;
 
 /**
  * @author Artem Bilan
+ * @since 1.0
  */
 public abstract class KafkaHeaders {
 
@@ -26,4 +27,5 @@ public abstract class KafkaHeaders {
 	public static final String TOPIC = PREFIX + "topic";
 
 	public static final String MESSAGE_KEY = PREFIX + "messageKey";
+
 }

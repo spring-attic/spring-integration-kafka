@@ -18,7 +18,6 @@ package org.springframework.integration.kafka.support;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
@@ -47,13 +46,11 @@ public class KafkaProducerContext<K, V> implements SmartLifecycle, NamedComponen
 
 	private volatile ProducerConfiguration<K, V> theProducerConfiguration;
 
-	private Properties producerProperties;
+	private String beanName = "not_specified";
 
 	private int phase = 0;
 
 	private boolean autoStartup = true;
-
-	private String beanName = "not_specified";
 
 	public ProducerConfiguration<K, V> getTopicConfiguration(final String topic) {
 		if (this.theProducerConfiguration != null) {

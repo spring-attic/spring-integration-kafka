@@ -77,6 +77,7 @@ public class KafkaProducerMessageHandler<K,V> extends AbstractMessageHandler
 		Object messageKey = this.messageKeyExpression != null
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
+
 		this.kafkaProducerContext.send(topic, messageKey, message);
 	}
 

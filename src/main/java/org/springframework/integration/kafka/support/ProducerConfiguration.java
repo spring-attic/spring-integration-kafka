@@ -67,12 +67,7 @@ public class ProducerConfiguration<K, V> {
 			topic = this.producerMetadata.getTopic();
 		}
 
-		if (messageKey != null) {
-			producer.send(new KeyedMessage<K, V>(topic, getKey(messageKey), v));
-		}
-		else {
-			this.producer.send(new KeyedMessage<K, V>(topic, v));
-		}
+		this.producer.send(new KeyedMessage<K, V>(topic, (messageKey != null ? getKey(messageKey) : null), v));
 	}
 
 	@SuppressWarnings("unchecked")
