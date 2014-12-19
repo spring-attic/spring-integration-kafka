@@ -72,6 +72,12 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 	}
 
 	@Override
+	protected void onInit() {
+		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
+		super.onInit();
+	}
+
+	@Override
 	protected void doStart() {
 		this.messageListenerContainer.start();
 	}
@@ -79,12 +85,6 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 	@Override
 	protected void doStop() {
 		this.messageListenerContainer.stop();
-	}
-
-	@Override
-	protected void onInit() {
-		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
-		super.onInit();
 	}
 
 	@Override

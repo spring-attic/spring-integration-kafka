@@ -50,6 +50,13 @@ public class Partition {
 	}
 
 	@Override
+	public int hashCode() {
+		int result = topic.hashCode();
+		result = 31 * result + id;
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
@@ -65,13 +72,6 @@ public class Partition {
 			return false;
 		}
 		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = topic.hashCode();
-		result = 31 * result + id;
-		return result;
 	}
 
 	@Override

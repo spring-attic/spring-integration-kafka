@@ -33,7 +33,8 @@ public class TestPartitioner implements Partitioner {
 		if (key != null) {
 			if (key instanceof Number) {
 				return ((Number) key).intValue() % numPartitions;
-			} else {
+			}
+			else {
 				try {
 					return Integer.parseInt(key.toString());
 				}
@@ -41,7 +42,8 @@ public class TestPartitioner implements Partitioner {
 					return 0;
 				}
 			}
-		} else {
+		}
+		else {
 			return 0;
 		}
 	}

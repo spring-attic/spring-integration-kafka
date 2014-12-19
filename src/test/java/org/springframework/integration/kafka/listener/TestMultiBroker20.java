@@ -46,11 +46,11 @@ public class TestMultiBroker20 extends AbstractMessageListenerContainerTest {
 		runMessageListenerTest(100, 20, 100, 10000, 1, 0);
 	}
 
-	@Test @Ignore
+	@Test
+	@Ignore
 	public void testHighVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 20, 1);
 		runMessageListenerTest(100, 20, 100, 100000, 1, 0);
 	}
-
 
 }

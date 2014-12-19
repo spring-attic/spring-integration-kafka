@@ -46,7 +46,8 @@ public class TestMultiBroker2 extends AbstractMessageListenerContainerTest {
 		runMessageListenerTest(100, 2, 5, 1000, 1, 0);
 	}
 
-	@Test @Ignore
+	@Test
+	@Ignore
 	public void testHighVolumeLowConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
 		runMessageListenerTest(100, 2, 5, 10000, 1, 0);
@@ -64,7 +65,8 @@ public class TestMultiBroker2 extends AbstractMessageListenerContainerTest {
 		runMessageListenerTest(100, 5, 5, 1000, 1, 0);
 	}
 
-	@Test @Ignore
+	@Test
+	@Ignore
 	public void testHighVolumeMediumConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
 		runMessageListenerTest(100, 5, 5, 100000, 1, 0);
@@ -83,11 +85,11 @@ public class TestMultiBroker2 extends AbstractMessageListenerContainerTest {
 		runMessageListenerTest(100, 20, 100, 10000, 1, 0);
 	}
 
-	@Test @Ignore
+	@Test
+	@Ignore
 	public void testHighVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 2, 1);
 		runMessageListenerTest(100, 20, 100, 100000, 1, 0);
 	}
-
 
 }

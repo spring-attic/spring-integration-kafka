@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	   xmlns:int="http://www.springframework.org/schema/integration"
-	   xmlns:util="http://www.springframework.org/schema/util"
-	   xmlns:context="http://www.springframework.org/schema/context"
-	   xsi:schemaLocation="
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			 xmlns:int="http://www.springframework.org/schema/integration"
+			 xmlns:util="http://www.springframework.org/schema/util"
+			 xmlns:context="http://www.springframework.org/schema/context"
+			 xmlns="http://www.springframework.org/schema/beans"
+			 xsi:schemaLocation="
 	   http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 	   http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
 	   http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
@@ -35,14 +35,16 @@
 	</bean>
 
 
-	<bean id="kafkaMessageListenerContainer" class="org.springframework.integration.kafka.listener.KafkaMessageListenerContainer">
+	<bean id="kafkaMessageListenerContainer"
+				class="org.springframework.integration.kafka.listener.KafkaMessageListenerContainer">
 		<constructor-arg index="0" ref="connectionFactory"/>
 		<constructor-arg index="1" ref="partitions"/>
 		<property name="timeout" value="10000"/>
 		<property name="maxSize" value="100"/>
 	</bean>
 
-	<bean id="kafkaInboundChannelAdapter" class="org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter">
+	<bean id="kafkaInboundChannelAdapter"
+				class="org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter">
 		<constructor-arg index="0" ref="kafkaMessageListenerContainer"/>
 		<property name="outputChannel" ref="output"/>
 		<property name="keyDecoder">

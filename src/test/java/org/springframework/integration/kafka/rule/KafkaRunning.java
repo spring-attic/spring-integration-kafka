@@ -15,6 +15,8 @@
  */
 package org.springframework.integration.kafka.rule;
 
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,22 +27,16 @@ import org.junit.runners.model.Statement;
 
 import org.springframework.integration.kafka.core.ZookeeperConnectDefaults;
 
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
-
 /**
- * <p>
- * A rule that prevents integration tests from failing if the Kafka server is not running or not
+ * * A rule that prevents integration tests from failing if the Kafka server is not running or not
  * accessible. If the Kafka server is not running in the background all the tests here will simply be skipped because
  * of a violated assumption (showing as successful).
- * <p>
  * The rule can be declared as static so that it only has to check once for all tests in the enclosing test case, but
  * there isn't a lot of overhead in making it non-static.
  *
  * @author Dave Syer
  * @author Artem Bilan
  * @author Gary Russell
- *
  * @since 1.0
  */
 public class KafkaRunning extends TestWatcher {
@@ -49,14 +45,14 @@ public class KafkaRunning extends TestWatcher {
 
 	private static final Log logger = LogFactory.getLog(KafkaRunning.class);
 
+	private ZkClient zkClient;
+
 	/**
 	 * @return a new rule that assumes an existing running broker
 	 */
 	public static KafkaRunning isRunning() {
 		return new KafkaRunning();
 	}
-
-	private ZkClient zkClient;
 
 	public ZkClient getZkClient() {
 		return zkClient;

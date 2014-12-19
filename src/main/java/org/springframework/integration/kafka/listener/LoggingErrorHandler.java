@@ -23,8 +23,8 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 
 /**
-* @author Marius Bogoevici
-*/
+ * @author Marius Bogoevici
+ */
 class LoggingErrorHandler implements ErrorHandler {
 
 	private static final Log LOGGER = LogFactory.getLog(LoggingErrorHandler.class);

@@ -38,11 +38,11 @@ import com.gs.collections.impl.utility.ArrayIterate;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.integration.kafka.core.KafkaBrokerAddress;
 import org.springframework.integration.kafka.core.KafkaBrokerConnectionFactory;
-import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.KafkaMessageBatch;
 import org.springframework.integration.kafka.core.KafkaMessageFetchRequest;
 import org.springframework.integration.kafka.core.KafkaTemplate;
+import org.springframework.integration.kafka.core.Partition;
 import org.springframework.util.Assert;
 
 /**
@@ -64,13 +64,13 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private final ImmutableList<Partition> partitions;
 
+	public boolean autoStartup = true;
+
 	private Executor taskExecutor;
 
 	private int concurrency = 1;
 
 	private volatile boolean running = false;
-
-	public boolean autoStartup = true;
 
 	private long timeout = 100L;
 
@@ -96,10 +96,15 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this(kafkaBrokerConnectionFactory, getPartitionsForTopics(kafkaBrokerConnectionFactory, topics));
 	}
 
+	private static Partition[] getPartitionsForTopics(final KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory, String[] topics) {
+		MutableList<Partition> partitionList = ArrayIterate.flatCollect(topics, new GetPartitionsForTopic(kafkaBrokerConnectionFactory));
+		return partitionList.toArray(new Partition[partitionList.size()]);
+	}
 
 	public OffsetManager getOffsetManager() {
 		return offsetManager;
 	}
+
 	public void setOffsetManager(OffsetManager offsetManager) {
 		this.offsetManager = offsetManager;
 	}
@@ -154,6 +159,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			}
 		}
 	}
+
 	@Override
 	public void start() {
 		synchronized (lifecycleMonitor) {
@@ -182,7 +188,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	@Override
 	public boolean isRunning() {
-			return this.running;
+		return this.running;
 	}
 
 	@Override
@@ -190,14 +196,22 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		return 0;
 	}
 
-	private static Partition[] getPartitionsForTopics(final KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory, String[] topics) {
-		MutableList<Partition> partitionList = ArrayIterate.flatCollect(topics, new GetPartitionsForTopic(kafkaBrokerConnectionFactory));
-		return partitionList.toArray(new Partition[partitionList.size()]);
+	static class GetPartitionsForTopic extends CheckedFunction<String, Iterable<Partition>> {
+
+		private final KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory;
+
+		public GetPartitionsForTopic(KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory) {
+			this.kafkaBrokerConnectionFactory = kafkaBrokerConnectionFactory;
+		}
+
+		@Override
+		public Iterable<Partition> safeValueOf(String topic) throws Exception {
+			return kafkaBrokerConnectionFactory.getPartitions(topic);
+		}
 	}
 
 	/**
 	 * Fetches data from Kafka for a group of partitions, located on the same broker.
-	 *
 	 */
 	public class FetchTask implements Runnable {
 
@@ -246,21 +260,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					Thread.currentThread().interrupt();
 				}
 			}
-		}
-	}
-
-
-	static class GetPartitionsForTopic extends CheckedFunction<String, Iterable<Partition>> {
-
-		private final KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory;
-
-		public GetPartitionsForTopic(KafkaBrokerConnectionFactory kafkaBrokerConnectionFactory) {
-			this.kafkaBrokerConnectionFactory = kafkaBrokerConnectionFactory;
-		}
-
-		@Override
-		public Iterable<Partition> safeValueOf(String topic) throws Exception {
-			return kafkaBrokerConnectionFactory.getPartitions(topic);
 		}
 	}
 

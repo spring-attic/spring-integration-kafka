@@ -26,13 +26,6 @@ import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.utility.ArrayIterate;
 
-import org.springframework.integration.kafka.core.KafkaBrokerAddress;
-import org.springframework.integration.kafka.core.KafkaBrokerConnectionFactory;
-import org.springframework.integration.kafka.core.KafkaResult;
-import org.springframework.integration.kafka.core.Partition;
-import org.springframework.integration.kafka.core.KafkaMessageBatch;
-import org.springframework.integration.kafka.core.KafkaMessageFetchRequest;
-
 
 /**
  * A Template for executing high-level operations on a set of Kafka brokers.

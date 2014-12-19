@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * Provides a starting configuration for
+ *
  * @author Marius Bogoevici
  */
 public class KafkaConfiguration implements InitializingBean {
@@ -42,7 +43,8 @@ public class KafkaConfiguration implements InitializingBean {
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		Assert.isTrue(CollectionUtils.isEmpty(defaultPartitions) || StringUtils.isEmpty(defaultTopic), "A list of default partitions or a default topic may be specified, but not both");
+		Assert.isTrue(CollectionUtils.isEmpty(defaultPartitions) || StringUtils.isEmpty(defaultTopic)
+				, "A list of default partitions or a default topic may be specified, but not both");
 	}
 
 	public List<KafkaBrokerAddress> getBrokerAddresses() {
@@ -53,12 +55,12 @@ public class KafkaConfiguration implements InitializingBean {
 		this.brokerAddresses = brokerAddresses;
 	}
 
-	public void setDefaultPartitions(List<Partition> defaultPartitions) {
-		this.defaultPartitions = defaultPartitions;
-	}
-
 	public List<Partition> getDefaultPartitions() {
 		return defaultPartitions;
+	}
+
+	public void setDefaultPartitions(List<Partition> defaultPartitions) {
+		this.defaultPartitions = defaultPartitions;
 	}
 
 	public String getDefaultTopic() {

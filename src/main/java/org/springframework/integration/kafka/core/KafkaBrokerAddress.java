@@ -44,14 +44,15 @@ public class KafkaBrokerAddress {
 		this(host, DEFAULT_PORT);
 	}
 
-	public static KafkaBrokerAddress fromAddress(String address)  {
+	public static KafkaBrokerAddress fromAddress(String address) {
 		String[] split = address.split(":");
 		if (split.length == 0 || split.length > 2) {
 			throw new IllegalArgumentException("Expected format <host>[:<port>]");
 		}
 		if (split.length == 2) {
 			return new KafkaBrokerAddress(split[0], Integer.parseInt(split[1]));
-		} else {
+		}
+		else {
 			return new KafkaBrokerAddress(split[0]);
 		}
 
@@ -74,6 +75,11 @@ public class KafkaBrokerAddress {
 	}
 
 	@Override
+	public int hashCode() {
+		return 31 * host.hashCode() + port;
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
@@ -92,11 +98,6 @@ public class KafkaBrokerAddress {
 		}
 
 		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 * host.hashCode() + port;
 	}
 
 	@Override

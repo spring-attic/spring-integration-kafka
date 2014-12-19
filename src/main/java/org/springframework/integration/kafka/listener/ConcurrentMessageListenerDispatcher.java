@@ -27,8 +27,8 @@ import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
 
 import org.springframework.context.Lifecycle;
-import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.KafkaMessage;
+import org.springframework.integration.kafka.core.Partition;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.Assert;
 
@@ -43,17 +43,17 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 
 	private final Object lifecycleMonitor = new Object();
 
-	private volatile boolean running;
-
-	private MessageListener delegateListener;
-
 	private final Partition[] partitions;
 
 	private final int consumers;
 
+	private volatile boolean running;
+
+	private MessageListener delegateListener;
+
 	private OffsetManager offsetManager;
 
-	private MutableMap<Partition,QueueingMessageListenerInvoker> delegates;
+	private MutableMap<Partition, QueueingMessageListenerInvoker> delegates;
 
 	private int queueSize = 1024;
 
@@ -126,7 +126,7 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 	}
 
 	public void dispatch(KafkaMessage message) {
-			delegates.get(message.getMetadata().getPartition()).enqueue(message);
+		delegates.get(message.getMetadata().getPartition()).enqueue(message);
 	}
 
 	private void initializeAndStartDispatching() {

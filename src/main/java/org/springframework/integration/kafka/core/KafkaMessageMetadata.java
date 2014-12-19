@@ -19,8 +19,6 @@ package org.springframework.integration.kafka.core;
 
 import kafka.message.Message;
 
-import org.springframework.integration.kafka.core.Partition;
-
 /**
  * Metadata for a Kafka {@link Message}.
  *

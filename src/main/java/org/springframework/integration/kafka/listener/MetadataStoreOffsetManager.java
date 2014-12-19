@@ -127,7 +127,8 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	private void loadOffsets(Map<Partition, Long> initialOffsets) {
 		if (!CollectionUtils.isEmpty(initialOffsets)) {
 			this.offsets = ConcurrentHashMap.newMap(initialOffsets);
-		} else {
+		}
+		else {
 			this.offsets = ConcurrentHashMap.newMap();
 		}
 		List<Partition> partitionsRequiringInitialOffsets = new ArrayList<Partition>();
@@ -145,27 +146,26 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 				}
 				if (storedOffsetValue != null) {
 					offsets.put(partition, storedOffsetValue);
-				} else {
+				}
+				else {
 					partitionsRequiringInitialOffsets.add(partition);
 				}
 			}
 		}
 		if (partitionsRequiringInitialOffsets.size() > 0) {
-			MutableMultimap<KafkaBrokerAddress, Partition> partitionsByLeaderAddress = Iterate.groupBy(partitionsRequiringInitialOffsets, new Function<Partition, KafkaBrokerAddress>() {
-				@Override
-				public KafkaBrokerAddress valueOf(Partition object) {
-					return kafkaBrokerConnectionFactory.getLeader(object);
-				}
-			});
+			MutableMultimap<KafkaBrokerAddress, Partition> partitionsByLeaderAddress = Iterate.groupBy(partitionsRequiringInitialOffsets, new GetLeaderFunction());
 			partitionsByLeaderAddress.toMap().forEachKeyValue(new Procedure2<KafkaBrokerAddress, RichIterable<Partition>>() {
 				@Override
 				public void value(KafkaBrokerAddress kafkaBrokerAddress, RichIterable<Partition> partitions) {
-					KafkaResult<Long> initialOffsets = kafkaBrokerConnectionFactory.createConnection(kafkaBrokerAddress).fetchInitialOffset(referenceTimestamp, partitions.toArray(new Partition[partitions.size()]));
+					Partition[] partitionsAsArray = partitions.toArray(new Partition[partitions.size()]);
+					KafkaResult<Long> initialOffsets = kafkaBrokerConnectionFactory
+							.createConnection(kafkaBrokerAddress).fetchInitialOffset(referenceTimestamp, partitionsAsArray);
 					if (initialOffsets.getErrors().size() == 0) {
 						for (Partition partition : partitions) {
 							offsets.put(partition, initialOffsets.getResults().get(partition));
 						}
-					} else {
+					}
+					else {
 						throw new IllegalStateException("Cannot load initial offsets");
 					}
 				}
@@ -176,5 +176,12 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 
 	private String asKey(Partition partition) {
 		return partition.getTopic() + " " + partition.getId() + " " + consumerId;
+	}
+
+	private class GetLeaderFunction implements Function<Partition, KafkaBrokerAddress> {
+		@Override
+		public KafkaBrokerAddress valueOf(Partition object) {
+			return kafkaBrokerConnectionFactory.getLeader(object);
+		}
 	}
 }

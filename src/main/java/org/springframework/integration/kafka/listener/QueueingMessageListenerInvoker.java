@@ -29,7 +29,7 @@ import org.springframework.integration.kafka.core.KafkaMessage;
  *
  * @author Marius Bogoevici
  */
-public class QueueingMessageListenerInvoker implements Runnable,Lifecycle {
+public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 
 	private BlockingQueue<KafkaMessage> messages;
 
@@ -74,7 +74,7 @@ public class QueueingMessageListenerInvoker implements Runnable,Lifecycle {
 
 	@Override
 	public void stop() {
-		this.running =false;
+		this.running = false;
 	}
 
 	@Override
@@ -84,7 +84,7 @@ public class QueueingMessageListenerInvoker implements Runnable,Lifecycle {
 
 	@Override
 	public void run() {
-		while(this.running) {
+		while (this.running) {
 			try {
 				KafkaMessage message = messages.take();
 				try {
@@ -92,7 +92,8 @@ public class QueueingMessageListenerInvoker implements Runnable,Lifecycle {
 				}
 				catch (Exception e) {
 					errorHandler.handle(e, message);
-				} finally {
+				}
+				finally {
 					offsetManager.updateOffset(message.getMetadata().getPartition(), message.getMetadata().getNextOffset());
 				}
 			}

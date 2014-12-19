@@ -17,6 +17,8 @@
 
 package org.springframework.integration.kafka.core;
 
+import static com.gs.collections.impl.utility.LazyIterate.collect;
+
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -34,6 +36,7 @@ import com.gs.collections.impl.utility.LazyIterate;
 import com.gs.collections.impl.utility.MapIterate;
 import kafka.api.FetchRequestBuilder;
 import kafka.api.PartitionOffsetRequestInfo;
+import kafka.cluster.Broker;
 import kafka.common.ErrorMapping;
 import kafka.common.OffsetMetadataAndError;
 import kafka.common.TopicAndPartition;
@@ -49,6 +52,7 @@ import kafka.javaapi.TopicMetadata;
 import kafka.javaapi.TopicMetadataRequest;
 import kafka.javaapi.TopicMetadataResponse;
 import kafka.javaapi.consumer.SimpleConsumer;
+import kafka.javaapi.message.ByteBufferMessageSet;
 import kafka.message.MessageAndOffset;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -62,15 +66,15 @@ import org.springframework.util.Assert;
  */
 public class KafkaBrokerConnection {
 
-	private static Log LOGGER = LogFactory.getLog(KafkaBrokerConnection.class);
-
 	public static final String DEFAULT_CLIENT_ID = "spring.kafka";
 
 	public static final int DEFAULT_BUFFER_SIZE = 64 * 1024;
 
 	public static final int DEFAULT_SOCKET_TIMEOUT = 10 * 1000;
 
-	private final static AtomicInteger CORRELATION_ID_COUNTER = new AtomicInteger(new Random(new Date().getTime()).nextInt());
+	private static Log log = LogFactory.getLog(KafkaBrokerConnection.class);
+
+	private final AtomicInteger correlationIdCounter = new AtomicInteger(new Random(new Date().getTime()).nextInt());
 
 	private final SimpleConsumer simpleConsumer;
 
@@ -81,7 +85,7 @@ public class KafkaBrokerConnection {
 	}
 
 	public KafkaBrokerConnection(KafkaBrokerAddress brokerAddress, String clientId) {
-		this(brokerAddress, clientId,DEFAULT_BUFFER_SIZE,DEFAULT_SOCKET_TIMEOUT);
+		this(brokerAddress, clientId, DEFAULT_BUFFER_SIZE, DEFAULT_SOCKET_TIMEOUT);
 	}
 
 	public KafkaBrokerConnection(KafkaBrokerAddress brokerAddress, String clientId, int bufferSize, int soTimeout) {
@@ -109,40 +113,37 @@ public class KafkaBrokerConnection {
 	 */
 	public KafkaResult<KafkaMessageBatch> fetch(KafkaMessageFetchRequest... requests) {
 		FetchRequestBuilder fetchRequestBuilder = new FetchRequestBuilder();
-		for (KafkaMessageFetchRequest kafkaMessageFetchRequest : requests) {
-			fetchRequestBuilder.addFetch(kafkaMessageFetchRequest.getPartition().getTopic(), kafkaMessageFetchRequest.getPartition().getId(), kafkaMessageFetchRequest.getOffset(), kafkaMessageFetchRequest.getMaxSize());
+		for (KafkaMessageFetchRequest request : requests) {
+			Partition partition = request.getPartition();
+			long offset = request.getOffset();
+			int maxSize = request.getMaxSize();
+			fetchRequestBuilder.addFetch(partition.getTopic(), partition.getId(), offset, maxSize);
 		}
 		FetchResponse fetchResponse = this.simpleConsumer.fetch(fetchRequestBuilder.build());
 		KafkaResultBuilder<KafkaMessageBatch> kafkaResultBuilder = new KafkaResultBuilder<KafkaMessageBatch>();
-		for (final KafkaMessageFetchRequest kafkaMessageFetchRequest : requests) {
-			if (LOGGER.isDebugEnabled()) {
-				LOGGER.debug("Reading from " + kafkaMessageFetchRequest.getPartition() + "@" + kafkaMessageFetchRequest.getOffset());
+		for (final KafkaMessageFetchRequest request : requests) {
+			Partition partition = request.getPartition();
+			if (log.isDebugEnabled()) {
+				log.debug("Reading from " + partition + "@" + request.getOffset());
 			}
-			short errorCode = fetchResponse.errorCode(kafkaMessageFetchRequest.getPartition().getTopic(), kafkaMessageFetchRequest.getPartition().getId());
+			short errorCode = fetchResponse.errorCode(partition.getTopic(), partition.getId());
 			if (ErrorMapping.NoError() == errorCode) {
-				List<KafkaMessage> kafkaMessages = LazyIterate.collect(fetchResponse.messageSet(kafkaMessageFetchRequest.getPartition().getTopic(), kafkaMessageFetchRequest.getPartition().getId()), new Function<MessageAndOffset, KafkaMessage>() {
-					@Override
-					public KafkaMessage valueOf(MessageAndOffset messageAndOffset) {
-						return new KafkaMessage(messageAndOffset.message(), new KafkaMessageMetadata(kafkaMessageFetchRequest.getPartition(),messageAndOffset.offset(), messageAndOffset.nextOffset()));
-					}
-				}).toList();
-				kafkaResultBuilder.add(kafkaMessageFetchRequest.getPartition()).withResult(new KafkaMessageBatch(kafkaMessageFetchRequest.getPartition(), kafkaMessages,fetchResponse.highWatermark(kafkaMessageFetchRequest.getPartition().getTopic(), kafkaMessageFetchRequest.getPartition().getId())));
+				ByteBufferMessageSet messageSet = fetchResponse.messageSet(partition.getTopic(), partition.getId());
+				List<KafkaMessage> kafkaMessages = collect(messageSet, new ConvertToKafkaMessageFunction(request)).toList();
+				long highWatermark = fetchResponse.highWatermark(partition.getTopic(), partition.getId());
+				kafkaResultBuilder.add(partition).withResult(new KafkaMessageBatch(partition, kafkaMessages, highWatermark));
 			}
 			else {
-				kafkaResultBuilder.add(kafkaMessageFetchRequest.getPartition()).withError(fetchResponse.errorCode(kafkaMessageFetchRequest.getPartition().getTopic(), kafkaMessageFetchRequest.getPartition().getId()));
+				kafkaResultBuilder.add(partition).withError(errorCode);
 			}
 		}
 		return kafkaResultBuilder.build();
 	}
 
 	public KafkaResult<Long> fetchStoredOffsetsForConsumer(String consumerId, Partition... partitions) {
-		FastList<TopicAndPartition> topicsAndPartitions = FastList.newList(Arrays.asList(partitions)).collect(new Function<Partition, TopicAndPartition>() {
-			@Override
-			public TopicAndPartition valueOf(Partition partition) {
-				return new TopicAndPartition(partition.getTopic(), partition.getId());
-			}
-		});
-		OffsetFetchRequest offsetFetchRequest = new OffsetFetchRequest(consumerId, topicsAndPartitions, kafka.api.OffsetFetchRequest.CurrentVersion(), createCorrelationId(), simpleConsumer.clientId());
+		FastList<TopicAndPartition> topicsAndPartitions = FastList.newList(Arrays.asList(partitions)).collect(new ConvertToTopicAndPartitionFunction());
+		OffsetFetchRequest offsetFetchRequest = new OffsetFetchRequest(consumerId, topicsAndPartitions,
+				kafka.api.OffsetFetchRequest.CurrentVersion(), createCorrelationId(), simpleConsumer.clientId());
 		OffsetFetchResponse offsetFetchResponse = simpleConsumer.fetchOffsets(offsetFetchRequest);
 		KafkaResultBuilder<Long> kafkaResultBuilder = new KafkaResultBuilder<Long>();
 		for (Partition partition : partitions) {
@@ -152,7 +153,7 @@ public class KafkaBrokerConnection {
 				kafkaResultBuilder.add(partition).withResult(offsetMetadataAndError.offset());
 			}
 			else {
-				kafkaResultBuilder.add(partition).withError(offsetMetadataAndError.error());
+				kafkaResultBuilder.add(partition).withError(errorCode);
 			}
 		}
 		return kafkaResultBuilder.build();
@@ -161,7 +162,7 @@ public class KafkaBrokerConnection {
 	public KafkaResult<Long> fetchInitialOffset(long referenceTime, Partition... topicsAndPartitions) {
 		Assert.isTrue(topicsAndPartitions.length > 0, "Must provide at least one partition");
 		Map<TopicAndPartition, PartitionOffsetRequestInfo> infoMap = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
-		for (Partition partition: topicsAndPartitions) {
+		for (Partition partition : topicsAndPartitions) {
 			infoMap.put(new TopicAndPartition(partition.getTopic(), partition.getId()), new PartitionOffsetRequestInfo(referenceTime, 1));
 		}
 		OffsetRequest offsetRequest = new OffsetRequest(infoMap, kafka.api.OffsetRequest.CurrentVersion(), simpleConsumer.clientId());
@@ -184,20 +185,17 @@ public class KafkaBrokerConnection {
 	}
 
 	public KafkaResult<Void> commitOffsetsForConsumer(String consumerId, Map<Partition, Long> offsets) {
-		Map<TopicAndPartition, OffsetMetadataAndError> requestInfo = MapIterate.collect(offsets, new Function2<Partition, Long, Pair<TopicAndPartition, OffsetMetadataAndError>>() {
-			@Override
-			public Pair<TopicAndPartition, OffsetMetadataAndError> value(Partition partition, Long offset) {
-				return Tuples.pair(
-						new TopicAndPartition(partition.getTopic(),
-						partition.getId()),new OffsetMetadataAndError(offset, OffsetMetadataAndError.NoMetadata(), ErrorMapping.NoError()));
-			}
-		});
-		OffsetCommitResponse offsetCommitResponse = simpleConsumer.commitOffsets(
-				new OffsetCommitRequest(consumerId, requestInfo, kafka.api.OffsetCommitRequest.CurrentVersion(), createCorrelationId(), simpleConsumer.clientId()));
+		Map<TopicAndPartition, OffsetMetadataAndError> requestInfo =
+				MapIterate.collect(offsets, new CreateRequestInfoMapEntryFunction());
+		OffsetCommitResponse offsetCommitResponse =
+				simpleConsumer.commitOffsets(
+						new OffsetCommitRequest(consumerId, requestInfo, kafka.api.OffsetCommitRequest.CurrentVersion(),
+								createCorrelationId(), simpleConsumer.clientId()));
 		KafkaResultBuilder<Void> kafkaResultBuilder = new KafkaResultBuilder<Void>();
 		for (TopicAndPartition topicAndPartition : requestInfo.keySet()) {
 			if (offsetCommitResponse.errors().containsKey(topicAndPartition)) {
-				kafkaResultBuilder.add(new Partition(topicAndPartition.topic(), topicAndPartition.partition())).withError((Short) offsetCommitResponse.errors().get(topicAndPartition));
+				Partition partition = new Partition(topicAndPartition.topic(), topicAndPartition.partition());
+				kafkaResultBuilder.add(partition).withError((Short) offsetCommitResponse.errors().get(topicAndPartition));
 			}
 		}
 		return kafkaResultBuilder.build();
@@ -213,10 +211,14 @@ public class KafkaBrokerConnection {
 			}
 			else {
 				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
+					Partition partition = new Partition(topicMetadata.topic(), partitionMetadata.partitionId());
 					if (ErrorMapping.NoError() == partitionMetadata.errorCode()) {
-						kafkaResultBuilder.add(new Partition(topicMetadata.topic(), partitionMetadata.partitionId())).withResult(new KafkaBrokerAddress(partitionMetadata.leader().host(), partitionMetadata.leader().port()));
-					} else {
-						kafkaResultBuilder.add(new Partition(topicMetadata.topic(), partitionMetadata.partitionId())).withError(partitionMetadata.errorCode());
+						Broker leader = partitionMetadata.leader();
+						KafkaBrokerAddress result = new KafkaBrokerAddress(leader.host(), leader.port());
+						kafkaResultBuilder.add(partition).withResult(result);
+					}
+					else {
+						kafkaResultBuilder.add(partition).withError(partitionMetadata.errorCode());
 					}
 				}
 
@@ -230,8 +232,37 @@ public class KafkaBrokerConnection {
 	 *
 	 * @return correlation id
 	 */
-	private static Integer createCorrelationId() {
-		return CORRELATION_ID_COUNTER.incrementAndGet();
+	private Integer createCorrelationId() {
+		return correlationIdCounter.incrementAndGet();
 	}
 
+	private static class ConvertToKafkaMessageFunction implements Function<MessageAndOffset, KafkaMessage> {
+		private final KafkaMessageFetchRequest request;
+
+		public ConvertToKafkaMessageFunction(KafkaMessageFetchRequest request) {
+			this.request = request;
+		}
+
+		@Override
+		public KafkaMessage valueOf(MessageAndOffset messageAndOffset) {
+			return new KafkaMessage(messageAndOffset.message(),
+					new KafkaMessageMetadata(request.getPartition(), messageAndOffset.offset(), messageAndOffset.nextOffset()));
+		}
+	}
+
+	private static class ConvertToTopicAndPartitionFunction implements Function<Partition, TopicAndPartition> {
+		@Override
+		public TopicAndPartition valueOf(Partition partition) {
+			return new TopicAndPartition(partition.getTopic(), partition.getId());
+		}
+	}
+
+	private static class CreateRequestInfoMapEntryFunction implements Function2<Partition, Long, Pair<TopicAndPartition, OffsetMetadataAndError>> {
+		@Override
+		public Pair<TopicAndPartition, OffsetMetadataAndError> value(Partition partition, Long offset) {
+			return Tuples.pair(
+					new TopicAndPartition(partition.getTopic(),
+							partition.getId()), new OffsetMetadataAndError(offset, OffsetMetadataAndError.NoMetadata(), ErrorMapping.NoError()));
+		}
+	}
 }

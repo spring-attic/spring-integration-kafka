@@ -38,13 +38,19 @@ import org.springframework.util.Assert;
  */
 public class KafkaBrokerConnectionFactory implements InitializingBean {
 
-	private final KafkaConfiguration kafkaConfiguration;
+	private final GetBrokersByPartitionFunction getBrokersByPartitionFunction = new GetBrokersByPartitionFunction();
 
-	private UnifiedMap<KafkaBrokerAddress, KafkaBrokerConnection> kafkaBrokersCache = UnifiedMap.newMap();
+	private final KafkaBrokerConnectionInstantiator kafkaBrokerConnectionInstantiator = new KafkaBrokerConnectionInstantiator();
+
+	private final KafkaConfiguration kafkaConfiguration;
 
 	private final AtomicReference<PartitionBrokerMap> partitionBrokerMapReference = new AtomicReference<PartitionBrokerMap>();
 
+
+	private UnifiedMap<KafkaBrokerAddress, KafkaBrokerConnection> kafkaBrokersCache = UnifiedMap.newMap();
+
 	private KafkaBrokerConnection defaultConnection;
+
 
 	public KafkaBrokerConnectionFactory(KafkaConfiguration kafkaConfiguration) {
 		this.kafkaConfiguration = kafkaConfiguration;
@@ -72,12 +78,7 @@ public class KafkaBrokerConnectionFactory implements InitializingBean {
 	 * @return the broker associated with the provided topic and partition
 	 */
 	public Map<Partition, KafkaBrokerAddress> getLeaders(Partition... partitions) {
-		return FastList.newListWith(partitions).toMap(Functions.<Partition>getPassThru(), new Function<Partition, KafkaBrokerAddress>() {
-			@Override
-			public KafkaBrokerAddress valueOf(Partition partition) {
-				return KafkaBrokerConnectionFactory.this.partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
-			}
-		});
+		return FastList.newListWith(partitions).toMap(Functions.<Partition>getPassThru(), getBrokersByPartitionFunction);
 	}
 
 	/**
@@ -107,11 +108,12 @@ public class KafkaBrokerConnectionFactory implements InitializingBean {
 	 * @return
 	 */
 	public KafkaBrokerConnection createConnection(KafkaBrokerAddress kafkaBrokerAddress) {
-		return kafkaBrokersCache.getIfAbsentPutWith(kafkaBrokerAddress, new KafkaBrokerConnectionInstantiator(), kafkaBrokerAddress);
+		return kafkaBrokersCache.getIfAbsentPutWithKey(kafkaBrokerAddress, kafkaBrokerConnectionInstantiator);
 	}
 
 	/**
-	 * Refreshes the broker connections and partition leader internal. To be called when the topology changes (i.e. brokers leave and/or partition leaders change)
+	 * Refreshes the broker connections and partition leader internal. To be called when the topology changes
+	 * (i.e. brokers leave and/or partition leaders change)
 	 */
 	public void refreshLeaders() {
 		synchronized (partitionBrokerMapReference) {
@@ -138,6 +140,10 @@ public class KafkaBrokerConnectionFactory implements InitializingBean {
 		return getPartitionBrokerMap().getPartitionsByTopic().get(topic).toList();
 	}
 
+	private PartitionBrokerMap getPartitionBrokerMap() {
+		return partitionBrokerMapReference.get();
+	}
+
 	private class KafkaBrokerConnectionInstantiator implements Function<KafkaBrokerAddress, KafkaBrokerConnection> {
 		@Override
 		public KafkaBrokerConnection valueOf(KafkaBrokerAddress kafkaBrokerAddress) {
@@ -152,8 +158,10 @@ public class KafkaBrokerConnectionFactory implements InitializingBean {
 		}
 	}
 
-	private PartitionBrokerMap getPartitionBrokerMap() {
-		return partitionBrokerMapReference.get();
+	private class GetBrokersByPartitionFunction implements Function<Partition, KafkaBrokerAddress> {
+		@Override
+		public KafkaBrokerAddress valueOf(Partition partition) {
+			return KafkaBrokerConnectionFactory.this.partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
+		}
 	}
-
 }

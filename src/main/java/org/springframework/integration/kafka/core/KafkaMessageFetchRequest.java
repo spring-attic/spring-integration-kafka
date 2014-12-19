@@ -17,8 +17,6 @@
 
 package org.springframework.integration.kafka.core;
 
-import org.springframework.integration.kafka.core.Partition;
-
 /**
  * Encapsulates a request for fetching messages from the server.
  *

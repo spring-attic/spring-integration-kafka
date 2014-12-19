@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
 /**
  * @author Marius Bogoevici
  */
-public abstract class AbstractDecodingMessageListener<K,P> implements MessageListener, InitializingBean {
+public abstract class AbstractDecodingMessageListener<K, P> implements MessageListener, InitializingBean {
 
 	private Decoder<K> keyDecoder;
 
