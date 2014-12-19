@@ -85,8 +85,12 @@ public abstract class AbstractBrokerTest {
 	}
 
 	public static scala.collection.Seq<KeyedMessage<String, String>> createMessages(int count) {
+		return createMessagesInRange(0,count-1);
+	}
+
+	public static scala.collection.Seq<KeyedMessage<String, String>> createMessagesInRange(int start, int end) {
 		List<KeyedMessage<String,String>> messages = new ArrayList<KeyedMessage<String, String>>();
-		for (int i=0; i<count; i++) {
+		for (int i=start; i<= end; i++) {
 			messages.add(new KeyedMessage<String, String>(TEST_TOPIC, "Key " + i, i, "Message " + i));
 		}
 		return asScalaBuffer(messages).toSeq();
