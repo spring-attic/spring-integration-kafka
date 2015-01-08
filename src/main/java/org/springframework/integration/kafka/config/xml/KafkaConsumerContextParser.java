@@ -81,6 +81,8 @@ public class KafkaConsumerContextParser extends AbstractSingleBeanDefinitionPars
 					"key-decoder");
 			IntegrationNamespaceUtils.setValueIfAttributeDefined(consumerConfigurationBuilder, consumerConfiguration,
 					"max-messages");
+			IntegrationNamespaceUtils.setReferenceIfAttributeDefined(consumerConfigurationBuilder, consumerConfiguration,
+					"executor");
 			IntegrationNamespaceUtils.setValueIfAttributeDefined(consumerMetadataBuilder, parentElem,
 					"consumer-timeout");
 
