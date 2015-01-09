@@ -103,8 +103,10 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 		return 0;
 	}
 
+	@SuppressWarnings("rawtypes")
 	private class ChannelForwardingMessageListener extends AbstractDecodingMessageListener {
 
+		@SuppressWarnings("unchecked")
 		public ChannelForwardingMessageListener() {
 			super(keyDecoder, payloadDecoder);
 		}

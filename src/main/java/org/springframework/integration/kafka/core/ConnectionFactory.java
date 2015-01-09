@@ -95,8 +95,9 @@ public class ConnectionFactory implements InitializingBean {
 	/**
 	 * Returns the leader for a single partition
 	 *
-	 * @param partition
-	 * @return
+	 * @param partition the partition whose leader is queried
+	 *
+	 * @return the leader's address
 	 */
 	public BrokerAddress getLeader(Partition partition) {
 		try {
@@ -111,8 +112,9 @@ public class ConnectionFactory implements InitializingBean {
 	/**
 	 * Returns the partitions of which the given broker is the leader
 	 *
-	 * @param brokerAddress
-	 * @return
+	 * @param brokerAddress a broker address
+	 *
+	 * @return the partitions of which the given broker is the leader
 	 */
 	public List<Partition> getPartitions(BrokerAddress brokerAddress) {
 		return this.partitionBrokerMapReference.get().getPartitionsByBroker().get(brokerAddress).toList();
@@ -121,17 +123,20 @@ public class ConnectionFactory implements InitializingBean {
 	/**
 	 * Creates a connection to a Kafka broker, caching it internally
 	 *
-	 * @param brokerAddress
-	 * @return
+	 * @param brokerAddress a broker address
+	 *
+	 * @return a working connection
 	 */
 	public Connection createConnection(BrokerAddress brokerAddress) {
 		return kafkaBrokersCache.getIfAbsentPutWithKey(brokerAddress, connectionInstantiationFunction);
 	}
 
 	/**
-	 * Refreshes the broker connections and partition leader internal. To be called when the topology changes
-	 * (i.e. brokers leave and/or partition leaders change)
-	 * @param topics
+	 * Refreshes the broker connections and partition leader map. To be called when the topology changes
+	 * are detected (i.e. brokers leave and/or partition leaders change) and that results in fetch errors,
+	 * for instance
+	 *
+	 * @param topics the topics for which to refresh the leaders
 	 */
 	public void refreshLeaders(Collection<String> topics) {
 		try {
@@ -171,6 +176,7 @@ public class ConnectionFactory implements InitializingBean {
 		return partitionBrokerMapReference.get();
 	}
 
+	@SuppressWarnings("serial")
 	private class ConnectionInstantiationFunction implements Function<BrokerAddress, Connection> {
 		@Override
 		public Connection valueOf(BrokerAddress brokerAddress) {
@@ -185,10 +191,12 @@ public class ConnectionFactory implements InitializingBean {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private class GetBrokersByPartitionFunction implements Function<Partition, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(Partition partition) {
 			return ConnectionFactory.this.partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
 		}
 	}
+
 }

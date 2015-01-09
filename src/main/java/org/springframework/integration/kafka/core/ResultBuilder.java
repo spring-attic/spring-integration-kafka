@@ -52,7 +52,7 @@ class ResultBuilder<T> {
 			this.Partition = Partition;
 		}
 
-		public ResultBuilder withResult(T result) {
+		public ResultBuilder<T> withResult(T result) {
 			if (ResultBuilder.this.errors.containsKey(Partition)) {
 				throw new IllegalArgumentException("A KafkaResult cannot contain both an error and a result for the same topic and partition");
 			}
@@ -60,7 +60,7 @@ class ResultBuilder<T> {
 			return ResultBuilder.this;
 		}
 
-		public ResultBuilder withError(short error) {
+		public ResultBuilder<T> withError(short error) {
 			if (ResultBuilder.this.result.containsKey(Partition)) {
 				throw new IllegalArgumentException("A FetchResult cannot contain both an error and a MessageSet for the same topic and partition");
 			}

@@ -69,6 +69,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 		return brokers.collect(brokerToBrokerAddressFunction);
 	}
 
+	@SuppressWarnings("serial")
 	private static class BrokerToBrokerAddressFunction implements Function<Broker, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(Broker broker) {

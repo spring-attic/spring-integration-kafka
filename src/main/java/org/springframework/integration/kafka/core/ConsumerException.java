@@ -27,6 +27,7 @@ import kafka.javaapi.consumer.SimpleConsumer;
  *
  * @author Marius Bogoevici
  */
+@SuppressWarnings("serial")
 public class ConsumerException extends RuntimeException {
 
 	public ConsumerException(Throwable cause) {

@@ -154,6 +154,7 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 		delegates.flip().keyBag().toSet().forEachWith(startDelegateProcedure, taskExecutor);
 	}
 
+	@SuppressWarnings("serial")
 	private static class StopDelegateProcedure implements Procedure<QueueingMessageListenerInvoker> {
 		@Override
 		public void value(QueueingMessageListenerInvoker delegate) {
@@ -161,6 +162,7 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private static class StartDelegateProcedure implements Procedure2<QueueingMessageListenerInvoker, Executor> {
 		@Override
 		public void value(QueueingMessageListenerInvoker delegate, Executor executor) {

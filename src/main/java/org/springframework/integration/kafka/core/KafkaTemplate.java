@@ -55,6 +55,7 @@ public class KafkaTemplate implements KafkaOperations {
 		return this;
 	}
 
+	@SuppressWarnings("serial")
 	private class FetchRequestToLeaderBrokerAddress implements Function<FetchRequest, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(FetchRequest fetchRequest) {

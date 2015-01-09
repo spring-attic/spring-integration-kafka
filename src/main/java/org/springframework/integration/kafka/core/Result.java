@@ -52,13 +52,7 @@ public class Result<T> {
 	public Map<Partition, Short> getErrors() {
 		return errors;
 	}
-
-	/**
-	 * Returns the error reported as a result of a Kafka SimpleConsumer API call, if any.
-	 *
-	 * @param partition
-	 * @return
-	 */
+	
 	public short getError(Partition partition) throws IllegalArgumentException {
 		if (this.getErrors().containsKey(partition)) {
 			return this.getErrors().get(partition);

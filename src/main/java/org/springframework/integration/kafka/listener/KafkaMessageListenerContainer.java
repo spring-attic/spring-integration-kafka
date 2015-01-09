@@ -186,15 +186,13 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.maxFetchSizeInBytes = maxFetchSizeInBytes;
 	}
 
-	/**
-	 * The time interval that the fetch tasks will sleep if there is no data available.
-	 *
-	 * @return
-	 */
 	public long getInterval() {
 		return interval;
 	}
 
+	/**
+	 * The time interval that the fetch tasks will sleep if there is no data available.
+	 */
 	public void setInterval(long interval) {
 		this.interval = interval;
 	}
@@ -255,20 +253,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		return 0;
 	}
 
-	static class GetPartitionsForTopic extends CheckedFunction<String, Iterable<Partition>> {
-
-		private final ConnectionFactory connectionFactory;
-
-		public GetPartitionsForTopic(ConnectionFactory connectionFactory) {
-			this.connectionFactory = connectionFactory;
-		}
-
-		@Override
-		public Iterable<Partition> safeValueOf(String topic) throws Exception {
-			return connectionFactory.getPartitions(topic);
-		}
-	}
-
 	/**
 	 * Fetches data from Kafka for a group of partitions, located on the same broker.
 	 */
@@ -320,24 +304,14 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							PartitionIterable<Map.Entry<Partition, Short>> partitionByLeaderErrors =
 									partition(result.getErrors().entrySet(), new IsLeaderErrorPredicate());
 							RichIterable<Partition> partitionsWithLeaderErrors =
-									partitionByLeaderErrors.getSelected().collect(new Function<Map.Entry<Partition, Short>, Partition>() {
-										@Override
-										public Partition valueOf(Map.Entry<Partition, Short> object) {
-											return object.getKey();
-										}
-									});
+									partitionByLeaderErrors.getSelected().collect(keyFunction);
 							resetLeaders(partitionsWithLeaderErrors);
 
 							PartitionIterable<Map.Entry<Partition, Short>> partitionsWithOffsetsOutOfRange
 									= partitionByLeaderErrors.getRejected().partition(new IsOffsetOutOfRangePredicate());
 							resetOffsets(partitionsWithOffsetsOutOfRange.getSelected().collect(keyFunction).toSet());
 							// it's not a leader issue
-							stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected().collect(new Function<Map.Entry<Partition, Short>, Partition>() {
-								@Override
-								public Partition valueOf(Map.Entry<Partition, Short> object) {
-									return object.getKey();
-								}
-							}));
+							stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
 						}
 
 					}
@@ -350,7 +324,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					}
 				} while (!hasErrors && !partitionsWithRemainingData.isEmpty());
 				try {
-					Thread.currentThread().sleep(interval);
+					Thread.sleep(interval);
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
@@ -393,21 +367,11 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			@Override
 			public void run() {
 				FastList<Partition> partitionsAsList = FastList.newList(partitionsToReset);
-				FastList<String> topics = partitionsAsList.collect(new Function<Partition, String>() {
-					@Override
-					public String valueOf(Partition object) {
-						return object.getTopic();
-					}
-				}).distinct();
+				FastList<String> topics = partitionsAsList.collect(new PartitionToTopicFunction()).distinct();
 				kafkaTemplate.getConnectionFactory().refreshLeaders(topics);
 				Map<Partition, BrokerAddress> leaders = kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset);
 				synchronized (partitionsByBrokerMap) {
-					forEachKeyValue(leaders, new Procedure2<Partition, BrokerAddress>() {
-						@Override
-						public void value(Partition partition, BrokerAddress newBrokerAddress) {
-							partitionsByBrokerMap.put(newBrokerAddress, partition);
-						}
-					});
+					forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
 				}
 			}
 		}
@@ -428,6 +392,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			}
 		}
 
+		@SuppressWarnings("serial")
 		private class IsLeaderErrorPredicate implements Predicate<Map.Entry<Partition, Short>> {
 			@Override
 			public boolean accept(Map.Entry<Partition, Short> each) {
@@ -436,6 +401,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			}
 		}
 
+		@SuppressWarnings("serial")
 		private class IsOffsetOutOfRangePredicate implements Predicate<Map.Entry<Partition, Short>> {
 			@Override
 			public boolean accept(Map.Entry<Partition, Short> each) {
@@ -444,6 +410,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	class GetOffsetForPartitionFunction extends CheckedFunction<Partition, Long> {
 		@Override
 		public Long safeValueOf(Partition object) throws Exception {
@@ -457,6 +424,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private class PartitionToLeaderFunction implements Function<Partition, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(Partition partition) {
@@ -464,6 +432,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private class LaunchFetchTaskProcedure implements Procedure<BrokerAddress> {
 		@Override
 		public void value(BrokerAddress brokerAddress) {
@@ -471,10 +440,42 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private class PartitionToFetchRequestFunction implements Function<Partition, FetchRequest> {
 		@Override
 		public FetchRequest valueOf(Partition partition) {
 			return new FetchRequest(partition, fetchOffsets.get(partition), maxFetchSizeInBytes);
+		}
+	}
+
+	@SuppressWarnings("serial")
+	static class GetPartitionsForTopic extends CheckedFunction<String, Iterable<Partition>> {
+
+		private final ConnectionFactory connectionFactory;
+
+		public GetPartitionsForTopic(ConnectionFactory connectionFactory) {
+			this.connectionFactory = connectionFactory;
+		}
+
+		@Override
+		public Iterable<Partition> safeValueOf(String topic) throws Exception {
+			return connectionFactory.getPartitions(topic);
+		}
+	}
+
+	@SuppressWarnings("serial")
+	private class PartitionToTopicFunction implements Function<Partition, String> {
+		@Override
+		public String valueOf(Partition object) {
+			return object.getTopic();
+		}
+	}
+
+	@SuppressWarnings("serial")
+	private class AddPartitionToBrokerProcedure implements Procedure2<Partition, BrokerAddress> {
+		@Override
+		public void value(Partition partition, BrokerAddress newBrokerAddress) {
+			partitionsByBrokerMap.put(newBrokerAddress, partition);
 		}
 	}
 }

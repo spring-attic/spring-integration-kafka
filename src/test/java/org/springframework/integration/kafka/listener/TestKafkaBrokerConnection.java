@@ -17,8 +17,8 @@
 
 package org.springframework.integration.kafka.listener;
 
-import junit.framework.Assert;
 import kafka.producer.Producer;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 

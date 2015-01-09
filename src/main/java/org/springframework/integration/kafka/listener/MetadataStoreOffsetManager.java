@@ -125,7 +125,7 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	}
 
 	/**
-	 * @see {@link OffsetManager#updateOffset(Partition, long)}
+	 * @see OffsetManager#updateOffset(Partition, long)
 	 */
 	@Override
 	public void updateOffset(Partition partition, long offset) {
@@ -134,7 +134,7 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	}
 
 	/**
-	 * @see {@link OffsetManager#getOffset(Partition)}
+	 * @see OffsetManager#getOffset(Partition)
 	 */
 	@Override
 	public long getOffset(Partition partition) {
@@ -150,21 +150,7 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	@Override
 	public void resetOffsets(Collection<Partition> partitionsToReset) {
 		MutableMultimap<BrokerAddress, Partition> partitionsByLeaderAddress = groupBy(partitionsToReset, getLeaderFunction);
-		partitionsByLeaderAddress.toMap().forEachKeyValue(new Procedure2<BrokerAddress, RichIterable<Partition>>() {
-			@Override
-			public void value(BrokerAddress brokerAddress, RichIterable<Partition> partitions) {
-				Partition[] partitionsAsArray = partitions.toArray(new Partition[partitions.size()]);
-				Result<Long> initialOffsets = connectionFactory.createConnection(brokerAddress).fetchInitialOffset(referenceTimestamp, partitionsAsArray);
-				if (initialOffsets.getErrors().size() == 0) {
-					for (Partition partition : partitions) {
-						offsets.put(partition, initialOffsets.getResults().get(partition));
-					}
-				}
-				else {
-					throw new IllegalStateException("Cannot load initial offsets");
-				}
-			}
-		});
+		partitionsByLeaderAddress.toMap().forEachKeyValue(new RetrieveInitialOffsetsAndUpdateProcedure());
 	}
 
 	private void initializeOffsets(Collection<Partition> partitions) {
@@ -198,10 +184,28 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 		return partition.getTopic() + " " + partition.getId() + " " + consumerId;
 	}
 
+	@SuppressWarnings("serial")
 	private class GetLeaderFunction implements Function<Partition, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(Partition object) {
 			return connectionFactory.getLeader(object);
+		}
+	}
+
+	@SuppressWarnings("serial")
+	private class RetrieveInitialOffsetsAndUpdateProcedure implements Procedure2<BrokerAddress, RichIterable<Partition>> {
+		@Override
+		public void value(BrokerAddress brokerAddress, RichIterable<Partition> partitions) {
+			Partition[] partitionsAsArray = partitions.toArray(new Partition[partitions.size()]);
+			Result<Long> initialOffsets = connectionFactory.createConnection(brokerAddress).fetchInitialOffset(referenceTimestamp, partitionsAsArray);
+			if (initialOffsets.getErrors().size() == 0) {
+				for (Partition partition : partitions) {
+					offsets.put(partition, initialOffsets.getResults().get(partition));
+				}
+			}
+			else {
+				throw new IllegalStateException("Cannot load initial offsets");
+			}
 		}
 	}
 }

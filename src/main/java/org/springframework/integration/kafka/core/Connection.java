@@ -95,7 +95,7 @@ public class Connection {
 	/**
 	 * The broker address for this consumer
 	 *
-	 * @return
+	 * @return broker address
 	 */
 	public BrokerAddress getBrokerAddress() {
 		return brokerAddress;
@@ -270,6 +270,7 @@ public class Connection {
 		return correlationIdCounter.incrementAndGet();
 	}
 
+	@SuppressWarnings("serial")
 	private static class ConvertToKafkaMessageFunction implements Function<MessageAndOffset, KafkaMessage> {
 		private final FetchRequest request;
 
@@ -284,6 +285,7 @@ public class Connection {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private static class ConvertToTopicAndPartitionFunction implements Function<Partition, TopicAndPartition> {
 		@Override
 		public TopicAndPartition valueOf(Partition partition) {
@@ -291,6 +293,7 @@ public class Connection {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private static class CreateRequestInfoMapEntryFunction implements Function2<Partition, Long, Pair<TopicAndPartition, OffsetMetadataAndError>> {
 		@Override
 		public Pair<TopicAndPartition, OffsetMetadataAndError> value(Partition partition, Long offset) {

@@ -55,6 +55,7 @@ class PartitionBrokerMap {
 		return partitionsByTopic;
 	}
 
+	@SuppressWarnings("serial")
 	private static class GetTopicFunction implements Function<Partition, String> {
 		@Override
 		public String valueOf(Partition partition) {
