@@ -51,10 +51,6 @@ public class KafkaTemplate implements KafkaOperations {
 		return connectionFactory.createConnection(distinctBrokerAddresses.get(0)).fetch(requestList.toTypedArray(FetchRequest.class));
 	}
 
-	public KafkaOperations getKafkaOperations() {
-		return this;
-	}
-
 	@SuppressWarnings("serial")
 	private class FetchRequestToLeaderBrokerAddress implements Function<FetchRequest, BrokerAddress> {
 		@Override

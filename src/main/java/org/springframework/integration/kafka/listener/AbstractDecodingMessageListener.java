@@ -17,14 +17,13 @@
 
 package org.springframework.integration.kafka.listener;
 
-import static org.springframework.integration.kafka.util.MessageUtils.decodeKey;
-import static org.springframework.integration.kafka.util.MessageUtils.decodePayload;
 
 import kafka.serializer.Decoder;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.KafkaMessageMetadata;
+import org.springframework.integration.kafka.util.MessageUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -71,7 +70,7 @@ public abstract class AbstractDecodingMessageListener<K, P> implements MessageLi
 
 	@Override
 	public final void onMessage(KafkaMessage message) {
-		this.doOnMessage(decodeKey(message, keyDecoder), decodePayload(message, payloadDecoder), message.getMetadata());
+		this.doOnMessage(MessageUtils.decodeKey(message, keyDecoder), MessageUtils.decodePayload(message, payloadDecoder), message.getMetadata());
 	}
 
 	/**

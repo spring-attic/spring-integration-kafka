@@ -18,7 +18,7 @@
 package org.springframework.integration.kafka.core;
 
 /**
- * A reference to a Kafka partition, with both String and partition id
+ * A reference to a Kafka partition, with both topic and partition id
  *
  * @author Marius Bogoevici
  */

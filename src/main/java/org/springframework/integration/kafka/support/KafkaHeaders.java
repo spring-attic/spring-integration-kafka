@@ -28,4 +28,8 @@ public abstract class KafkaHeaders {
 
 	public static final String MESSAGE_KEY = PREFIX + "messageKey";
 
+	public static final String PARTITION_ID = PREFIX + "_partitionId";
+
+	public static final String OFFSET = PREFIX + "_offset";
+
 }

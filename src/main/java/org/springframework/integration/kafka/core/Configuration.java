@@ -20,7 +20,7 @@ package org.springframework.integration.kafka.core;
 import java.util.List;
 
 /**
- * Used to configure a {@link ConnectionFactory}. Provides a list of seed brokers.
+ * Used to configure a {@link DefaultConnectionFactory}. Provides a list of seed brokers.
  *
  * @author Marius Bogoevici
  */

@@ -47,7 +47,16 @@ public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 		this.messages = new ArrayBlockingQueue<KafkaMessage>(capacity, true);
 	}
 
+	/**
+	 * Adds a message to the queue, blocking if the queue has reached its maximum capacity.
+	 *
+	 * Interrupts will be ignored for as long as the component's {@code running} flag is set to true, but will
+	 * be deferred for when the method returns.
+	 *
+	 * @param message
+	 */
 	public void enqueue(KafkaMessage message) {
+		boolean wasInterruptedWhileRunning = false;
 		if (this.running) {
 			boolean added = false;
 			// handle the case when the thread is interrupted while the adapter is still running
@@ -59,12 +68,12 @@ public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 				}
 				catch (InterruptedException e) {
 					// we ignore the interruption signal if we are still running, but pass it on if we are stopped
-					if (!this.running) {
-						Thread.currentThread().interrupt();
-						return;
-					}
+					wasInterruptedWhileRunning = true;
 				}
 			}
+		}
+		if (wasInterruptedWhileRunning) {
+			Thread.currentThread().interrupt();
 		}
 	}
 

@@ -30,6 +30,8 @@ import org.junit.Test;
 import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.Connection;
 import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.DefaultConnection;
+import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 import org.springframework.integration.kafka.core.Result;
 import org.springframework.integration.kafka.core.Partition;
@@ -56,7 +58,7 @@ public class TestKafkaConnectionFactory extends AbstractBrokerTest {
 
 		List<BrokerAddress> brokerAddresses = getKafkaRule().getBrokerAddresses();
 		Partition partition = new Partition(TEST_TOPIC, 0);
-		ConnectionFactory connectionFactory = new ConnectionFactory(new BrokerAddressListConfiguration(brokerAddresses));
+		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(new BrokerAddressListConfiguration(brokerAddresses));
 		connectionFactory.afterPropertiesSet();
 		Connection connection = connectionFactory.createConnection(getKafkaRule().getBrokerAddresses().get(0));
 		Result<BrokerAddress> leaders = connection.findLeaders(TEST_TOPIC);
@@ -74,8 +76,8 @@ public class TestKafkaConnectionFactory extends AbstractBrokerTest {
 		Partition partition = new Partition(TEST_TOPIC, 0);
 		ZookeeperConnect zookeeperConnect = new ZookeeperConnect();
 		zookeeperConnect.setZkConnect(kafkaEmbeddedBrokerRule.getZookeeperConnectionString());
-		ConnectionFactory connectionFactory =
-				new ConnectionFactory(new ZookeeperConfiguration(zookeeperConnect));
+		DefaultConnectionFactory connectionFactory =
+				new DefaultConnectionFactory(new ZookeeperConfiguration(zookeeperConnect));
 		connectionFactory.afterPropertiesSet();
 		Connection connection = connectionFactory.createConnection(getKafkaRule().getBrokerAddresses().get(0));
 		Result<BrokerAddress> leaders = connection.findLeaders(TEST_TOPIC);

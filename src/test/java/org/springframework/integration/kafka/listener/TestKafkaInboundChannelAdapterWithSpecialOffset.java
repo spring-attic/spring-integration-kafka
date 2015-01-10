@@ -20,9 +20,6 @@ package org.springframework.integration.kafka.listener;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter.KAFKA_MESSAGE_KEY;
-import static org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter.KAFKA_MESSAGE_OFFSET;
-import static org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter.KAFKA_MESSAGE_PARTITION;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,9 +40,11 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
+import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 
@@ -102,13 +101,13 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 			public boolean send(Message<?> message) {
 				latch.countDown();
 				return receivedData.put(
-						(Integer)message.getHeaders().get(KAFKA_MESSAGE_PARTITION),
+						(Integer)message.getHeaders().get(KafkaHeaders.PARTITION_ID),
 						new KeyedMessageWithOffset(
-								(String)message.getHeaders().get(KAFKA_MESSAGE_KEY),
+								(String)message.getHeaders().get(KafkaHeaders.MESSAGE_KEY),
 								(String)message.getPayload(),
-								(Long)message.getHeaders().get(KAFKA_MESSAGE_OFFSET),
+								(Long)message.getHeaders().get(KafkaHeaders.OFFSET),
 								Thread.currentThread().getName(),
-								(Integer)message.getHeaders().get(KAFKA_MESSAGE_PARTITION)));
+								(Integer)message.getHeaders().get(KafkaHeaders.PARTITION_ID)));
 			}
 
 

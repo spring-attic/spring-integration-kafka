@@ -31,11 +31,11 @@ class PartitionBrokerMap {
 
 	private static final GetTopicFunction getTopicFunction = new GetTopicFunction();
 
-	private Multimap<BrokerAddress, Partition> partitionsByBroker;
+	private final Multimap<BrokerAddress, Partition> partitionsByBroker;
 
-	private ImmutableMap<Partition, BrokerAddress> brokersByPartition;
+	private final ImmutableMap<Partition, BrokerAddress> brokersByPartition;
 
-	private Multimap<String, Partition> partitionsByTopic;
+	private final Multimap<String, Partition> partitionsByTopic;
 
 	public PartitionBrokerMap(UnifiedMap<Partition, BrokerAddress> brokersByPartition) {
 		this.brokersByPartition = brokersByPartition.toImmutable();

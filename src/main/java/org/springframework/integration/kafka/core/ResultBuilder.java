@@ -46,25 +46,25 @@ class ResultBuilder<T> {
 
 	class KafkaPartitionResultHolder {
 
-		private Partition Partition;
+		private Partition partition;
 
 		public KafkaPartitionResultHolder(Partition Partition) {
-			this.Partition = Partition;
+			this.partition = Partition;
 		}
 
 		public ResultBuilder<T> withResult(T result) {
-			if (ResultBuilder.this.errors.containsKey(Partition)) {
+			if (ResultBuilder.this.errors.containsKey(partition)) {
 				throw new IllegalArgumentException("A KafkaResult cannot contain both an error and a result for the same topic and partition");
 			}
-			ResultBuilder.this.result.put(Partition, result);
+			ResultBuilder.this.result.put(partition, result);
 			return ResultBuilder.this;
 		}
 
 		public ResultBuilder<T> withError(short error) {
-			if (ResultBuilder.this.result.containsKey(Partition)) {
+			if (ResultBuilder.this.result.containsKey(partition)) {
 				throw new IllegalArgumentException("A FetchResult cannot contain both an error and a MessageSet for the same topic and partition");
 			}
-			ResultBuilder.this.errors.put(Partition, error);
+			ResultBuilder.this.errors.put(partition, error);
 			return ResultBuilder.this;
 		}
 

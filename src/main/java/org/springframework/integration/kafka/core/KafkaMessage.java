@@ -20,7 +20,7 @@ package org.springframework.integration.kafka.core;
 import kafka.message.Message;
 
 /**
- * Wrapper around a {@link KafkaMessage}, grouping the original {@link Message} content and metadata.
+ * Wrapper around a {@link Message kafka message} and its {@link KafkaMessageMetadata metadata}.
  *
  * @author Marius Bogoevici
  */

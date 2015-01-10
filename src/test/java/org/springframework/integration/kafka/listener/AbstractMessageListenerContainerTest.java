@@ -48,6 +48,7 @@ import kafka.utils.VerifiableProperties;
 import org.hamcrest.Matchers;
 
 import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.KafkaMessage;
 

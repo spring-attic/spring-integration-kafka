@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-
 package org.springframework.integration.kafka.core;
 
 import java.util.List;
 
 /**
+ * A group of {@link KafkaMessage}s retrieved by a fetch operation
+ *
  * @author Marius Bogoevici
  */
 public class KafkaMessageBatch {

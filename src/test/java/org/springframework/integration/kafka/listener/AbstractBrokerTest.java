@@ -43,9 +43,9 @@ import scala.collection.immutable.List$;
 import scala.collection.immutable.Map$;
 import scala.collection.immutable.Seq;
 
-import org.springframework.integration.kafka.core.AbstractConfiguration;
 import org.springframework.integration.kafka.core.Configuration;
 import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 
 /**
@@ -107,7 +107,7 @@ public abstract class AbstractBrokerTest {
 	}
 
 	public ConnectionFactory getKafkaBrokerConnectionFactory() throws Exception {
-		ConnectionFactory connectionFactory = new ConnectionFactory(getKafkaConfiguration());
+		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(getKafkaConfiguration());
 		connectionFactory.afterPropertiesSet();
 		return connectionFactory;
 	}

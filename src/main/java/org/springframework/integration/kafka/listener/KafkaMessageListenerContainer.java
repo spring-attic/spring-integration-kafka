@@ -112,6 +112,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	public KafkaMessageListenerContainer(ConnectionFactory connectionFactory, Partition[] partitions) {
 		Assert.notNull(connectionFactory, "A connection factory must be supplied");
 		Assert.notEmpty(partitions, "A list of partitions must be provided");
+		Assert.noNullElements(partitions, "The list of partitions cannot contain null elements");
 		this.kafkaTemplate = new KafkaTemplate(connectionFactory);
 		this.partitions = partitions;
 	}
@@ -121,6 +122,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	private static Partition[] getPartitionsForTopics(final ConnectionFactory connectionFactory, String[] topics) {
+		Assert.notNull(connectionFactory, "A connection factory must be supplied");
+		Assert.notNull(topics, "A list of topics must be provided");
+		Assert.noNullElements(topics, "The list of topics cannot contain null elements");
 		MutableList<Partition> partitionList = flatCollect(topics, new GetPartitionsForTopic(connectionFactory));
 		return partitionList.toArray(new Partition[partitionList.size()]);
 	}

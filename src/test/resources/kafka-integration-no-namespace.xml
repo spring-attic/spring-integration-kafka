@@ -30,7 +30,7 @@
 		<constructor-arg index="0" ref="kafkaBrokerAddresses"/>
 	</bean>
 
-	<bean id="connectionFactory" class="org.springframework.integration.kafka.core.ConnectionFactory">
+	<bean id="connectionFactory" class="org.springframework.integration.kafka.core.DefaultConnectionFactory">
 		<constructor-arg index="0" ref="kafkaConfiguration"/>
 	</bean>
 

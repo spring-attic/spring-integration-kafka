@@ -18,185 +18,25 @@
 package org.springframework.integration.kafka.core;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import com.gs.collections.api.block.function.Function;
-import com.gs.collections.impl.block.factory.Functions;
-import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.map.mutable.UnifiedMap;
-import kafka.client.ClientUtils$;
-import kafka.javaapi.PartitionMetadata;
-import kafka.javaapi.TopicMetadata;
-import kafka.javaapi.TopicMetadataResponse;
-import scala.collection.JavaConversions;
-
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.util.Assert;
 
 /**
  * Creates Kafka connections and retrieves metadata for topics and partitions
  *
  * @author Marius Bogoevici
+ *
  */
-public class ConnectionFactory implements InitializingBean {
+public interface ConnectionFactory {
 
-	private final GetBrokersByPartitionFunction getBrokersByPartitionFunction = new GetBrokersByPartitionFunction();
+	Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions);
 
-	private final ConnectionInstantiationFunction connectionInstantiationFunction = new ConnectionInstantiationFunction();
+	BrokerAddress getLeader(Partition partition);
 
-	private final Configuration configuration;
+	Connection createConnection(BrokerAddress brokerAddress);
 
-	private final AtomicReference<PartitionBrokerMap> partitionBrokerMapReference = new AtomicReference<PartitionBrokerMap>();
+	void refreshLeaders(Collection<String> topics);
 
-	private final ReadWriteLock lock = new ReentrantReadWriteLock();
+	Collection<Partition> getPartitions();
 
-	private UnifiedMap<BrokerAddress, Connection> kafkaBrokersCache = UnifiedMap.newMap();
-
-	private Connection defaultConnection;
-
-	public ConnectionFactory(Configuration configuration) {
-		this.configuration = configuration;
-	}
-
-	public List<BrokerAddress> getBrokerAddresses() {
-		return configuration.getBrokerAddresses();
-	}
-
-	public Configuration getConfiguration() {
-		return configuration;
-	}
-
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		Assert.notNull(this.configuration, "Kafka configuration cannot be empty");
-		this.refreshLeaders(configuration.getDefaultTopic()==null? Collections.<String>emptyList() : Collections
-				.singletonList
-				(configuration
-				.getDefaultTopic()));
-	}
-
-	/**
-	 * Retrieves the leaders for a set of partitions.
-	 *
-	 * @param partitions
-	 * @return the broker associated with the provided topic and partition
-	 */
-	public Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions) {
-		return FastList.newList(partitions).toMap(Functions.<Partition>getPassThru(), getBrokersByPartitionFunction);
-	}
-
-	/**
-	 * Returns the leader for a single partition
-	 *
-	 * @param partition the partition whose leader is queried
-	 *
-	 * @return the leader's address
-	 */
-	public BrokerAddress getLeader(Partition partition) {
-		try {
-			lock.readLock().lock();
-			return this.getLeaders(Collections.singleton(partition)).get(partition);
-		}
-		finally {
-			lock.readLock().unlock();
-		}
-	}
-
-	/**
-	 * Returns the partitions of which the given broker is the leader
-	 *
-	 * @param brokerAddress a broker address
-	 *
-	 * @return the partitions of which the given broker is the leader
-	 */
-	public List<Partition> getPartitions(BrokerAddress brokerAddress) {
-		return this.partitionBrokerMapReference.get().getPartitionsByBroker().get(brokerAddress).toList();
-	}
-
-	/**
-	 * Creates a connection to a Kafka broker, caching it internally
-	 *
-	 * @param brokerAddress a broker address
-	 *
-	 * @return a working connection
-	 */
-	public Connection createConnection(BrokerAddress brokerAddress) {
-		return kafkaBrokersCache.getIfAbsentPutWithKey(brokerAddress, connectionInstantiationFunction);
-	}
-
-	/**
-	 * Refreshes the broker connections and partition leader map. To be called when the topology changes
-	 * are detected (i.e. brokers leave and/or partition leaders change) and that results in fetch errors,
-	 * for instance
-	 *
-	 * @param topics the topics for which to refresh the leaders
-	 */
-	public void refreshLeaders(Collection<String> topics) {
-		try {
-			lock.writeLock().lock();
-			for (Connection connection : kafkaBrokersCache) {
-				connection.close();
-			}
-			TopicMetadataResponse topicMetadataResponse = new TopicMetadataResponse(ClientUtils$.MODULE$.fetchTopicMetadata(
-					JavaConversions.asScalaSet(new HashSet<String>(topics)),
-					ClientUtils$.MODULE$.parseBrokerList(configuration.getBrokerAddressesAsString()),
-					"clientId", 10000, 0));
-			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
-			for (TopicMetadata topicMetadata : topicMetadataResponse.topicsMetadata()) {
-				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
-					kafkaBrokerAddressMap.put(new Partition(topicMetadata.topic(), partitionMetadata.partitionId()), new
-							BrokerAddress(partitionMetadata.leader().host(), partitionMetadata.leader().port()));
-				}
-			}
-
-			this.partitionBrokerMapReference.set(new PartitionBrokerMap(UnifiedMap.newMap(kafkaBrokerAddressMap)));
-
-		}
-		finally {
-			lock.writeLock().unlock();
-		}
-	}
-
-	public Collection<Partition> getPartitions() {
-		return getPartitionBrokerMap().getBrokersByPartition().keysView().toSet();
-	}
-
-	public Collection<Partition> getPartitions(String topic) {
-		return getPartitionBrokerMap().getPartitionsByTopic().get(topic).toList();
-	}
-
-	private PartitionBrokerMap getPartitionBrokerMap() {
-		return partitionBrokerMapReference.get();
-	}
-
-	@SuppressWarnings("serial")
-	private class ConnectionInstantiationFunction implements Function<BrokerAddress, Connection> {
-		@Override
-		public Connection valueOf(BrokerAddress brokerAddress) {
-			ConnectionFactory connectionFactory = ConnectionFactory.this;
-			if (connectionFactory.defaultConnection != null
-					&& connectionFactory.defaultConnection.getBrokerAddress().equals(brokerAddress)) {
-				return ConnectionFactory.this.defaultConnection;
-			}
-			else {
-				return new Connection(brokerAddress);
-			}
-		}
-	}
-
-	@SuppressWarnings("serial")
-	private class GetBrokersByPartitionFunction implements Function<Partition, BrokerAddress> {
-		@Override
-		public BrokerAddress valueOf(Partition partition) {
-			return ConnectionFactory.this.partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
-		}
-	}
-
+	Collection<Partition> getPartitions(String topic);
 }

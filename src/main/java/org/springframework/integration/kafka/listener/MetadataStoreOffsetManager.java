@@ -36,7 +36,6 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.ConsumerException;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.Result;
 import org.springframework.integration.metadata.MetadataStore;
@@ -61,8 +60,6 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 
 	private ConnectionFactory connectionFactory;
 
-	private Map<Partition, Long> initialOffsets;
-
 	private long referenceTimestamp = -2;
 
 	private MutableMap<Partition, Long> offsets = new ConcurrentHashMap<Partition, Long>();
@@ -73,7 +70,6 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 
 	public MetadataStoreOffsetManager(ConnectionFactory connectionFactory, Map<Partition, Long> initialOffsets) {
 		this.connectionFactory = connectionFactory;
-		this.initialOffsets = initialOffsets;
 		if (!CollectionUtils.isEmpty(initialOffsets)) {
 			this.offsets = ConcurrentHashMap.newMap(initialOffsets);
 		}

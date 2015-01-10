@@ -25,6 +25,7 @@ import org.springframework.integration.endpoint.MessageProducerSupport;
 import org.springframework.integration.kafka.core.KafkaMessageMetadata;
 import org.springframework.integration.kafka.listener.AbstractDecodingMessageListener;
 import org.springframework.integration.kafka.listener.KafkaMessageListenerContainer;
+import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
@@ -33,14 +34,6 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  */
 public class KafkaInboundChannelAdapter extends MessageProducerSupport implements OrderlyShutdownCapable {
-
-	public static final String KAFKA_MESSAGE_KEY = "kafka.message.key";
-
-	public static final String KAFKA_MESSAGE_TOPIC = "kafka.message.topic";
-
-	public static final String KAFKA_MESSAGE_PARTITION = "kafka.message.partition.id";
-
-	public static final String KAFKA_MESSAGE_OFFSET = "kafka.message.offset";
 
 	private KafkaMessageListenerContainer messageListenerContainer;
 
@@ -89,7 +82,7 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 
 	@Override
 	public String getComponentType() {
-		return "amqp:inbound-channel-adapter";
+		return "kafka:inbound-channel-adapter";
 	}
 
 	@Override
@@ -115,10 +108,10 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 		public void doOnMessage(Object key, Object payload, KafkaMessageMetadata metadata) {
 			Message<Object> message = MessageBuilder
 					.withPayload(payload)
-					.setHeader(KAFKA_MESSAGE_KEY, key)
-					.setHeader(KAFKA_MESSAGE_TOPIC, metadata.getPartition().getTopic())
-					.setHeader(KAFKA_MESSAGE_PARTITION, metadata.getPartition().getId())
-					.setHeader(KAFKA_MESSAGE_OFFSET, metadata.getOffset())
+					.setHeader(KafkaHeaders.MESSAGE_KEY, key)
+					.setHeader(KafkaHeaders.TOPIC, metadata.getPartition().getTopic())
+					.setHeader(KafkaHeaders.PARTITION_ID, metadata.getPartition().getId())
+					.setHeader(KafkaHeaders.OFFSET, metadata.getOffset())
 					.build();
 			KafkaInboundChannelAdapter.this.sendMessage(message);
 		}

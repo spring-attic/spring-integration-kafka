@@ -27,9 +27,9 @@ import java.util.Map;
  */
 public class Result<T> {
 
-	private Map<Partition, T> results;
+	private final Map<Partition, T> results;
 
-	private Map<Partition, Short> errors;
+	private final Map<Partition, Short> errors;
 
 	Result(Map<Partition, T> results, Map<Partition, Short> errors) {
 		this.results = Collections.unmodifiableMap(results);
