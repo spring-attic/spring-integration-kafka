@@ -59,15 +59,13 @@ public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListene
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
 		for (int i = 0; i < 5; i++) {
-			if(i % 1 == 0) {
 				readPartitions.add(new Partition(TEST_TOPIC, i));
-			}
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
 		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
-		final int expectedMessageCount = 100 / 1;
+		final int expectedMessageCount = 100;
 
 		createStringProducer(0).send(createMessages(100));
 
