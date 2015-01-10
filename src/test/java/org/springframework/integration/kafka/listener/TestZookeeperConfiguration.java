@@ -39,6 +39,7 @@ import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.ZookeeperConfiguration;
+import org.springframework.integration.kafka.support.ZookeeperConnect;
 
 /**
  * @author Marius Bogoevici
@@ -55,7 +56,9 @@ public class TestZookeeperConfiguration extends AbstractMessageListenerContainer
 
 	@Override
 	public Configuration getKafkaConfiguration() {
-		return new ZookeeperConfiguration(kafkaEmbeddedBrokerRule.getZookeeperConnectionString(), 1000);
+		ZookeeperConnect zookeeperConnect = new ZookeeperConnect();
+		zookeeperConnect.setZkConnect(kafkaEmbeddedBrokerRule.getZookeeperConnectionString());
+		return new ZookeeperConfiguration(zookeeperConnect);
 	}
 
 	@Test
@@ -65,15 +68,13 @@ public class TestZookeeperConfiguration extends AbstractMessageListenerContainer
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
 		for (int i = 0; i < 5; i++) {
-			if(i % 1 == 0) {
-				readPartitions.add(new Partition(TEST_TOPIC, i));
-			}
+			readPartitions.add(new Partition(TEST_TOPIC, i));
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
 		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
-		int expectedMessageCount = 100 / 1;
+		int expectedMessageCount = 100;
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
 		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);

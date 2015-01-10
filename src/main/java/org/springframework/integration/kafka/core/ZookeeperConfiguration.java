@@ -28,6 +28,9 @@ import org.I0Itec.zkclient.ZkClient;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
 
+import org.springframework.beans.factory.BeanInitializationException;
+import org.springframework.integration.kafka.support.ZookeeperConnect;
+
 /**
  * Kafka {@link Configuration} that uses a ZooKeeper connection for retrieving the list of seed brokers.
  *
@@ -37,34 +40,31 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 
 	public static final BrokerToBrokerAddressFunction brokerToBrokerAddressFunction = new BrokerToBrokerAddressFunction();
 
+	private String zookeeperServers;
+
+	private int sessionTimeout;
+
 	private int connectionTimeout;
 
-	private String zookeperServers;
-
-	public ZookeeperConfiguration(String zookeperServers, int connectionTimeout) {
-		this.connectionTimeout = connectionTimeout;
-		this.zookeperServers = zookeperServers;
-	}
-
-	public int getConnectionTimeout() {
-		return connectionTimeout;
-	}
-
-	public void setConnectionTimeout(int connectionTimeout) {
-		this.connectionTimeout = connectionTimeout;
-	}
-
-	public String getZookeperServers() {
-		return zookeperServers;
-	}
-
-	public void setZookeperServers(String zookeperServers) {
-		this.zookeperServers = zookeperServers;
+	public ZookeeperConfiguration(ZookeeperConnect zookeeperConnect) {
+		this.zookeeperServers = zookeeperConnect.getZkConnect();
+		try {
+			this.sessionTimeout = Integer.parseInt(zookeeperConnect.getZkSessionTimeout());
+		}
+		catch (NumberFormatException e) {
+			throw new BeanInitializationException("Cannot parse session timeout:", e);
+		}
+		try {
+			this.connectionTimeout = Integer.parseInt(zookeeperConnect.getZkConnectionTimeout());
+		}
+		catch (NumberFormatException e) {
+			throw new BeanInitializationException("Cannot parse connection timeout:", e);
+		}
 	}
 
 	@Override
 	protected List<BrokerAddress> doGetBrokerAddresses() {
-		Seq<Broker> allBrokersInCluster = ZkUtils$.MODULE$.getAllBrokersInCluster(new ZkClient(zookeperServers, connectionTimeout, connectionTimeout, ZKStringSerializer$.MODULE$));
+		Seq<Broker> allBrokersInCluster = ZkUtils$.MODULE$.getAllBrokersInCluster(new ZkClient(zookeeperServers, sessionTimeout, connectionTimeout, ZKStringSerializer$.MODULE$));
 		FastList<Broker> brokers = FastList.newList(JavaConversions.asJavaCollection(allBrokersInCluster));
 		return brokers.collect(brokerToBrokerAddressFunction);
 	}
