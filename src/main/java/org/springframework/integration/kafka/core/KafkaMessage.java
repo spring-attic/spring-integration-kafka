@@ -19,6 +19,8 @@ package org.springframework.integration.kafka.core;
 
 import kafka.message.Message;
 
+import org.springframework.util.ObjectUtils;
+
 /**
  * Wrapper around a {@link Message kafka message} and its {@link KafkaMessageMetadata metadata}.
  *
@@ -43,4 +45,9 @@ public class KafkaMessage {
 		return metadata;
 	}
 
+	@Override
+	public String toString() {
+		return "KafkaMessage [" + ObjectUtils.nullSafeToString(message) + ", "
+				+ ObjectUtils.nullSafeToString(metadata.toString()) + "]";
+	}
 }

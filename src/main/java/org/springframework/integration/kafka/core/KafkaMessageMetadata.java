@@ -19,6 +19,8 @@ package org.springframework.integration.kafka.core;
 
 import kafka.message.Message;
 
+import org.springframework.util.Assert;
+
 /**
  * Metadata for a Kafka {@link Message}.
  *
@@ -26,13 +28,16 @@ import kafka.message.Message;
  */
 public class KafkaMessageMetadata {
 
-	private long offset;
+	private final long offset;
 
-	private long nextOffset;
+	private final long nextOffset;
 
-	private Partition partition;
+	private final Partition partition;
 
 	public KafkaMessageMetadata(Partition partition, long offset, long nextOffset) {
+		Assert.notNull(partition);
+		Assert.isTrue(offset > 0);
+		Assert.isTrue(nextOffset > 0);
 		this.offset = offset;
 		this.nextOffset = nextOffset;
 		this.partition = partition;
@@ -42,24 +47,19 @@ public class KafkaMessageMetadata {
 		return partition;
 	}
 
-	public void setPartition(Partition partition) {
-		this.partition = partition;
-	}
-
 	public long getOffset() {
 		return offset;
-	}
-
-	public void setOffset(long offset) {
-		this.offset = offset;
 	}
 
 	public long getNextOffset() {
 		return nextOffset;
 	}
 
-	public void setNextOffset(long nextOffset) {
-		this.nextOffset = nextOffset;
+	@Override
+	public String toString() {
+		return "KafkaMessageMetadata [" +
+				"offset=" + offset +
+				", nextOffset=" + nextOffset +
+				", " + partition.toString();
 	}
-
 }

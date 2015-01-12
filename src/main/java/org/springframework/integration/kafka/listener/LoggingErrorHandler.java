@@ -21,17 +21,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.integration.kafka.core.KafkaMessage;
+import org.springframework.util.ObjectUtils;
 
 /**
  * @author Marius Bogoevici
  */
 public class LoggingErrorHandler implements ErrorHandler {
 
-	private static final Log LOGGER = LogFactory.getLog(LoggingErrorHandler.class);
+	private static final Log log = LogFactory.getLog(LoggingErrorHandler.class);
 
 	@Override
 	public void handle(Exception thrownException, KafkaMessage message) {
-		LOGGER.error(thrownException);
+		log.error("Error while processing: " + ObjectUtils.nullSafeToString(message), thrownException);
 	}
 
 }
