@@ -40,7 +40,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
@@ -80,7 +79,7 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 		}
 
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
+		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
 		kafkaMessageListenerContainer.setOffsetManager(offsetManager);

@@ -79,7 +79,7 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		}
 
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
+		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
 		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
@@ -169,7 +169,7 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		}
 
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
+		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
 		offsetManager.setReferenceTimestamp(-1);

@@ -30,6 +30,8 @@ import com.gs.collections.api.block.function.Function;
 import com.gs.collections.impl.block.factory.Functions;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import com.gs.collections.impl.utility.Iterate;
+import com.gs.collections.impl.utility.ListIterate;
 import kafka.client.ClientUtils$;
 import kafka.javaapi.PartitionMetadata;
 import kafka.javaapi.TopicMetadata;
@@ -56,6 +58,16 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 
 	private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+	private String clientId = KafkaConsumerDefaults.GROUP_ID;
+
+	private int minBytes = KafkaConsumerDefaults.MIN_FETCH_BYTES;
+
+	private int maxWait = KafkaConsumerDefaults.MAX_WAIT_TIME_IN_MS;
+
+	private int bufferSize = KafkaConsumerDefaults.SOCKET_BUFFER_SIZE_INT;
+
+	private int socketTimeout = KafkaConsumerDefaults.SOCKET_TIMEOUT_INT;
+
 	private UnifiedMap<BrokerAddress, Connection> kafkaBrokersCache = UnifiedMap.newMap();
 
 	public DefaultConnectionFactory(Configuration configuration) {
@@ -69,17 +81,86 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		Assert.notNull(this.configuration, "Kafka configuration cannot be empty");
-		this.refreshLeaders(configuration.getDefaultTopic()==null? Collections.<String>emptyList() : Collections
-				.singletonList
-				(configuration
-				.getDefaultTopic()));
+		this.refreshLeaders(configuration.getDefaultTopic() == null ? Collections.<String>emptyList() :
+				Collections.singletonList(configuration.getDefaultTopic()));
+	}
+
+
+	public int getMinBytes() {
+		return minBytes;
 	}
 
 	/**
-	 * Retrieves the leaders for a set of partitions.
+	 * The minimum amount of data that a server fetch operation will wait for before returning, unless {@code maxWaitTimeInMs}
+	 * has elapsed. In conjunction with {@link DefaultConnectionFactory#setMaxWait(int)}, controls latency
+	 * and throughput.
 	 *
-	 * @param partitions
-	 * @return the broker associated with the provided topic and partition
+	 * Smaller values increase responsiveness, but may increase the number of poll operations, potentially reducing
+	 * throughput and increasing CPU consumption.
+	 *
+	 * @param minBytes
+	 */
+	public void setMinBytes(int minBytes) {
+		this.minBytes = minBytes;
+	}
+
+	public int getMaxWait() {
+		return maxWait;
+	}
+
+	/**
+	 * The maximum amount of time that a server fetch operation will wait before returning (unless {@code minFetchSizeInBytes})
+	 * are available. In conjunction with {@link DefaultConnectionFactory#setMinBytes(int)},
+	 * controls latency and throughput.
+	 *
+	 * Smaller intervals increase responsiveness, but may increase the number of poll operations, potentially increasing CPU
+	 * consumption and reducing throughput.
+	 *
+	 * @param maxWait
+	 */
+	public void setMaxWait(int maxWait) {
+		this.maxWait = maxWait;
+	}
+
+	public String getClientId() {
+		return clientId;
+	}
+
+	/**
+	 * A client name to be used throughout this connection.
+	 *
+	 * @param clientId
+	 */
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
+	public int getBufferSize() {
+		return bufferSize;
+	}
+
+	/**
+	 * The buffer size for this client
+	 * @param bufferSize
+	 */
+	public void setBufferSize(int bufferSize) {
+		this.bufferSize = bufferSize;
+	}
+
+	public int getSocketTimeout() {
+		return socketTimeout;
+	}
+
+	/**
+	 * The socket timeout for this client
+	 * @param socketTimeout
+	 */
+	public void setSocketTimeout(int socketTimeout) {
+		this.socketTimeout = socketTimeout;
+	}
+
+	/**
+	 * @see ConnectionFactory#getLeaders(Iterable)
 	 */
 	@Override
 	public Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions) {
@@ -87,11 +168,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	}
 
 	/**
-	 * Returns the leader for a single partition
-	 *
-	 * @param partition the partition whose leader is queried
-	 *
-	 * @return the leader's address
+	 * @see ConnectionFactory#getLeader(Partition)
 	 */
 	@Override
 	public BrokerAddress getLeader(Partition partition) {
@@ -105,11 +182,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	}
 
 	/**
-	 * Creates a connection to a Kafka broker, caching it internally
-	 *
-	 * @param brokerAddress a broker address
-	 *
-	 * @return a working connection
+	 * @see ConnectionFactory#createConnection(BrokerAddress)
 	 */
 	@Override
 	public Connection createConnection(BrokerAddress brokerAddress) {
@@ -117,11 +190,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	}
 
 	/**
-	 * Refreshes the broker connections and partition leader map. To be called when the topology changes
-	 * are detected (i.e. brokers leave and/or partition leaders change) and that results in fetch errors,
-	 * for instance
-	 *
-	 * @param topics the topics for which to refresh the leaders
+	 * @see ConnectionFactory#refreshLeaders(Collection)
 	 */
 	@Override
 	public void refreshLeaders(Collection<String> topics) {
@@ -130,10 +199,10 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			for (Connection connection : kafkaBrokersCache) {
 				connection.close();
 			}
+			String brokerAddressesAsString = ListIterate.collect(configuration.getBrokerAddresses(),
+					Functions.getToString()).makeString(",");
 			TopicMetadataResponse topicMetadataResponse = new TopicMetadataResponse(ClientUtils$.MODULE$.fetchTopicMetadata(
-					JavaConversions.asScalaSet(new HashSet<String>(topics)),
-					ClientUtils$.MODULE$.parseBrokerList(configuration.getBrokerAddressesAsString()),
-					"clientId", 10000, 0));
+					JavaConversions.asScalaSet(new HashSet<String>(topics)), ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString), getClientId(), 10000, 0));
 			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
 			for (TopicMetadata topicMetadata : topicMetadataResponse.topicsMetadata()) {
 				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
@@ -141,20 +210,16 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 							BrokerAddress(partitionMetadata.leader().host(), partitionMetadata.leader().port()));
 				}
 			}
-
 			this.partitionBrokerMapReference.set(new PartitionBrokerMap(UnifiedMap.newMap(kafkaBrokerAddressMap)));
-
 		}
 		finally {
 			lock.writeLock().unlock();
 		}
 	}
 
-	@Override
-	public Collection<Partition> getPartitions() {
-		return getPartitionBrokerMap().getBrokersByPartition().keysView().toSet();
-	}
-
+	/**
+	 * @see ConnectionFactory#getPartitions(String)
+	 */
 	@Override
 	public Collection<Partition> getPartitions(String topic) {
 		return getPartitionBrokerMap().getPartitionsByTopic().get(topic).toList();
@@ -168,7 +233,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	private class ConnectionInstantiationFunction implements Function<BrokerAddress, Connection> {
 		@Override
 		public Connection valueOf(BrokerAddress brokerAddress) {
-				return new DefaultConnection(brokerAddress);
+			return new DefaultConnection(brokerAddress, clientId, bufferSize, socketTimeout, minBytes, maxWait);
 		}
 	}
 
@@ -177,6 +242,14 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		@Override
 		public BrokerAddress valueOf(Partition partition) {
 			return partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
+		}
+	}
+
+	@SuppressWarnings("serial")
+	private static class BrokerAddressToStringFunction implements Function<BrokerAddress, String> {
+		@Override
+		public String valueOf(BrokerAddress object) {
+			return object.toString();
 		}
 	}
 

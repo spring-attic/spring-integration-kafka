@@ -36,7 +36,6 @@ import org.junit.Test;
 
 import org.springframework.integration.kafka.core.Configuration;
 import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.ZookeeperConfiguration;
@@ -72,7 +71,7 @@ public class TestZookeeperConfiguration extends AbstractMessageListenerContainer
 			readPartitions.add(new Partition(TEST_TOPIC, i));
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
+		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
 		int expectedMessageCount = 100;

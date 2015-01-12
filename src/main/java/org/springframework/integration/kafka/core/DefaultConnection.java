@@ -65,37 +65,27 @@ import org.springframework.util.Assert;
  */
 public class DefaultConnection implements Connection {
 
-	public static final String DEFAULT_CLIENT_ID = "spring.kafka";
-
-	public static final int DEFAULT_BUFFER_SIZE = 64 * 1024;
-
-	public static final int DEFAULT_SOCKET_TIMEOUT = 10 * 1000;
-
 	private static Log log = LogFactory.getLog(DefaultConnection.class);
 
 	private final AtomicInteger correlationIdCounter = new AtomicInteger(new Random(new Date().getTime()).nextInt());
 
 	private final SimpleConsumer simpleConsumer;
 
-	private BrokerAddress brokerAddress;
+	private final BrokerAddress brokerAddress;
 
-	public DefaultConnection(BrokerAddress brokerAddress) {
-		this(brokerAddress, DEFAULT_CLIENT_ID);
-	}
+	private int minBytes;
 
-	public DefaultConnection(BrokerAddress brokerAddress, String clientId) {
-		this(brokerAddress, clientId, DEFAULT_BUFFER_SIZE, DEFAULT_SOCKET_TIMEOUT);
-	}
+	private int maxWait;
 
-	public DefaultConnection(BrokerAddress brokerAddress, String clientId, int bufferSize, int soTimeout) {
+	public DefaultConnection(BrokerAddress brokerAddress, String clientId, int bufferSize, int soTimeout, int minBytes, int maxWait) {
 		this.brokerAddress = brokerAddress;
+		this.minBytes = minBytes;
+		this.maxWait = maxWait;
 		this.simpleConsumer = new SimpleConsumer(brokerAddress.getHost(), brokerAddress.getPort(), soTimeout, bufferSize, clientId);
 	}
 
 	/**
-	 * The broker address for this consumer
-	 *
-	 * @return broker address
+	 * @see Connection#getBrokerAddress()
 	 */
 	@Override
 	public BrokerAddress getBrokerAddress() {
@@ -124,7 +114,7 @@ public class DefaultConnection implements Connection {
 		}
 		FetchResponse fetchResponse;
 		try {
-			fetchResponse = this.simpleConsumer.fetch(fetchRequestBuilder.build());
+			fetchResponse = this.simpleConsumer.fetch(fetchRequestBuilder.maxWait(maxWait).minBytes(minBytes).build());
 		}
 		catch (Exception e) {
 			throw new ConsumerException(e);
@@ -177,12 +167,15 @@ public class DefaultConnection implements Connection {
 		return resultBuilder.build();
 	}
 
+	/**
+	 * @see Connection#fetchInitialOffset(long, Partition...)
+	 */
 	@Override
-	public Result<Long> fetchInitialOffset(long referenceTime, Partition... topicsAndPartitions) throws
+	public Result<Long> fetchInitialOffset(long referenceTime, Partition... partitions) throws
 			ConsumerException {
-		Assert.isTrue(topicsAndPartitions.length > 0, "Must provide at least one partition");
+		Assert.isTrue(partitions.length > 0, "Must provide at least one partition");
 		Map<TopicAndPartition, PartitionOffsetRequestInfo> infoMap = new HashMap<TopicAndPartition, PartitionOffsetRequestInfo>();
-		for (Partition partition : topicsAndPartitions) {
+		for (Partition partition : partitions) {
 			infoMap.put(new TopicAndPartition(partition.getTopic(), partition.getId()), new PartitionOffsetRequestInfo(referenceTime, 1));
 		}
 		OffsetRequest offsetRequest = new OffsetRequest(infoMap, kafka.api.OffsetRequest.CurrentVersion(), simpleConsumer.clientId());
@@ -194,7 +187,7 @@ public class DefaultConnection implements Connection {
 			throw new ConsumerException(e);
 		}
 		ResultBuilder<Long> resultBuilder = new ResultBuilder<Long>();
-		for (Partition partition : topicsAndPartitions) {
+		for (Partition partition : partitions) {
 			short errorCode = offsetResponse.errorCode(partition.getTopic(), partition.getId());
 			if (ErrorMapping.NoError() == errorCode) {
 				long[] offsets = offsetResponse.offsets(partition.getTopic(), partition.getId());
@@ -233,6 +226,9 @@ public class DefaultConnection implements Connection {
 		return resultBuilder.build();
 	}
 
+	/**
+	 * @see Connection#findLeaders(String...)
+	 */
 	@Override
 	public Result<BrokerAddress> findLeaders(String... topics) throws ConsumerException {
 		TopicMetadataRequest topicMetadataRequest = new TopicMetadataRequest(Arrays.asList(topics), createCorrelationId());

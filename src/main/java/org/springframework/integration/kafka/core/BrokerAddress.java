@@ -102,10 +102,7 @@ public class BrokerAddress {
 
 	@Override
 	public String toString() {
-		return "KafkaBrokerAddress{" +
-				"host='" + host + '\'' +
-				", port=" + port +
-				'}';
+		return host + ":" + port;
 	}
 }
 

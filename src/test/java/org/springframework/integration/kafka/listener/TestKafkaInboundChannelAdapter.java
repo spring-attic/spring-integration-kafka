@@ -63,7 +63,7 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 		}
 
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(100);
+		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
 		int expectedMessageCount = 100;

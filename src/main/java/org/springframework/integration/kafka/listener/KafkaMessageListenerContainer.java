@@ -55,6 +55,7 @@ import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.ConsumerException;
 import org.springframework.integration.kafka.core.FetchRequest;
+import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.KafkaMessageBatch;
 import org.springframework.integration.kafka.core.KafkaTemplate;
@@ -95,9 +96,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private volatile boolean running = false;
 
-	private long interval = 100L;
-
-	private int maxFetchSizeInBytes = 10000;
+	private int maxFetch = KafkaConsumerDefaults.FETCH_SIZE_INT;
 
 	private MessageListener messageListener;
 
@@ -180,25 +179,14 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The maximum size that pollers will fetch in one round
+	 * The maximum amount of data (in bytes) that pollers will fetch in one round
 	 */
-	public int getMaxFetchSizeInBytes() {
-		return maxFetchSizeInBytes;
+	public int getMaxFetch() {
+		return maxFetch;
 	}
 
-	public void setMaxFetchSizeInBytes(int maxFetchSizeInBytes) {
-		this.maxFetchSizeInBytes = maxFetchSizeInBytes;
-	}
-
-	public long getInterval() {
-		return interval;
-	}
-
-	/**
-	 * The time interval that the fetch tasks will sleep if there is no data available.
-	 */
-	public void setInterval(long interval) {
-		this.interval = interval;
+	public void setMaxFetch(int maxFetch) {
+		this.maxFetch = maxFetch;
 	}
 
 	@Override
@@ -317,22 +305,14 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							// it's not a leader issue
 							stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
 						}
-
 					}
 					catch (ConsumerException e) {
-						// this is a broker error, and we cannot recover from it. Reset leaders and stop fetching data from this
-						// broker altogether
+						// this is a broker error, and we cannot recover from it. Reset leaders and stop fetching data from this broker altogether
 						log.error(e);
 						resetLeaders(fetchPartitions.toImmutable());
 						return;
 					}
 				} while (!hasErrors && !partitionsWithRemainingData.isEmpty());
-				try {
-					Thread.sleep(interval);
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
 			}
 		}
 
@@ -448,7 +428,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	private class PartitionToFetchRequestFunction implements Function<Partition, FetchRequest> {
 		@Override
 		public FetchRequest valueOf(Partition partition) {
-			return new FetchRequest(partition, fetchOffsets.get(partition), maxFetchSizeInBytes);
+			return new FetchRequest(partition, fetchOffsets.get(partition), maxFetch);
 		}
 	}
 

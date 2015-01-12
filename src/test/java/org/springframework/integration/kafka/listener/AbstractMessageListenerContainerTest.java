@@ -48,7 +48,6 @@ import kafka.utils.VerifiableProperties;
 import org.hamcrest.Matchers;
 
 import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.KafkaMessage;
 
@@ -67,7 +66,7 @@ public abstract class AbstractMessageListenerContainerTest extends AbstractBroke
 			}
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetchSizeInBytes(maxReceiveSize);
+		kafkaMessageListenerContainer.setMaxFetch(maxReceiveSize);
 		kafkaMessageListenerContainer.setConcurrency(concurrency);
 
 		int expectedMessageCount = testMessageCount / divisionFactor;

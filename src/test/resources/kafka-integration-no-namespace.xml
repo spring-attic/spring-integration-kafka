@@ -39,8 +39,7 @@
 				class="org.springframework.integration.kafka.listener.KafkaMessageListenerContainer">
 		<constructor-arg index="0" ref="connectionFactory"/>
 		<constructor-arg index="1" ref="partitions"/>
-		<property name="interval" value="10000"/>
-		<property name="maxFetchSizeInBytes" value="100"/>
+		<property name="maxFetch" value="100"/>
 	</bean>
 
 	<bean id="kafkaInboundChannelAdapter"

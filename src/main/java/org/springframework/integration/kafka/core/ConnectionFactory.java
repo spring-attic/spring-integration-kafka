@@ -28,15 +28,44 @@ import java.util.Map;
  */
 public interface ConnectionFactory {
 
-	Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions);
-
-	BrokerAddress getLeader(Partition partition);
-
+	/**
+	 * Creates a connection to a Kafka broker, caching it internally
+	 *
+	 * @param brokerAddress a broker address
+	 * @return a working connection
+	 */
 	Connection createConnection(BrokerAddress brokerAddress);
 
+	/**
+	 * Retrieves the leaders for a set of partitions.
+	 *
+	 * @param partitions
+	 * @return the broker associated with the provided topic and partition
+	 */
+	Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions);
+
+	/**
+	 * Returns the leader for a single partition
+	 *
+	 * @param partition the partition whose leader is queried
+	 * @return the leader's address
+	 */
+	BrokerAddress getLeader(Partition partition);
+
+	/**
+	 * Refreshes the broker connections and partition leader map. To be called when the topology changes
+	 * are detected (i.e. brokers leave and/or partition leaders change) and that results in fetch errors,
+	 * for instance
+	 *
+	 * @param topics the topics for which to refresh the leaders
+	 */
 	void refreshLeaders(Collection<String> topics);
 
-	Collection<Partition> getPartitions();
-
+	/**
+	 * Retrieves the partitions of a given topic
+	 *
+	 * @param topic the topic to query for
+	 * @return a list of partitions
+	 */
 	Collection<Partition> getPartitions(String topic);
 }

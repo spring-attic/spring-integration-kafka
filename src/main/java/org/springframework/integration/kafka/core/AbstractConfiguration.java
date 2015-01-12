@@ -17,11 +17,7 @@
 
 package org.springframework.integration.kafka.core;
 
-import static com.gs.collections.impl.utility.ListIterate.collect;
-
 import java.util.List;
-
-import com.gs.collections.api.block.function.Function;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
@@ -36,8 +32,6 @@ import org.springframework.util.StringUtils;
  * @author Marius Bogoevici
  */
 public abstract class AbstractConfiguration implements InitializingBean, Configuration {
-
-	public static final BrokerAddressToStringFunction brokerAddressToStringFunction = new BrokerAddressToStringFunction();
 
 	private List<Partition> defaultPartitions;
 
@@ -74,16 +68,5 @@ public abstract class AbstractConfiguration implements InitializingBean, Configu
 		this.defaultTopic = defaultTopic;
 	}
 
-	@Override
-	public String getBrokerAddressesAsString() {
-		return collect(getBrokerAddresses(), brokerAddressToStringFunction).makeString(",");
-	}
 
-	@SuppressWarnings("serial")
-	private static class BrokerAddressToStringFunction implements Function<BrokerAddress, String> {
-		@Override
-		public String valueOf(BrokerAddress object) {
-			return object.getHost() + ":" + object.getPort();
-		}
-	}
 }

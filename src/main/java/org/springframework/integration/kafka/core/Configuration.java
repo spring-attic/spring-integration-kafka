@@ -26,11 +26,25 @@ import java.util.List;
  */
 public interface Configuration {
 
+	/**
+	 * The list of seed broker addresses used by this Configuration.
+	 *
+	 * @return the broker addresses
+	 */
 	List<BrokerAddress> getBrokerAddresses();
 
+	/**
+	 * A list of default partitions to perform operations on.
+	 *
+	 * @return the list of partitions
+	 */
 	List<Partition> getDefaultPartitions();
 
+	/**
+	 * A default topic to perform operations on.
+	 *
+	 * @return a topic name
+	 */
 	String getDefaultTopic();
 
-	String getBrokerAddressesAsString();
 }

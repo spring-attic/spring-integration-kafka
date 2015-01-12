@@ -42,13 +42,14 @@ public class KafkaTemplate implements KafkaOperations {
 	}
 
 	@Override
-	public Result<KafkaMessageBatch> receive(Iterable<FetchRequest> messageFetchRequests){
+	public Result<KafkaMessageBatch> receive(Iterable<FetchRequest> messageFetchRequests) {
 		FastList<FetchRequest> requestList = FastList.newList(messageFetchRequests);
 		MutableList<BrokerAddress> distinctBrokerAddresses = requestList.collect(fetchRequestToLeaderBrokerAddress).distinct();
 		if (distinctBrokerAddresses.size() != 1) {
 			throw new IllegalArgumentException("All messages must be fetched from the same broker");
 		}
-		return connectionFactory.createConnection(distinctBrokerAddresses.get(0)).fetch(requestList.toTypedArray(FetchRequest.class));
+		return connectionFactory.createConnection(distinctBrokerAddresses.getFirst())
+				.fetch(requestList.toTypedArray(FetchRequest.class));
 	}
 
 	@SuppressWarnings("serial")

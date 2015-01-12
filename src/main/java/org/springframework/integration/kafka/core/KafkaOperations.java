@@ -21,5 +21,11 @@ package org.springframework.integration.kafka.core;
  * @author Marius Bogoevici
  */
 public interface KafkaOperations {
+
+	/**
+	 * Receive data from the server.
+	 */
+
 	Result<KafkaMessageBatch> receive(Iterable<FetchRequest> messageFetchRequests);
+
 }
