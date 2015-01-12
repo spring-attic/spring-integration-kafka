@@ -28,9 +28,9 @@ public class BrokerAddress {
 
 	public static final int DEFAULT_PORT = 9092;
 
-	private String host;
+	private final String host;
 
-	private int port;
+	private final int port;
 
 	public BrokerAddress(String host, int port) {
 		if (StringUtils.isEmpty(host)) {
@@ -62,16 +62,8 @@ public class BrokerAddress {
 		return host;
 	}
 
-	public void setHost(String host) {
-		this.host = host;
-	}
-
 	public int getPort() {
 		return port;
-	}
-
-	public void setPort(int port) {
-		this.port = port;
 	}
 
 	@Override

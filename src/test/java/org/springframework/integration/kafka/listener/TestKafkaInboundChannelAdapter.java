@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
-import org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
@@ -71,12 +71,12 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
 		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
 
-		KafkaInboundChannelAdapter kafkaInboundChannelAdapter = new KafkaInboundChannelAdapter(kafkaMessageListenerContainer);
+		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
 
 		StringDecoder decoder = new StringDecoder();
-		kafkaInboundChannelAdapter.setKeyDecoder(decoder);
-		kafkaInboundChannelAdapter.setPayloadDecoder(decoder);
-		kafkaInboundChannelAdapter.setOutputChannel(new MessageChannel() {
+		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);
+		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(decoder);
+		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
 			@Override
 			public boolean send(Message<?> message) {
 				latch.countDown();
@@ -97,8 +97,8 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 			}
 		});
 
-		kafkaInboundChannelAdapter.afterPropertiesSet();
-		kafkaInboundChannelAdapter.start();
+		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
+		kafkaMessageDrivenChannelAdapter.start();
 
 		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100));
 

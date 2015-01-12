@@ -25,6 +25,8 @@ import kafka.cluster.Broker;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils$;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
 
@@ -37,6 +39,8 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
  * @author Marius Bogoevici
  */
 public class ZookeeperConfiguration extends AbstractConfiguration {
+
+	private final static Log log = LogFactory.getLog(ZookeeperConfiguration.class);
 
 	public static final BrokerToBrokerAddressFunction brokerToBrokerAddressFunction = new BrokerToBrokerAddressFunction();
 
@@ -64,9 +68,23 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 
 	@Override
 	protected List<BrokerAddress> doGetBrokerAddresses() {
-		Seq<Broker> allBrokersInCluster = ZkUtils$.MODULE$.getAllBrokersInCluster(new ZkClient(zookeeperServers, sessionTimeout, connectionTimeout, ZKStringSerializer$.MODULE$));
-		FastList<Broker> brokers = FastList.newList(JavaConversions.asJavaCollection(allBrokersInCluster));
-		return brokers.collect(brokerToBrokerAddressFunction);
+		ZkClient zkClient = null;
+		try {
+			zkClient = new ZkClient(zookeeperServers, sessionTimeout, connectionTimeout, ZKStringSerializer$.MODULE$);
+			Seq<Broker> allBrokersInCluster = ZkUtils$.MODULE$.getAllBrokersInCluster(zkClient);
+			FastList<Broker> brokers = FastList.newList(JavaConversions.asJavaCollection(allBrokersInCluster));
+			return brokers.collect(brokerToBrokerAddressFunction);
+		}
+		finally {
+			if (zkClient != null) {
+				try {
+					zkClient.close();
+				}
+				catch (Exception e) {
+					log.error("Cannot close Zookeeper client: ", e);
+				}
+			}
+		}
 	}
 
 	@SuppressWarnings("serial")

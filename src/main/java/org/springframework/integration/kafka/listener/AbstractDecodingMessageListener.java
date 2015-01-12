@@ -35,7 +35,7 @@ import org.springframework.util.Assert;
  *
  * @author Marius Bogoevici
  */
-public abstract class AbstractDecodingMessageListener<K, P> implements MessageListener, InitializingBean {
+public abstract class AbstractDecodingMessageListener<K, P> implements MessageListener {
 
 	private Decoder<K> keyDecoder;
 
@@ -44,28 +44,6 @@ public abstract class AbstractDecodingMessageListener<K, P> implements MessageLi
 	public AbstractDecodingMessageListener(Decoder<K> keyDecoder, Decoder<P> payloadDecoder) {
 		this.keyDecoder = keyDecoder;
 		this.payloadDecoder = payloadDecoder;
-	}
-
-	public Decoder<K> getKeyDecoder() {
-		return keyDecoder;
-	}
-
-	public void setKeyDecoder(Decoder<K> keyDecoder) {
-		this.keyDecoder = keyDecoder;
-	}
-
-	public Decoder<P> getPayloadDecoder() {
-		return payloadDecoder;
-	}
-
-	public void setPayloadDecoder(Decoder<P> payloadDecoder) {
-		this.payloadDecoder = payloadDecoder;
-	}
-
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		Assert.notNull(keyDecoder, "Key decoder decoder cannot be null");
-		Assert.notNull(payloadDecoder, "Payload decoder cannot be null");
 	}
 
 	@Override

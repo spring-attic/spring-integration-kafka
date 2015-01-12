@@ -26,7 +26,7 @@ import java.util.List;
  */
 public class BrokerAddressListConfiguration extends AbstractConfiguration {
 
-	private List<BrokerAddress> brokerAddresses;
+	private final List<BrokerAddress> brokerAddresses;
 
 	public BrokerAddressListConfiguration(List<BrokerAddress> brokerAddresses) {
 		this.brokerAddresses = brokerAddresses;
@@ -35,10 +35,6 @@ public class BrokerAddressListConfiguration extends AbstractConfiguration {
 	@Override
 	protected List<BrokerAddress> doGetBrokerAddresses() {
 		return brokerAddresses;
-	}
-
-	public void setBrokerAddresses(List<BrokerAddress> brokerAddresses) {
-		this.brokerAddresses = brokerAddresses;
 	}
 
 }

@@ -43,7 +43,7 @@
 	</bean>
 
 	<bean id="kafkaInboundChannelAdapter"
-				class="org.springframework.integration.kafka.inbound.KafkaInboundChannelAdapter">
+				class="org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter">
 		<constructor-arg index="0" ref="kafkaMessageListenerContainer"/>
 		<property name="outputChannel" ref="output"/>
 		<property name="keyDecoder">

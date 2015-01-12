@@ -245,12 +245,4 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		}
 	}
 
-	@SuppressWarnings("serial")
-	private static class BrokerAddressToStringFunction implements Function<BrokerAddress, String> {
-		@Override
-		public String valueOf(BrokerAddress object) {
-			return object.toString();
-		}
-	}
-
 }

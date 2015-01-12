@@ -33,7 +33,7 @@ import org.springframework.util.Assert;
 /**
  * @author Marius Bogoevici
  */
-public class KafkaInboundChannelAdapter extends MessageProducerSupport implements OrderlyShutdownCapable {
+public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport implements OrderlyShutdownCapable {
 
 	private KafkaMessageListenerContainer messageListenerContainer;
 
@@ -41,33 +41,20 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 
 	private Decoder<?> payloadDecoder = new DefaultDecoder(null);
 
-	public KafkaInboundChannelAdapter(KafkaMessageListenerContainer messageListenerContainer) {
+	public KafkaMessageDrivenChannelAdapter(KafkaMessageListenerContainer messageListenerContainer) {
 		Assert.notNull(messageListenerContainer);
 		Assert.isNull(messageListenerContainer.getMessageListener());
 		this.messageListenerContainer = messageListenerContainer;
 		this.messageListenerContainer.setAutoStartup(false);
-	}
-
-	public Decoder<?> getKeyDecoder() {
-		return keyDecoder;
+		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
 	}
 
 	public void setKeyDecoder(Decoder<?> keyDecoder) {
 		this.keyDecoder = keyDecoder;
 	}
 
-	public Decoder<?> getPayloadDecoder() {
-		return payloadDecoder;
-	}
-
 	public void setPayloadDecoder(Decoder<?> payloadDecoder) {
 		this.payloadDecoder = payloadDecoder;
-	}
-
-	@Override
-	protected void onInit() {
-		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
-		super.onInit();
 	}
 
 	@Override
@@ -82,7 +69,7 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 
 	@Override
 	public String getComponentType() {
-		return "kafka:inbound-channel-adapter";
+		return "kafka:message-driven-channel-adapter";
 	}
 
 	@Override
@@ -113,7 +100,7 @@ public class KafkaInboundChannelAdapter extends MessageProducerSupport implement
 					.setHeader(KafkaHeaders.PARTITION_ID, metadata.getPartition().getId())
 					.setHeader(KafkaHeaders.OFFSET, metadata.getOffset())
 					.build();
-			KafkaInboundChannelAdapter.this.sendMessage(message);
+			KafkaMessageDrivenChannelAdapter.this.sendMessage(message);
 		}
 	}
 }
