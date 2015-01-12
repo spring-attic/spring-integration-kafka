@@ -81,9 +81,6 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 		else {
 			this.offsets = ConcurrentHashMap.newMap();
 		}
-		if (!CollectionUtils.isEmpty(initialOffsets)) {
-			initializeOffsets(initialOffsets.keySet());
-		}
 	}
 
 	public String getConsumerId() {
