@@ -195,7 +195,7 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	}
 
 	private String asKey(Partition partition) {
-		return partition.getTopic() + " " + partition.getId() + " " + consumerId;
+		return partition.getTopic() + ":" + partition.getId() + ":" + consumerId;
 	}
 
 	@SuppressWarnings("serial")
