@@ -155,7 +155,8 @@ public class DefaultConnection implements Connection {
 		}
 		ResultBuilder<Long> resultBuilder = new ResultBuilder<Long>();
 		for (Partition partition : partitions) {
-			OffsetMetadataAndError offsetMetadataAndError = offsetFetchResponse.offsets().get(partition);
+			OffsetMetadataAndError offsetMetadataAndError
+					= offsetFetchResponse.offsets().get(new TopicAndPartition(partition.getTopic(), partition.getId()));
 			short errorCode = offsetMetadataAndError.error();
 			if (ErrorMapping.NoError() == errorCode) {
 				resultBuilder.add(partition).withResult(offsetMetadataAndError.offset());
