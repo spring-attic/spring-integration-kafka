@@ -69,7 +69,6 @@ public class TestChannelAdapterWithXmlConfiguration extends AbstractMessageListe
 		for (int i = 0; i < 100; i++) {
 			Message<?> received = output.receive(1000);
 			Assert.assertThat(received, notNullValue());
-			System.out.println(received.getPayload());
 		}
 	}
 }

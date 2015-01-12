@@ -46,7 +46,6 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 		Assert.isNull(messageListenerContainer.getMessageListener());
 		this.messageListenerContainer = messageListenerContainer;
 		this.messageListenerContainer.setAutoStartup(false);
-		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
 	}
 
 	public void setKeyDecoder(Decoder<?> keyDecoder) {
@@ -55,6 +54,12 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 
 	public void setPayloadDecoder(Decoder<?> payloadDecoder) {
 		this.payloadDecoder = payloadDecoder;
+	}
+
+	@Override
+	protected void onInit() {
+		this.messageListenerContainer.setMessageListener(new ChannelForwardingMessageListener());
+		super.onInit();
 	}
 
 	@Override

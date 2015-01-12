@@ -15,6 +15,8 @@
  */
 package org.springframework.integration.kafka.core;
 
+import kafka.api.OffsetRequest;
+
 /**
  * Kafka adapter specific message headers.
  *
@@ -42,4 +44,5 @@ public abstract class KafkaConsumerDefaults {
 	public static final int MIN_FETCH_BYTES = 1;
 	public static final int MAX_WAIT_TIME_IN_MS = 100;
 
+	public static final long DEFAULT_OFFSET_RESET = OffsetRequest.EarliestTime();
 }

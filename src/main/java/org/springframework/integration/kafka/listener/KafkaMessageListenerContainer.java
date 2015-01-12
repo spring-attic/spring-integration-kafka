@@ -21,6 +21,7 @@ import static com.gs.collections.impl.utility.ArrayIterate.flatCollect;
 import static com.gs.collections.impl.utility.Iterate.partition;
 import static com.gs.collections.impl.utility.MapIterate.forEachKeyValue;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -98,7 +99,11 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private int maxFetch = KafkaConsumerDefaults.FETCH_SIZE_INT;
 
+	private int queueSize = 1024;
+
 	private MessageListener messageListener;
+
+	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
 	private volatile OffsetManager offsetManager;
 
@@ -108,7 +113,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private final MutableMultimap<BrokerAddress, Partition> partitionsByBrokerMap = Multimaps.mutable.set.with();
 
-	public KafkaMessageListenerContainer(ConnectionFactory connectionFactory, Partition[] partitions) {
+	public KafkaMessageListenerContainer(ConnectionFactory connectionFactory, Partition... partitions) {
 		Assert.notNull(connectionFactory, "A connection factory must be supplied");
 		Assert.notEmpty(partitions, "A list of partitions must be provided");
 		Assert.noNullElements(partitions, "The list of partitions cannot contain null elements");
@@ -116,7 +121,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.partitions = partitions;
 	}
 
-	public KafkaMessageListenerContainer(final ConnectionFactory connectionFactory, String[] topics) {
+	public KafkaMessageListenerContainer(final ConnectionFactory connectionFactory, String... topics) {
 		this(connectionFactory, getPartitionsForTopics(connectionFactory, topics));
 	}
 
@@ -144,13 +149,21 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.messageListener = messageListener;
 	}
 
+	public ErrorHandler getErrorHandler() {
+		return errorHandler;
+	}
+
+	public void setErrorHandler(ErrorHandler errorHandler) {
+		this.errorHandler = errorHandler;
+	}
+
 	public int getConcurrency() {
 		return concurrency;
 	}
 
 	/**
-	 * The maximum number of concurrent {@link MessageListener} running. Messages from within the same
-	 * partitions will be processed sequentially.
+	 * The maximum number of concurrent {@link MessageListener}s running. Messages from within the same
+	 * partition will be processed sequentially.
 	 */
 	public void setConcurrency(int concurrency) {
 		this.concurrency = concurrency;
@@ -185,6 +198,21 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		return maxFetch;
 	}
 
+	public int getQueueSize() {
+		return queueSize;
+	}
+
+	/**
+	 * The maximum number of messages that are buffered by each concurrent {@link MessageListener} runner.
+	 *
+	 * Increasing the value may increase throughput, but also increases the memory consumption.
+	 *
+	 * @param queueSize
+	 */
+	public void setQueueSize(int queueSize) {
+		this.queueSize = queueSize;
+	}
+
 	public void setMaxFetch(int maxFetch) {
 		this.maxFetch = maxFetch;
 	}
@@ -203,8 +231,23 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		synchronized (lifecycleMonitor) {
 			if (running) {
 				this.running = false;
+				try {
+					this.offsetManager.flush();
+				}
+				catch (IOException e) {
+					log.error("Error while flushing:", e);
+				}
+				try {
+					this.offsetManager.close();
+				}
+				catch (IOException e) {
+					log.error("Error while closing:", e);
+				}
 				this.messageDispatcher.stop();
 			}
+		}
+		if (callback != null) {
+			callback.run();
 		}
 	}
 
@@ -219,7 +262,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				// initialize the fetch offset table - defer to OffsetManager for retrieving them
 				ImmutableList<Partition> partitionsAsList = Lists.immutable.with(partitions);
 				this.fetchOffsets = new ConcurrentHashMap<Partition, Long>(partitionsAsList.toMap(passThru, getOffset));
-				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, Arrays.asList(partitions), concurrency, offsetManager);
+				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, errorHandler, Arrays.asList(partitions), offsetManager, concurrency, queueSize);
 				this.messageDispatcher.start();
 				partitionsByBrokerMap.putAll(partitionsAsList.groupBy(getLeader));
 				if (fetchTaskExecutor == null) {

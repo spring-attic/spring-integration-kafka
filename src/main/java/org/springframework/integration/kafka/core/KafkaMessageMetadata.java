@@ -36,8 +36,8 @@ public class KafkaMessageMetadata {
 
 	public KafkaMessageMetadata(Partition partition, long offset, long nextOffset) {
 		Assert.notNull(partition);
-		Assert.isTrue(offset > 0);
-		Assert.isTrue(nextOffset > 0);
+		Assert.isTrue(offset >= 0);
+		Assert.isTrue(nextOffset >= 0);
 		this.offset = offset;
 		this.nextOffset = nextOffset;
 		this.partition = partition;

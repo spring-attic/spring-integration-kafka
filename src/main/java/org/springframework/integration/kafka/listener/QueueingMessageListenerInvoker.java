@@ -29,21 +29,22 @@ import org.springframework.integration.kafka.core.KafkaMessage;
  *
  * @author Marius Bogoevici
  */
-public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
+class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 
 	private BlockingQueue<KafkaMessage> messages;
 
 	private volatile boolean running = false;
 
-	private MessageListener delegate;
+	private final MessageListener delegate;
 
-	private OffsetManager offsetManager;
+	private final OffsetManager offsetManager;
 
-	private ErrorHandler errorHandler = new LoggingErrorHandler();
+	private final ErrorHandler errorHandler;
 
-	public QueueingMessageListenerInvoker(int capacity, OffsetManager offsetManager, MessageListener delegate) {
+	public QueueingMessageListenerInvoker(int capacity, OffsetManager offsetManager, MessageListener delegate, ErrorHandler errorHandler) {
 		this.offsetManager = offsetManager;
 		this.delegate = delegate;
+		this.errorHandler = errorHandler;
 		this.messages = new ArrayBlockingQueue<KafkaMessage>(capacity, true);
 	}
 
@@ -77,14 +78,6 @@ public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 		}
 	}
 
-	public ErrorHandler getErrorHandler() {
-		return errorHandler;
-	}
-
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
 	@Override
 	public void start() {
 		this.running = true;
@@ -100,8 +93,13 @@ public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 		return this.running;
 	}
 
+	/**
+	 * Runs uninterruptibly as long as {@code running} is true, but if interrupted, will defer
+	 * propagating the interruption flag at the end.
+	 */
 	@Override
 	public void run() {
+		boolean wasInterrupted = false;
 		while (this.running) {
 			try {
 				KafkaMessage message = messages.take();
@@ -109,15 +107,20 @@ public class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 					delegate.onMessage(message);
 				}
 				catch (Exception e) {
-					errorHandler.handle(e, message);
+					if (errorHandler != null) {
+						errorHandler.handle(e, message);
+					}
 				}
 				finally {
 					offsetManager.updateOffset(message.getMetadata().getPartition(), message.getMetadata().getNextOffset());
 				}
 			}
 			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
+				wasInterrupted = true;
 			}
+		}
+		if (wasInterrupted) {
+			Thread.currentThread().interrupt();
 		}
 	}
 }

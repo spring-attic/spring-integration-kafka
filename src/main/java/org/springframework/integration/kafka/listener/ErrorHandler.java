@@ -20,6 +20,7 @@ package org.springframework.integration.kafka.listener;
 import org.springframework.integration.kafka.core.KafkaMessage;
 
 /**
+ * Handles errors thrown during the execution of a {@link MessageListener}
  *
  * @author Marius Bogoevici
  */

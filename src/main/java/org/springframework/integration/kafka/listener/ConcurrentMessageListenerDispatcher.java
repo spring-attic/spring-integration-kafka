@@ -35,11 +35,13 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.Assert;
 
 /**
- * Dispatches {@link KafkaMessage}s across a set of MessageListeners.
+ * Dispatches {@link KafkaMessage}s to a {@link MessageListener}. Messages may be
+ * processed concurrently, according to the {@code concurrency} settings, but messages
+ * from the same partition are being processed in their original order.
  *
  * @author Marius Bogoevici
  */
-public class ConcurrentMessageListenerDispatcher implements Lifecycle {
+class ConcurrentMessageListenerDispatcher implements Lifecycle {
 
 	public static final CustomizableThreadFactory THREAD_FACTORY = new CustomizableThreadFactory("dispatcher-");
 
@@ -55,49 +57,27 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 
 	private volatile boolean running;
 
-	private MessageListener delegateListener;
+	private final MessageListener delegateListener;
 
-	private OffsetManager offsetManager;
+	private final ErrorHandler errorHandler;
+
+	private final OffsetManager offsetManager;
 
 	private MutableMap<Partition, QueueingMessageListenerInvoker> delegates;
 
-	private int queueSize = 1024;
+	private final int queueSize;
 
 	private Executor taskExecutor;
 
-	private ErrorHandler errorHandler = new LoggingErrorHandler();
-
-	public ConcurrentMessageListenerDispatcher(MessageListener delegateListener, Collection<Partition> partitions, int consumers, OffsetManager offsetManager) {
+	public ConcurrentMessageListenerDispatcher(MessageListener delegateListener, ErrorHandler errorHandler, Collection<Partition> partitions, OffsetManager offsetManager, int consumers, int queueSize) {
 		Assert.notEmpty(partitions, "A set of partitions must be provided");
 		Assert.isTrue(consumers <= partitions.size(), "The number of consumers must be smaller or equal to the number of partitions");
 		Assert.notNull(delegateListener, "A delegate must be provided");
 		this.delegateListener = delegateListener;
-		this.partitions = partitions;
-		this.consumers = consumers;
-		this.offsetManager = offsetManager;
-	}
-
-	public ErrorHandler getErrorHandler() {
-		return errorHandler;
-	}
-
-	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
-	}
-
-	public OffsetManager getOffsetManager() {
-		return offsetManager;
-	}
-
-	public void setOffsetManager(OffsetManager offsetManager) {
+		this.partitions = partitions;
 		this.offsetManager = offsetManager;
-	}
-
-	public int getQueueSize() {
-		return queueSize;
-	}
-
-	public void setQueueSize(int queueSize) {
+		this.consumers = consumers;
 		this.queueSize = queueSize;
 	}
 
@@ -134,10 +114,7 @@ public class ConcurrentMessageListenerDispatcher implements Lifecycle {
 		// allocate delegate instances index them
 		List<QueueingMessageListenerInvoker> delegateList = new ArrayList<QueueingMessageListenerInvoker>(consumers);
 		for (int i = 0; i < consumers; i++) {
-			QueueingMessageListenerInvoker blockingQueueMessageListenerInvoker = new QueueingMessageListenerInvoker(queueSize, offsetManager, delegateListener);
-			if (errorHandler != null) {
-				blockingQueueMessageListenerInvoker.setErrorHandler(errorHandler);
-			}
+			QueueingMessageListenerInvoker blockingQueueMessageListenerInvoker = new QueueingMessageListenerInvoker(queueSize, offsetManager, delegateListener, errorHandler);
 			delegateList.add(blockingQueueMessageListenerInvoker);
 		}
 		// evenly distribute partitions across delegates

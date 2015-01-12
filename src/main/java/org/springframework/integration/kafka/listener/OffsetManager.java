@@ -17,6 +17,8 @@
 
 package org.springframework.integration.kafka.listener;
 
+import java.io.Closeable;
+import java.io.Flushable;
 import java.util.Collection;
 
 import org.springframework.integration.kafka.core.Partition;
@@ -26,7 +28,7 @@ import org.springframework.integration.kafka.core.Partition;
  *
  * @author Marius Bogoevici
  */
-public interface OffsetManager {
+public interface OffsetManager extends Closeable, Flushable {
 
 	/**
 	 * Updates the offset for a given {@link Partition}
