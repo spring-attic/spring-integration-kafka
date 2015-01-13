@@ -98,7 +98,7 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 
 		@Override
 		public void doOnMessage(Object key, Object payload, KafkaMessageMetadata metadata) {
-			Message<Object> message = MessageBuilder
+			Message<Object> message = getMessageBuilderFactory()
 					.withPayload(payload)
 					.setHeader(KafkaHeaders.MESSAGE_KEY, key)
 					.setHeader(KafkaHeaders.TOPIC, metadata.getPartition().getTopic())

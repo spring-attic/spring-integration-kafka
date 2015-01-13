@@ -20,6 +20,7 @@ package org.springframework.integration.kafka.listener;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,6 +40,7 @@ import kafka.message.NoCompressionCodec$;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
@@ -95,6 +97,8 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		StringDecoder decoder = new StringDecoder();
 		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);
 		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(decoder);
+		kafkaMessageDrivenChannelAdapter.setBeanFactory(mock(BeanFactory.class));
+
 		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
 			@Override
 			public boolean send(Message<?> message) {
@@ -186,6 +190,7 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		StringDecoder decoder = new StringDecoder();
 		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);
 		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(decoder);
+		kafkaMessageDrivenChannelAdapter.setBeanFactory(mock(BeanFactory.class));
 		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
 			@Override
 			public boolean send(Message<?> message) {
