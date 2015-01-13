@@ -88,14 +88,8 @@ public class OutboundTests {
 		try {
 			AdminUtils.createTopic(kafkaRunning.getZkClient(), TOPIC, 1, 1, new Properties());
 		}
-		catch (Exception e) {
-			// because Java/Scala casting is always
-			if (e.getClass().getName().equals("kafka.common.TopicExistsException")) {
-				// do nothing
-			} else {
-				// it's really an error
-				throw e;
-			}
+		catch (TopicExistsException e) {
+			// do nothing
 		}
 
 		final String suffix = UUID.randomUUID().toString();
