@@ -80,12 +80,12 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 	@Override
 	public int beforeShutdown() {
 		this.messageListenerContainer.stop();
-		return 0;
+		return getPhase();
 	}
 
 	@Override
 	public int afterShutdown() {
-		return 0;
+		return getPhase();
 	}
 
 	@SuppressWarnings("rawtypes")

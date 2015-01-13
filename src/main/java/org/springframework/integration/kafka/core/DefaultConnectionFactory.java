@@ -199,8 +199,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			for (Connection connection : kafkaBrokersCache) {
 				connection.close();
 			}
-			String brokerAddressesAsString = ListIterate.collect(configuration.getBrokerAddresses(),
-					Functions.getToString()).makeString(",");
+			String brokerAddressesAsString = ListIterate.collect(configuration.getBrokerAddresses(), Functions.getToString()).makeString(",");
 			TopicMetadataResponse topicMetadataResponse = new TopicMetadataResponse(ClientUtils$.MODULE$.fetchTopicMetadata(
 					JavaConversions.asScalaSet(new HashSet<String>(topics)), ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString), getClientId(), 10000, 0));
 			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
