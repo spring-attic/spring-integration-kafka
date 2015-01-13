@@ -63,6 +63,7 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 	}
 
 	@Test
+	@SuppressWarnings("serial")
 	public void testLowVolumeLowConcurrencyResetAtEarliest() throws Exception {
 
 		// we will send 300 messages: first 200, then another 100
@@ -155,6 +156,7 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 	}
 
 	@Test
+	@SuppressWarnings("serial")
 	public void testLowVolumeLowConcurrencyResetAtLatest() throws Exception {
 
 		// we will send 300 messages: first 200, then another 100

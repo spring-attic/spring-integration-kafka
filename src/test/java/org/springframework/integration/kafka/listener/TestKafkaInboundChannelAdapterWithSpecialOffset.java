@@ -64,6 +64,7 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 	}
 
 	@Test
+	@SuppressWarnings("serial")
 	public void testLowVolumeLowConcurrency() throws Exception {
 
 		// we will send 300 messages: first 200, then another 100

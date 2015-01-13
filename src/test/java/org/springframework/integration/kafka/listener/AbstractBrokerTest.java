@@ -37,6 +37,7 @@ import kafka.producer.ProducerConfig;
 import kafka.serializer.StringEncoder;
 import kafka.utils.TestUtils;
 import org.junit.After;
+import scala.Array;
 import scala.collection.JavaConversions;
 import scala.collection.Map;
 import scala.collection.immutable.List$;
@@ -63,6 +64,7 @@ public abstract class AbstractBrokerTest {
 		TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), TEST_TOPIC, 0, 5000L);
 	}
 
+	@SuppressWarnings("unchecked")
 	public void createTopic(String topicName, int partitionCount, int brokers, int replication) {
 		MutableMultimap<Integer, Integer> partitionDistribution = createPartitionDistribution(partitionCount, brokers, replication);
 		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZookeeperClient(), topicName, toKafkaPartitionMap(partitionDistribution), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
@@ -112,6 +114,7 @@ public abstract class AbstractBrokerTest {
 		return connectionFactory;
 	}
 
+	@SuppressWarnings({"rawtypes", "serial", "deprecation"})
 	private Map toKafkaPartitionMap(Multimap<Integer, Integer> partitions) {
 		java.util.Map<Object, Seq<Object>> m = partitions.toMap().collect(new Function2<Integer, RichIterable<Integer>, Pair<Object, Seq<Object>>>() {
 			@Override

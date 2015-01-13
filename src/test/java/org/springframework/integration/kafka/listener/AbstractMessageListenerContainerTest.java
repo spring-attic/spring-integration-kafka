@@ -97,6 +97,7 @@ public abstract class AbstractMessageListenerContainerTest extends AbstractBroke
 
 	}
 
+	@SuppressWarnings("serial")
 	public void validateMessageReceipt(MutableListMultimap<Integer, KeyedMessageWithOffset> receivedData, int concurrency, int partitionCount, int testMessageCount, int expectedMessageCount, ArrayList<Partition> readPartitions, int divisionFactor) {
 		// Group messages received by processing thread
 		MutableListMultimap<String, KeyedMessageWithOffset> messagesByThread = receivedData.valuesView().toList().groupBy(new Function<KeyedMessageWithOffset, String>() {

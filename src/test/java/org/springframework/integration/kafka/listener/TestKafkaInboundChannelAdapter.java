@@ -55,6 +55,7 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 	}
 
 	@Test
+	@SuppressWarnings("serial")
 	public void testLowVolumeLowConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 1, 1);
 

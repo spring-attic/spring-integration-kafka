@@ -44,6 +44,7 @@ import org.springframework.integration.kafka.core.BrokerAddress;
 /**
  * @author Marius Bogoevici
  */
+@SuppressWarnings("serial")
 public class KafkaEmbeddedBrokerRule extends ExternalResource {
 
 	private int count;
