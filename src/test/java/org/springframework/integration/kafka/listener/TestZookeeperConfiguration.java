@@ -39,6 +39,7 @@ import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.ZookeeperConfiguration;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.support.ZookeeperConnect;
 
 /**
@@ -47,10 +48,10 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
 public class TestZookeeperConfiguration extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(2);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(2);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
@@ -89,7 +90,7 @@ public class TestZookeeperConfiguration extends AbstractMessageListenerContainer
 
 		kafkaMessageListenerContainer.start();
 
-		createStringProducer(0).send(createMessages(100));
+		createStringProducer(0).send(createMessages(100, TEST_TOPIC));
 
 		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();

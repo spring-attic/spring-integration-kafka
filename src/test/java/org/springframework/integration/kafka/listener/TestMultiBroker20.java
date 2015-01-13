@@ -21,36 +21,38 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+
 /**
  * @author Marius Bogoevici
  */
 public class TestMultiBroker20 extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public final KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(20);
+	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(20);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
 	@Test
 	public void testLowVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 20, 1);
-		runMessageListenerTest(100, 20, 100, 1000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 1000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	public void testMediumVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 20, 1);
-		runMessageListenerTest(100, 20, 100, 10000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 10000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	@Ignore
 	public void testHighVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 20, 1);
-		runMessageListenerTest(100, 20, 100, 100000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 100000, 1, 0, TEST_TOPIC);
 	}
 
 }

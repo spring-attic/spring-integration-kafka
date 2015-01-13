@@ -36,8 +36,9 @@ import kafka.producer.Producer;
 import kafka.producer.ProducerConfig;
 import kafka.serializer.StringEncoder;
 import kafka.utils.TestUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.After;
-import scala.Array;
 import scala.collection.JavaConversions;
 import scala.collection.Map;
 import scala.collection.immutable.List$;
@@ -48,28 +49,43 @@ import org.springframework.integration.kafka.core.Configuration;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
+import org.springframework.integration.kafka.rule.KafkaRule;
 
 /**
  * @author Marius Bogoevici
  */
 public abstract class AbstractBrokerTest {
 
+	private static final Log log = LogFactory.getLog(AbstractBrokerTest.class);
+
 	public static final String TEST_TOPIC = "test-topic";
 
-	public abstract KafkaEmbeddedBrokerRule getKafkaRule();
+	public abstract KafkaRule getKafkaRule();
 
 	@After
-	public void cleanUpTopic() {
-		AdminUtils.deleteTopic(getKafkaRule().getZookeeperClient(), TEST_TOPIC);
-		TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), TEST_TOPIC, 0, 5000L);
+	public void cleanUp() {
+		deleteTopic(TEST_TOPIC);
 	}
 
 	@SuppressWarnings("unchecked")
 	public void createTopic(String topicName, int partitionCount, int brokers, int replication) {
 		MutableMultimap<Integer, Integer> partitionDistribution = createPartitionDistribution(partitionCount, brokers, replication);
-		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZookeeperClient(), topicName, toKafkaPartitionMap(partitionDistribution), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
-		for (int i = 0; i < partitionDistribution.keysView().size(); i++) {
-			TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), TEST_TOPIC, i, 5000L);
+		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZkClient(), topicName, toKafkaPartitionMap(partitionDistribution), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
+		if (getKafkaRule().isEmbedded()) {
+			for (int i = 0; i < partitionDistribution.keysView().size(); i++) {
+				TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), topicName, i, 5000L);
+			}
+		} else {
+			sleep(partitionCount * 20);
+		}
+	}
+
+	public void deleteTopic(String topicName) {
+		AdminUtils.deleteTopic(getKafkaRule().getZkClient(), topicName);
+		if (getKafkaRule().isEmbedded()) {
+			TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), topicName, 0, 5000L);
+		} else {
+			sleep(1000);
 		}
 	}
 
@@ -88,14 +104,14 @@ public abstract class AbstractBrokerTest {
 		return new BrokerAddressListConfiguration(getKafkaRule().getBrokerAddresses());
 	}
 
-	public static scala.collection.Seq<KeyedMessage<String, String>> createMessages(int count) {
-		return createMessagesInRange(0,count-1);
+	public static scala.collection.Seq<KeyedMessage<String, String>> createMessages(int count, String topic) {
+		return createMessagesInRange(0,count-1,topic);
 	}
 
-	public static scala.collection.Seq<KeyedMessage<String, String>> createMessagesInRange(int start, int end) {
+	public static scala.collection.Seq<KeyedMessage<String, String>> createMessagesInRange(int start, int end, String topic) {
 		List<KeyedMessage<String,String>> messages = new ArrayList<KeyedMessage<String, String>>();
 		for (int i=start; i<= end; i++) {
-			messages.add(new KeyedMessage<String, String>(TEST_TOPIC, "Key " + i, i, "Message " + i));
+			messages.add(new KeyedMessage<String, String>(topic, "Key " + i, i, "Message " + i));
 		}
 		return asScalaBuffer(messages).toSeq();
 	}
@@ -125,5 +141,13 @@ public abstract class AbstractBrokerTest {
 		return Map$.MODULE$.apply(JavaConversions.asScalaMap(m).toSeq());
 	}
 
+	private static void sleep(int time) {
+		try {
+			Thread.sleep(time);
+		}
+		catch (InterruptedException e) {
+			log.error(e);
+		}
+	}
 
 }

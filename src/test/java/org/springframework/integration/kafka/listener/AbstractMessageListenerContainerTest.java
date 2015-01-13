@@ -56,13 +56,13 @@ import org.springframework.integration.kafka.core.KafkaMessage;
  */
 public abstract class AbstractMessageListenerContainerTest extends AbstractBrokerTest {
 
-	public void runMessageListenerTest(int maxReceiveSize, int concurrency, int partitionCount, int testMessageCount, int divisionFactor, int compressionCodec) throws Exception {
+	public void runMessageListenerTest(int maxReceiveSize, int concurrency, int partitionCount, int testMessageCount, int divisionFactor, int compressionCodec, String topic) throws Exception {
 
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
 		for (int i = 0; i < partitionCount; i++) {
 			if(i % divisionFactor == 0) {
-				readPartitions.add(new Partition(TEST_TOPIC, i));
+				readPartitions.add(new Partition(topic, i));
 			}
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
@@ -84,7 +84,7 @@ public abstract class AbstractMessageListenerContainerTest extends AbstractBroke
 
 		kafkaMessageListenerContainer.start();
 
-		createStringProducer(compressionCodec).send(createMessages(testMessageCount));
+		createStringProducer(compressionCodec).send(createMessages(testMessageCount, topic));
 
 		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();

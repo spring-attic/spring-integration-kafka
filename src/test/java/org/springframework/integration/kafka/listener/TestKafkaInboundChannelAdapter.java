@@ -36,6 +36,8 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.rule.KafkaRule;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
@@ -47,10 +49,10 @@ import org.springframework.messaging.MessageChannel;
 public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public final KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(1);
+	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaRule getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
@@ -104,7 +106,7 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		kafkaMessageDrivenChannelAdapter.start();
 
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100));
+		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
 
 		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();

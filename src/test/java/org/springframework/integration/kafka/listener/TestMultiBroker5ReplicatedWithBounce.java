@@ -37,6 +37,7 @@ import org.junit.Test;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
 
 /**
  * @author Marius Bogoevici
@@ -45,10 +46,10 @@ import org.springframework.integration.kafka.core.Partition;
 public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(5);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(5);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
@@ -67,7 +68,7 @@ public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListene
 
 		final int expectedMessageCount = 100;
 
-		createStringProducer(0).send(createMessages(100));
+		createStringProducer(0).send(createMessages(100, TEST_TOPIC));
 
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();

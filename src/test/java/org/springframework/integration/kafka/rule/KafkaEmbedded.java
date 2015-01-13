@@ -15,7 +15,7 @@
  */
 
 
-package org.springframework.integration.kafka.listener;
+package org.springframework.integration.kafka.rule;
 
 import static scala.collection.JavaConversions.asScalaBuffer;
 
@@ -26,6 +26,7 @@ import java.util.Properties;
 import com.gs.collections.api.block.function.Function;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.utility.ListIterate;
+import kafka.Kafka;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import kafka.utils.SystemTime$;
@@ -45,7 +46,7 @@ import org.springframework.integration.kafka.core.BrokerAddress;
  * @author Marius Bogoevici
  */
 @SuppressWarnings("serial")
-public class KafkaEmbeddedBrokerRule extends ExternalResource {
+public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 
 	private int count;
 
@@ -60,13 +61,13 @@ public class KafkaEmbeddedBrokerRule extends ExternalResource {
 	private ZkClient zookeeperClient;
 
 	@SuppressWarnings("unchecked")
-	public KafkaEmbeddedBrokerRule(int count, boolean controlledShutdown) {
+	public KafkaEmbedded(int count, boolean controlledShutdown) {
 		this.count = count;
 		this.controlledShutdown = controlledShutdown;
 		this.kafkaPorts = JavaConversions.asJavaList((scala.collection.immutable.List) TestUtils.choosePorts(count));
 	}
 
-	public KafkaEmbeddedBrokerRule(int count) {
+	public KafkaEmbedded(int count) {
 		this(count, false);
 	}
 
@@ -127,7 +128,8 @@ public class KafkaEmbeddedBrokerRule extends ExternalResource {
 		return zookeeper;
 	}
 
-	public ZkClient getZookeeperClient() {
+	@Override
+	public ZkClient getZkClient() {
 		return zookeeperClient;
 	}
 
@@ -135,6 +137,7 @@ public class KafkaEmbeddedBrokerRule extends ExternalResource {
 		return zookeeper.connectString();
 	}
 
+	@Override
 	public List<BrokerAddress> getBrokerAddresses() {
 		return ListIterate.collect(kafkaServers, new Function<KafkaServer, BrokerAddress>() {
 			@Override
@@ -157,6 +160,7 @@ public class KafkaEmbeddedBrokerRule extends ExternalResource {
 		TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(kafkaServers), "test-topic", 0, 5000L);
 	}
 
+	@Override
 	public String getBrokersAsString() {
 		return FastList.newList(getBrokerAddresses()).collect(new Function<BrokerAddress, String>() {
 			@Override
@@ -164,5 +168,10 @@ public class KafkaEmbeddedBrokerRule extends ExternalResource {
 				return object.getHost() + ":" + object.getPort();
 			}
 		}).makeString(",");
+	}
+
+	@Override
+	public boolean isEmbedded() {
+		return true;
 	}
 }

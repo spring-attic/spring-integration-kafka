@@ -29,6 +29,7 @@ import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.KafkaMessageBatch;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.Result;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.util.MessageUtils;
 
@@ -38,10 +39,10 @@ import org.springframework.integration.kafka.util.MessageUtils;
 public class TestKafkaBrokerConnection extends AbstractBrokerTest {
 
 	@Rule
-	public KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(1);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
@@ -60,7 +61,7 @@ public class TestKafkaBrokerConnection extends AbstractBrokerTest {
 	public void testReceiveMessages() throws Exception {
 		createTopic(TEST_TOPIC, 1, 1, 1);
 		Producer<String, String> producer = createStringProducer(0);
-		producer.send( createMessages(10));
+		producer.send( createMessages(10, TEST_TOPIC));
 		Connection brokerConnection = new DefaultConnection(getKafkaRule().getBrokerAddresses().get(0), "client", 64*1024, 3000, 1, 100);
 		Partition partition = new Partition(TEST_TOPIC, 0);
 		FetchRequest fetchRequest = new FetchRequest(partition, 0L, 1000);
@@ -82,7 +83,7 @@ public class TestKafkaBrokerConnection extends AbstractBrokerTest {
 	public void testReceiveMessagesWithCompression1() throws Exception {
 		createTopic(TEST_TOPIC, 1, 1, 1);
 		Producer<String, String> producer = createStringProducer(1);
-		producer.send( createMessages(10));
+		producer.send( createMessages(10, TEST_TOPIC));
 		Connection brokerConnection = new DefaultConnection(getKafkaRule().getBrokerAddresses().get(0), "client", 64*1024, 3000, 1, 100);
 		Partition partition = new Partition(TEST_TOPIC, 0);
 		FetchRequest fetchRequest = new FetchRequest(partition, 0L, 1000);
@@ -104,7 +105,7 @@ public class TestKafkaBrokerConnection extends AbstractBrokerTest {
 	public void testReceiveMessagesWithCompression2() throws Exception {
 		createTopic(TEST_TOPIC, 1, 1, 1);
 		Producer<String, String> producer = createStringProducer(2);
-		producer.send( createMessages(10));
+		producer.send( createMessages(10, TEST_TOPIC));
 		Connection brokerConnection = new DefaultConnection(getKafkaRule().getBrokerAddresses().get(0), "client", 64*1024, 3000, 1, 100);
 		Partition partition = new Partition(TEST_TOPIC, 0);
 		FetchRequest fetchRequest = new FetchRequest(partition, 0L, 1000);

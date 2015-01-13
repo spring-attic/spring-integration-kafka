@@ -39,12 +39,13 @@ import com.gs.collections.impl.utility.Iterate;
 import kafka.message.NoCompressionCodec$;
 import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.rule.KafkaRule;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
@@ -56,10 +57,10 @@ import org.springframework.messaging.MessageChannel;
 public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public final KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(1);
+	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaRule getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
@@ -89,7 +90,7 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
 
 		// we send 100 messages
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(0, 199));
+		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(0, 199, TEST_TOPIC));
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
 		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
@@ -124,7 +125,7 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		kafkaMessageDrivenChannelAdapter.start();
 
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(200, 299));
+		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(200, 299, TEST_TOPIC));
 
 		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();

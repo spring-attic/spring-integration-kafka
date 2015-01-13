@@ -22,7 +22,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
 import kafka.message.NoCompressionCodec$;
-import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,6 +30,8 @@ import org.junit.Test;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.integration.channel.QueueChannel;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.rule.KafkaRule;
 import org.springframework.messaging.Message;
 
 /**
@@ -38,14 +40,12 @@ import org.springframework.messaging.Message;
 public class TestChannelAdapterWithXmlConfiguration extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public final KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(1);
-
+	public final KafkaRule kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaRule getKafkaRule() {
 		return this.kafkaEmbeddedBrokerRule;
 	}
-
 
 	@Test
 	public void testConsumptionWithXmlConfiguration() throws Exception {
@@ -54,7 +54,7 @@ public class TestChannelAdapterWithXmlConfiguration extends AbstractMessageListe
 
 		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"classpath:kafka-integration-no-namespace.xml"}, false);
 
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100));
+		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
 
 		MutableMap<String, Object> testProperties = Maps.mutable
 				.with("kafka.test.port", (Object) Integer.toString(kafkaEmbeddedBrokerRule.getBrokerAddresses().get(0).getPort()))

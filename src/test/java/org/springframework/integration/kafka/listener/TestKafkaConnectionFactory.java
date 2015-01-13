@@ -29,13 +29,12 @@ import org.junit.Test;
 
 import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.Connection;
-import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.DefaultConnection;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 import org.springframework.integration.kafka.core.Result;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.ZookeeperConfiguration;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.support.ZookeeperConnect;
 
 /**
@@ -44,10 +43,10 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
 public class TestKafkaConnectionFactory extends AbstractBrokerTest {
 
 	@Rule
-	public KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(1);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 

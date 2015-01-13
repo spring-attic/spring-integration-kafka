@@ -21,75 +21,78 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.rule.KafkaRule;
+
 /**
  * @author Marius Bogoevici
  */
 public class TestMultiBroker2 extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public KafkaEmbeddedBrokerRule kafkaEmbeddedBrokerRule = new KafkaEmbeddedBrokerRule(2);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(2);
 
 	@Override
-	public KafkaEmbeddedBrokerRule getKafkaRule() {
+	public KafkaRule getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
 	@Test
 	public void testLowVolumeLowConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 2, 5, 100, 1, 0);
+		runMessageListenerTest(100, 2, 5, 100, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	public void testMediumVolumeLowConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 2, 5, 1000, 1, 0);
+		runMessageListenerTest(100, 2, 5, 1000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	@Ignore
 	public void testHighVolumeLowConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 2, 5, 10000, 1, 0);
+		runMessageListenerTest(100, 2, 5, 10000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	public void testLowVolumeMediumConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 5, 5, 100, 1, 0);
+		runMessageListenerTest(100, 5, 5, 100, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	public void testMediumVolumeMediumConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 5, 5, 1000, 1, 0);
+		runMessageListenerTest(100, 5, 5, 1000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	@Ignore
 	public void testHighVolumeMediumConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 5, 2, 1);
-		runMessageListenerTest(100, 5, 5, 100000, 1, 0);
+		runMessageListenerTest(100, 5, 5, 100000, 1, 0, TEST_TOPIC);
 	}
 
 
 	@Test
 	public void testLowVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 2, 1);
-		runMessageListenerTest(100, 20, 100, 1000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 1000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	public void testMediumVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 2, 1);
-		runMessageListenerTest(100, 20, 100, 10000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 10000, 1, 0, TEST_TOPIC);
 	}
 
 	@Test
 	@Ignore
 	public void testHighVolumeHighConcurrency() throws Exception {
 		createTopic(TEST_TOPIC, 100, 2, 1);
-		runMessageListenerTest(100, 20, 100, 100000, 1, 0);
+		runMessageListenerTest(100, 20, 100, 100000, 1, 0, TEST_TOPIC);
 	}
 
 }
