@@ -20,6 +20,7 @@ package org.springframework.integration.kafka.listener;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import org.junit.Test;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.core.TopicNotFoundException;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.rule.KafkaRule;
@@ -46,7 +48,7 @@ import org.springframework.messaging.MessageChannel;
 /**
  * @author Marius Bogoevici
  */
-public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerContainerTest {
+public class WrongTopicNameTest extends AbstractMessageListenerContainerTest {
 
 	@Rule
 	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
@@ -56,25 +58,16 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 		return kafkaEmbeddedBrokerRule;
 	}
 
-	@Test
+	@Test(expected = TopicNotFoundException.class)
 	@SuppressWarnings("serial")
-	public void testLowVolumeLowConcurrency() throws Exception {
+	public void testWrongTopicNameFails() throws Exception {
 		createTopic(TEST_TOPIC, 5, 1, 1);
 
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
-		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
-		for (int i = 0; i < 5; i++) {
-			readPartitions.add(new Partition(TEST_TOPIC, i));
-		}
 
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
+		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, new String[]{"WRONG-TOPIC"});
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
-
-		int expectedMessageCount = 100;
-
-		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
-		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
 
 		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
 
@@ -85,37 +78,20 @@ public class TestKafkaInboundChannelAdapter extends AbstractMessageListenerConta
 		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
 			@Override
 			public boolean send(Message<?> message) {
-				latch.countDown();
-				return receivedData.put(
-						(Integer)message.getHeaders().get(KafkaHeaders.PARTITION_ID),
-						new KeyedMessageWithOffset(
-								(String)message.getHeaders().get(KafkaHeaders.MESSAGE_KEY),
-								(String)message.getPayload(),
-								(Long)message.getHeaders().get(KafkaHeaders.OFFSET),
-								Thread.currentThread().getName(),
-								(Integer)message.getHeaders().get(KafkaHeaders.PARTITION_ID)));
+				fail();
+				return true;
 			}
-
 
 			@Override
 			public boolean send(Message<?> message, long timeout) {
-				return send(message);
+				fail();
+				return true;
 			}
 		});
 
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		kafkaMessageDrivenChannelAdapter.start();
 
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
-
-		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
-		kafkaMessageListenerContainer.stop();
-
-		assertThat(receivedData.valuesView().toList(), hasSize(expectedMessageCount));
-		assertThat(latch.getCount(), equalTo(0L));
-		System.out.println("All messages received ... checking ");
-
-		validateMessageReceipt(receivedData, 2, 5, 100, expectedMessageCount, readPartitions, 1);
 
 	}
 

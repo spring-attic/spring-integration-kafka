@@ -23,19 +23,11 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import com.gs.collections.api.RichIterable;
-import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.multimap.list.MutableListMultimap;
-import com.gs.collections.api.tuple.Pair;
-import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
-import com.gs.collections.impl.utility.Iterate;
 import kafka.message.NoCompressionCodec$;
 import org.junit.Rule;
 import org.junit.Test;
@@ -54,7 +46,7 @@ import org.springframework.messaging.MessageChannel;
 /**
  * @author Marius Bogoevici
  */
-public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMessageListenerContainerTest {
+public class KafkaMessageDrivenChannelAdapterTest extends AbstractMessageListenerContainerTest {
 
 	@Rule
 	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
@@ -67,30 +59,19 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 	@Test
 	@SuppressWarnings("serial")
 	public void testLowVolumeLowConcurrency() throws Exception {
-
-		// we will send 300 messages: first 200, then another 100
-		// we will start reading from all partitions at offset 100
-		int expectedMessageCount = 200;
-
 		createTopic(TEST_TOPIC, 5, 1, 1);
 
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
-		Map<Partition,Long> startingOffsets = new HashMap<Partition, Long>();
 		for (int i = 0; i < 5; i++) {
-			Partition partition = new Partition(TEST_TOPIC, i);
-			readPartitions.add(partition);
-			startingOffsets.put(partition, 20L);
+			readPartitions.add(new Partition(TEST_TOPIC, i));
 		}
 
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
-		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
-		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
 
-		// we send 100 messages
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(0, 199, TEST_TOPIC));
+		int expectedMessageCount = 100;
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
 		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
@@ -125,7 +106,7 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		kafkaMessageDrivenChannelAdapter.start();
 
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(200, 299, TEST_TOPIC));
+		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
 
 		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();
@@ -136,25 +117,6 @@ public class TestKafkaInboundChannelAdapterWithSpecialOffset extends AbstractMes
 
 		validateMessageReceipt(receivedData, 2, 5, 100, expectedMessageCount, readPartitions, 1);
 
-		// For all received messages
-		Collection<KeyedMessageWithOffset> allReceivedMessages = Iterate.flatCollect(receivedData.keyMultiValuePairsView(), new Function<Pair<Integer, RichIterable<KeyedMessageWithOffset>>, RichIterable<KeyedMessageWithOffset>>() {
-			@Override
-			public RichIterable<KeyedMessageWithOffset> valueOf(Pair<Integer, RichIterable<KeyedMessageWithOffset>> object) {
-				return object.getTwo();
-			}
-		});
-
-		// We extract the sequence value, i.e. "Message xx"
-		Integer minValueInMessage = FastList.newList(allReceivedMessages).collect(new Function<KeyedMessageWithOffset, Integer>() {
-			@Override
-			public Integer valueOf(KeyedMessageWithOffset object) {
-				return Integer.parseInt(object.getPayload().split(" ")[1]);
-			}
-		}).min();
-
-		// The lowest received value is 100. That is correct, because messages are evenly distributed across partitions
-		// and we start reading only at partition 200
-		assertThat(minValueInMessage, equalTo(100));
 	}
 
 }

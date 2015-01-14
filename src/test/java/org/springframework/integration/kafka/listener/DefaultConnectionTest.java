@@ -36,7 +36,7 @@ import org.springframework.integration.kafka.util.MessageUtils;
 /**
  * @author Marius Bogoevici
  */
-public class TestKafkaBrokerConnection extends AbstractBrokerTest {
+public class DefaultConnectionTest extends AbstractBrokerTest {
 
 	@Rule
 	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);

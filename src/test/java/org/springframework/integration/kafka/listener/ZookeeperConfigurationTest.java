@@ -34,42 +34,48 @@ import kafka.utils.VerifiableProperties;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.springframework.integration.kafka.core.Configuration;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.core.ZookeeperConfiguration;
 import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.support.ZookeeperConnect;
 
 /**
  * @author Marius Bogoevici
  */
-
-public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListenerContainerTest {
+public class ZookeeperConfigurationTest extends AbstractMessageListenerContainerTest {
 
 	@Rule
-	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(5);
+	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(2);
 
 	@Override
 	public KafkaEmbedded getKafkaRule() {
 		return kafkaEmbeddedBrokerRule;
 	}
 
+	@Override
+	public Configuration getKafkaConfiguration() {
+		ZookeeperConnect zookeeperConnect = new ZookeeperConnect();
+		zookeeperConnect.setZkConnect(kafkaEmbeddedBrokerRule.getZookeeperConnectionString());
+		return new ZookeeperConfiguration(zookeeperConnect);
+	}
+
 	@Test
 	public void testLowVolumeLowConcurrency() throws Exception {
-		createTopic(TEST_TOPIC, 5, 5, 3);
+		createTopic(TEST_TOPIC, 5, 2, 1);
 
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
 		for (int i = 0; i < 5; i++) {
-				readPartitions.add(new Partition(TEST_TOPIC, i));
+			readPartitions.add(new Partition(TEST_TOPIC, i));
 		}
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
-		final int expectedMessageCount = 100;
-
-		createStringProducer(0).send(createMessages(100, TEST_TOPIC));
-
+		int expectedMessageCount = 100;
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
 		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
@@ -84,13 +90,9 @@ public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListene
 
 		kafkaMessageListenerContainer.start();
 
-		for (int i = 0; i < 5; i++) {
-			if (i % 2 == 0) {
-				kafkaEmbeddedBrokerRule.bounce(i);
-			}
-		}
+		createStringProducer(0).send(createMessages(100, TEST_TOPIC));
 
-		latch.await(50, TimeUnit.SECONDS);
+		latch.await((expectedMessageCount/5000) + 1, TimeUnit.MINUTES);
 		kafkaMessageListenerContainer.stop();
 
 		assertThat(receivedData.valuesView().toList(), hasSize(expectedMessageCount));
@@ -100,5 +102,6 @@ public class TestMultiBroker5ReplicatedWithBounce extends AbstractMessageListene
 		validateMessageReceipt(receivedData, 2, 5, 100, expectedMessageCount, readPartitions, 1);
 
 	}
+
 
 }

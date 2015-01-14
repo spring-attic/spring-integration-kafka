@@ -37,7 +37,7 @@ import org.springframework.messaging.Message;
 /**
  * @author Marius Bogoevici
  */
-public class TestChannelAdapterWithXmlConfiguration extends AbstractMessageListenerContainerTest {
+public class ChannelAdapterWithXmlConfigurationTest extends AbstractMessageListenerContainerTest {
 
 	@Rule
 	public final KafkaRule kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);

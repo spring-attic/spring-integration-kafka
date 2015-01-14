@@ -86,7 +86,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private final KafkaTemplate kafkaTemplate;
 
-	private final Partition[] partitions;
+	private Partition[] partitions;
+
+	private String[] topics;
 
 	public boolean autoStartup = true;
 
@@ -123,13 +125,14 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	public KafkaMessageListenerContainer(final ConnectionFactory connectionFactory, String... topics) {
-		this(connectionFactory, getPartitionsForTopics(connectionFactory, topics));
-	}
-
-	private static Partition[] getPartitionsForTopics(final ConnectionFactory connectionFactory, String[] topics) {
 		Assert.notNull(connectionFactory, "A connection factory must be supplied");
 		Assert.notNull(topics, "A list of topics must be provided");
 		Assert.noNullElements(topics, "The list of topics cannot contain null elements");
+		this.kafkaTemplate = new KafkaTemplate(connectionFactory);
+		this.topics = topics;
+	}
+
+	private static Partition[] getPartitionsForTopics(final ConnectionFactory connectionFactory, String[] topics) {
 		MutableList<Partition> partitionList = flatCollect(topics, new GetPartitionsForTopic(connectionFactory));
 		return partitionList.toArray(new Partition[partitionList.size()]);
 	}
@@ -255,6 +258,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	public void start() {
 		synchronized (lifecycleMonitor) {
 			if (!running) {
+				if (partitions == null) {
+					partitions = getPartitionsForTopics(kafkaTemplate.getConnectionFactory(), topics);
+				}
 				this.running = true;
 				if (this.offsetManager == null) {
 					this.offsetManager = new MetadataStoreOffsetManager(kafkaTemplate.getConnectionFactory());

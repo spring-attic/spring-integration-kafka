@@ -32,6 +32,7 @@ import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import com.gs.collections.impl.utility.ListIterate;
 import kafka.client.ClientUtils$;
+import kafka.common.KafkaException;
 import kafka.javaapi.PartitionMetadata;
 import kafka.javaapi.TopicMetadata;
 import kafka.javaapi.TopicMetadataResponse;
@@ -228,6 +229,9 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	@Override
 	public Collection<Partition> getPartitions(String topic) {
+		if (!getPartitionBrokerMap().getPartitionsByTopic().containsKey(topic)) {
+			throw new TopicNotFoundException(topic);
+		}
 		return getPartitionBrokerMap().getPartitionsByTopic().get(topic).toList();
 	}
 

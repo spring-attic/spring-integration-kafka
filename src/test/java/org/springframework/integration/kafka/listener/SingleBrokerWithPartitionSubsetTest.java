@@ -26,7 +26,7 @@ import org.springframework.integration.kafka.rule.KafkaEmbedded;
 /**
  * @author Marius Bogoevici
  */
-public class TestSingleBrokerWithPartitionSubset extends AbstractMessageListenerContainerTest {
+public class SingleBrokerWithPartitionSubsetTest extends AbstractMessageListenerContainerTest {
 
 	@Rule
 	public final KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);

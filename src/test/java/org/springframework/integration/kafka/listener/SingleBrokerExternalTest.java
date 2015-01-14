@@ -31,7 +31,7 @@ import org.springframework.integration.kafka.rule.KafkaRunning;
  * @author Marius Bogoevici
  */
 @Ignore
-public class TestSingleBrokerExternal extends AbstractMessageListenerContainerTest {
+public class SingleBrokerExternalTest extends AbstractMessageListenerContainerTest {
 
 	@ClassRule
 	public static final KafkaRunning kafkaRunningRule = KafkaRunning.isRunning();

@@ -40,7 +40,7 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
 /**
  * @author Marius Bogoevici
  */
-public class TestKafkaConnectionFactory extends AbstractBrokerTest {
+public class DefaultConnectionFactoryTest extends AbstractBrokerTest {
 
 	@Rule
 	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(1);
