@@ -71,6 +71,7 @@ public class KafkaRunning extends TestWatcher implements KafkaRule {
 	}
 
 	@Override
+	@SuppressWarnings("serial")
 	public List<BrokerAddress> getBrokerAddresses() {
 		Seq<Broker> allBrokersInCluster = ZkUtils.getAllBrokersInCluster(zkClient);
 		return ListIterate.collect(JavaConversions.asJavaList(allBrokersInCluster), new Function<Broker, BrokerAddress>() {

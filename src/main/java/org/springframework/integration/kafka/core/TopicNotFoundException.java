@@ -20,6 +20,7 @@ package org.springframework.integration.kafka.core;
 /**
  * @author Marius Bogoevici
  */
+@SuppressWarnings("serial")
 public class TopicNotFoundException extends ConsumerException {
 
 	public TopicNotFoundException(String topicName) {
