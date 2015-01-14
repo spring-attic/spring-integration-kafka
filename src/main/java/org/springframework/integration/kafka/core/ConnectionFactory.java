@@ -34,7 +34,7 @@ public interface ConnectionFactory {
 	 * @param brokerAddress a broker address
 	 * @return a working connection
 	 */
-	Connection createConnection(BrokerAddress brokerAddress);
+	Connection connect(BrokerAddress brokerAddress);
 
 	/**
 	 * Retrieves the leaders for a set of partitions.

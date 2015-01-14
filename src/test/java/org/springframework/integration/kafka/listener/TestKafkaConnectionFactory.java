@@ -59,7 +59,7 @@ public class TestKafkaConnectionFactory extends AbstractBrokerTest {
 		Partition partition = new Partition(TEST_TOPIC, 0);
 		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(new BrokerAddressListConfiguration(brokerAddresses));
 		connectionFactory.afterPropertiesSet();
-		Connection connection = connectionFactory.createConnection(getKafkaRule().getBrokerAddresses().get(0));
+		Connection connection = connectionFactory.connect(getKafkaRule().getBrokerAddresses().get(0));
 		Result<BrokerAddress> leaders = connection.findLeaders(TEST_TOPIC);
 		assertThat(leaders.getErrors().entrySet(), empty());
 		assertThat(leaders.getResults().entrySet(), hasSize(1));
@@ -78,7 +78,7 @@ public class TestKafkaConnectionFactory extends AbstractBrokerTest {
 		DefaultConnectionFactory connectionFactory =
 				new DefaultConnectionFactory(new ZookeeperConfiguration(zookeeperConnect));
 		connectionFactory.afterPropertiesSet();
-		Connection connection = connectionFactory.createConnection(getKafkaRule().getBrokerAddresses().get(0));
+		Connection connection = connectionFactory.connect(getKafkaRule().getBrokerAddresses().get(0));
 		Result<BrokerAddress> leaders = connection.findLeaders(TEST_TOPIC);
 		assertThat(leaders.getErrors().entrySet(), empty());
 		assertThat(leaders.getResults().entrySet(), hasSize(1));

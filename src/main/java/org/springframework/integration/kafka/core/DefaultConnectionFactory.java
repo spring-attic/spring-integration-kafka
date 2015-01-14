@@ -30,7 +30,6 @@ import com.gs.collections.api.block.function.Function;
 import com.gs.collections.impl.block.factory.Functions;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
-import com.gs.collections.impl.utility.Iterate;
 import com.gs.collections.impl.utility.ListIterate;
 import kafka.client.ClientUtils$;
 import kafka.javaapi.PartitionMetadata;
@@ -38,7 +37,9 @@ import kafka.javaapi.TopicMetadata;
 import kafka.javaapi.TopicMetadataResponse;
 import scala.collection.JavaConversions;
 
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.util.Assert;
 
 /**
@@ -46,7 +47,7 @@ import org.springframework.util.Assert;
  *
  * @author Marius Bogoevici
  */
-public class DefaultConnectionFactory implements InitializingBean, ConnectionFactory {
+public class DefaultConnectionFactory implements InitializingBean, ConnectionFactory, DisposableBean {
 
 	private final GetBrokersByPartitionFunction getBrokersByPartitionFunction = new GetBrokersByPartitionFunction();
 
@@ -85,6 +86,12 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 				Collections.singletonList(configuration.getDefaultTopic()));
 	}
 
+	@Override
+	public void destroy() throws Exception {
+		for (Connection connection : kafkaBrokersCache) {
+			connection.close();
+		}
+	}
 
 	public int getMinBytes() {
 		return minBytes;
@@ -182,10 +189,10 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	}
 
 	/**
-	 * @see ConnectionFactory#createConnection(BrokerAddress)
+	 * @see ConnectionFactory#connect(BrokerAddress)
 	 */
 	@Override
-	public Connection createConnection(BrokerAddress brokerAddress) {
+	public Connection connect(BrokerAddress brokerAddress) {
 		return kafkaBrokersCache.getIfAbsentPutWithKey(brokerAddress, connectionInstantiationFunction);
 	}
 

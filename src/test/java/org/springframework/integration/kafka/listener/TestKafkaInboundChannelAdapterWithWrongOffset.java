@@ -22,6 +22,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -40,6 +41,8 @@ import kafka.message.NoCompressionCodec$;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.springframework.aop.framework.AopProxyFactory;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
@@ -50,6 +53,7 @@ import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.util.StringUtils;
 
 /**
  * @author Marius Bogoevici
@@ -179,11 +183,46 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
-		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
+		final MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory, startingOffsets);
 		offsetManager.setReferenceTimestamp(-1);
-		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
+		final CountDownLatch offsetResetLatch = new CountDownLatch(1);
 
-		// we send 200 messages
+		// Manually generated proxy for catching the reset event. We only want to send data once we are
+		// sure that the OffsetManager has been reset. Otherwise the test may not finish (due to pollers starting after send
+
+		OffsetManager offsetManagerWrapper = new OffsetManager() {
+
+			@Override
+			public void flush() throws IOException {
+				offsetManager.flush();
+			}
+
+			@Override
+			public void close() throws IOException {
+				offsetManager.close();
+			}
+
+			@Override
+			public void resetOffsets(Collection<Partition> partitionsToReset) {
+				System.out.println("resetting " + offsetResetLatch.getCount() + " partitions: " + StringUtils.collectionToDelimitedString(partitionsToReset, ","));
+				offsetManager.resetOffsets(partitionsToReset);
+				offsetResetLatch.countDown();
+			}
+
+			@Override
+			public long getOffset(Partition partition) {
+				long offset = offsetManager.getOffset(partition);
+				System.out.println("Result for " + partition + " offset: " + offset);
+				return offset;
+			}
+
+			@Override
+			public void updateOffset(Partition partition, long offset) {
+				offsetManager.updateOffset(partition, offset);
+			}
+		};
+		kafkaMessageListenerContainer.setOffsetManager(offsetManagerWrapper);
+
 		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(0, 199, TEST_TOPIC));
 
 		final MutableListMultimap<Integer,KeyedMessageWithOffset> receivedData = new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
@@ -218,6 +257,8 @@ public class TestKafkaInboundChannelAdapterWithWrongOffset extends AbstractMessa
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		kafkaMessageDrivenChannelAdapter.start();
 
+		// we wait for the reset event first
+		offsetResetLatch.await(1000, TimeUnit.MILLISECONDS);
 		Thread.sleep(1000);
 		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessagesInRange(200, 299, TEST_TOPIC));
 

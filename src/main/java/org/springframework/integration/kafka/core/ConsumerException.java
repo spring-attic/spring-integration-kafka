@@ -34,4 +34,7 @@ public class ConsumerException extends RuntimeException {
 		super(cause);
 	}
 
+	public ConsumerException(String message) {
+		super(message);
+	}
 }

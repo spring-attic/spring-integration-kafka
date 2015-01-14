@@ -48,7 +48,7 @@ public class KafkaTemplate implements KafkaOperations {
 		if (distinctBrokerAddresses.size() != 1) {
 			throw new IllegalArgumentException("All messages must be fetched from the same broker");
 		}
-		return connectionFactory.createConnection(distinctBrokerAddresses.getFirst())
+		return connectionFactory.connect(distinctBrokerAddresses.getFirst())
 				.fetch(requestList.toTypedArray(FetchRequest.class));
 	}
 

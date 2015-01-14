@@ -63,6 +63,7 @@ import org.springframework.integration.kafka.core.KafkaTemplate;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.Result;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author Marius Bogoevici
@@ -204,7 +205,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	/**
 	 * The maximum number of messages that are buffered by each concurrent {@link MessageListener} runner.
-	 *
 	 * Increasing the value may increase throughput, but also increases the memory consumption.
 	 *
 	 * @param queueSize
@@ -301,11 +301,30 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 		@Override
 		public void run() {
+			boolean wasInterrupted = false;
 			while (isRunning()) {
+				MutableCollection<Partition> fetchPartitions;
+				synchronized (partitionsByBrokerMap) {
+					// retrieve the partitions for the current polling cycle
+					fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
+					// do not proceed until there is something to read from
+					while (isRunning() && CollectionUtils.isEmpty(fetchPartitions)) {
+						try {
+							// we only got here because there were no partitions to read from, so block until there is a change
+							// this prevents FetchTasks from busy waiting while leaders or offsets are being refreshed
+							// TODO: ideally we should use separate monitors for each task
+							partitionsByBrokerMap.wait();
+							// see if the changes affect us
+							fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
+						}
+						catch (InterruptedException e) {
+							wasInterrupted = true;
+						}
+					}
+				}
 				Set<Partition> partitionsWithRemainingData;
 				boolean hasErrors;
 				do {
-					MutableCollection<Partition> fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
 					partitionsWithRemainingData = new HashSet<Partition>();
 					hasErrors = false;
 					try {
@@ -353,9 +372,15 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 						// this is a broker error, and we cannot recover from it. Reset leaders and stop fetching data from this broker altogether
 						log.error(e);
 						resetLeaders(fetchPartitions.toImmutable());
+						if (wasInterrupted) {
+							Thread.currentThread().interrupt();
+						}
 						return;
 					}
 				} while (!hasErrors && !partitionsWithRemainingData.isEmpty());
+			}
+			if (wasInterrupted) {
+				Thread.currentThread().interrupt();
 			}
 		}
 
@@ -369,11 +394,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		private void resetOffsets(final Collection<Partition> partitionsToResetOffsets) {
 			stopFetchingFromPartitions(partitionsToResetOffsets);
 			adminTaskExecutor.execute(new UpdateOffsetsTask(partitionsToResetOffsets));
-			synchronized (partitionsByBrokerMap) {
-				for (Partition partitionsToResetOffset : partitionsToResetOffsets) {
-					partitionsByBrokerMap.put(brokerAddress, partitionsToResetOffset);
-				}
-			}
 		}
 
 		private void stopFetchingFromPartitions(Iterable<Partition> partitions) {
@@ -399,6 +419,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				Map<Partition, BrokerAddress> leaders = kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset);
 				synchronized (partitionsByBrokerMap) {
 					forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
+					partitionsByBrokerMap.notifyAll();
 				}
 			}
 		}
@@ -415,6 +436,13 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				offsetManager.resetOffsets(partitionsToResetOffsets);
 				for (Partition partition : partitionsToResetOffsets) {
 					fetchOffsets.replace(partition, offsetManager.getOffset(partition));
+				}
+				synchronized (partitionsByBrokerMap) {
+					for (Partition partitionsToResetOffset : partitionsToResetOffsets) {
+						partitionsByBrokerMap.put(brokerAddress, partitionsToResetOffset);
+					}
+					// notify any waiting task that the partition allocation has changed
+					partitionsByBrokerMap.notifyAll();
 				}
 			}
 		}
