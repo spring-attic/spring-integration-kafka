@@ -328,62 +328,65 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 						}
 					}
 				}
-				Set<Partition> partitionsWithRemainingData;
-				boolean hasErrors;
-				do {
-					partitionsWithRemainingData = new HashSet<Partition>();
-					hasErrors = false;
-					try {
-						MutableCollection<FetchRequest> fetchRequests = fetchPartitions.collect(new PartitionToFetchRequestFunction());
-						Result<KafkaMessageBatch> result = kafkaTemplate.receive(fetchRequests);
-						// process successful messages first
-						Iterable<KafkaMessageBatch> batches = result.getResults().values();
-						for (KafkaMessageBatch batch : batches) {
-							if (!batch.getMessages().isEmpty()) {
-								long highestFetchedOffset = 0;
-								for (KafkaMessage kafkaMessage : batch.getMessages()) {
-									// fetch operations may return entire blocks of compressed messages, which may have lower offsets than the ones requested
-									// thus a batch may contain messages that have been processed already
-									if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets.get(batch.getPartition())) {
-										messageDispatcher.dispatch(kafkaMessage);
+				// we've just exited a potentially blocking operation. Is the component still running?
+				if (isRunning()) {
+					Set<Partition> partitionsWithRemainingData;
+					boolean hasErrors;
+					do {
+						partitionsWithRemainingData = new HashSet<Partition>();
+						hasErrors = false;
+						try {
+							MutableCollection<FetchRequest> fetchRequests = fetchPartitions.collect(new PartitionToFetchRequestFunction());
+							Result<KafkaMessageBatch> result = kafkaTemplate.receive(fetchRequests);
+							// process successful messages first
+							Iterable<KafkaMessageBatch> batches = result.getResults().values();
+							for (KafkaMessageBatch batch : batches) {
+								if (!batch.getMessages().isEmpty()) {
+									long highestFetchedOffset = 0;
+									for (KafkaMessage kafkaMessage : batch.getMessages()) {
+										// fetch operations may return entire blocks of compressed messages, which may have lower offsets than the ones requested
+										// thus a batch may contain messages that have been processed already
+										if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets.get(batch.getPartition())) {
+											messageDispatcher.dispatch(kafkaMessage);
+										}
+										highestFetchedOffset = Math.max(highestFetchedOffset, kafkaMessage.getMetadata().getNextOffset());
 									}
-									highestFetchedOffset = Math.max(highestFetchedOffset, kafkaMessage.getMetadata().getNextOffset());
-								}
-								fetchOffsets.replace(batch.getPartition(), highestFetchedOffset);
-								// if there are still messages on server, we can go on and retrieve more
-								if (highestFetchedOffset < batch.getHighWatermark()) {
-									partitionsWithRemainingData.add(batch.getPartition());
+									fetchOffsets.replace(batch.getPartition(), highestFetchedOffset);
+									// if there are still messages on server, we can go on and retrieve more
+									if (highestFetchedOffset < batch.getHighWatermark()) {
+										partitionsWithRemainingData.add(batch.getPartition());
+									}
 								}
 							}
-						}
-						// handle errors
-						if (result.getErrors().size() > 0) {
-							hasErrors = true;
+							// handle errors
+							if (result.getErrors().size() > 0) {
+								hasErrors = true;
 
-							// find partitions with leader errors and
-							PartitionIterable<Map.Entry<Partition, Short>> partitionByLeaderErrors =
-									partition(result.getErrors().entrySet(), new IsLeaderErrorPredicate());
-							RichIterable<Partition> partitionsWithLeaderErrors =
-									partitionByLeaderErrors.getSelected().collect(keyFunction);
-							resetLeaders(partitionsWithLeaderErrors);
+								// find partitions with leader errors and
+								PartitionIterable<Map.Entry<Partition, Short>> partitionByLeaderErrors =
+										partition(result.getErrors().entrySet(), new IsLeaderErrorPredicate());
+								RichIterable<Partition> partitionsWithLeaderErrors =
+										partitionByLeaderErrors.getSelected().collect(keyFunction);
+								resetLeaders(partitionsWithLeaderErrors);
 
-							PartitionIterable<Map.Entry<Partition, Short>> partitionsWithOffsetsOutOfRange
-									= partitionByLeaderErrors.getRejected().partition(new IsOffsetOutOfRangePredicate());
-							resetOffsets(partitionsWithOffsetsOutOfRange.getSelected().collect(keyFunction).toSet());
-							// it's not a leader issue
-							stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
+								PartitionIterable<Map.Entry<Partition, Short>> partitionsWithOffsetsOutOfRange
+										= partitionByLeaderErrors.getRejected().partition(new IsOffsetOutOfRangePredicate());
+								resetOffsets(partitionsWithOffsetsOutOfRange.getSelected().collect(keyFunction).toSet());
+								// it's not a leader issue
+								stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
+							}
 						}
-					}
-					catch (ConsumerException e) {
-						// this is a broker error, and we cannot recover from it. Reset leaders and stop fetching data from this broker altogether
-						log.error(e);
-						resetLeaders(fetchPartitions.toImmutable());
-						if (wasInterrupted) {
-							Thread.currentThread().interrupt();
+						catch (ConsumerException e) {
+							// this is a broker error, and we cannot recover from it. Reset leaders and stop fetching data from this broker altogether
+							log.error(e);
+							resetLeaders(fetchPartitions.toImmutable());
+							if (wasInterrupted) {
+								Thread.currentThread().interrupt();
+							}
+							return;
 						}
-						return;
-					}
-				} while (!hasErrors && !partitionsWithRemainingData.isEmpty());
+					} while (!hasErrors && !partitionsWithRemainingData.isEmpty());
+				}
 			}
 			if (wasInterrupted) {
 				Thread.currentThread().interrupt();
