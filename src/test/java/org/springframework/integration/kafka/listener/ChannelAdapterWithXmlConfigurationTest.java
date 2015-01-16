@@ -57,21 +57,15 @@ public class ChannelAdapterWithXmlConfigurationTest extends AbstractMessageListe
 	@Test
 	public void testConsumptionWithXmlConfiguration() throws Exception {
 
-		createTopic(TEST_TOPIC,1,1,1);
+		System.setProperty("kafka.test.port", String.valueOf(kafkaEmbeddedBrokerRule.getBrokerAddresses().get(0).getPort()));
+		System.setProperty("kafka.test.topic", TEST_TOPIC);
 
-		String location = "classpath:org/springframework/integration/kafka/listener/ChannelAdapterWithXmlConfigurationTest-context.xml";
-		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(
-				new String[]{location}, false);
+		createTopic(TEST_TOPIC, 1, 1, 1);
 
 		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
 
-		MutableMap<String, Object> testProperties = Maps.mutable
-				.with("kafka.test.port", (Object) Integer.toString(kafkaEmbeddedBrokerRule.getBrokerAddresses().get(0).getPort()))
-				.withKeyValue("kafka.test.topic", TEST_TOPIC);
-		context.getEnvironment().getPropertySources()
-						.addFirst(new MapPropertySource("test", testProperties));
-
-		context.refresh();
+		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("ChannelAdapterWithXmlConfigurationTest-context.xml",
+				ChannelAdapterWithXmlConfigurationTest.class);
 
 		QueueChannel output = context.getBean("output", QueueChannel.class);
 
@@ -80,4 +74,5 @@ public class ChannelAdapterWithXmlConfigurationTest extends AbstractMessageListe
 			Assert.assertThat(received, notNullValue());
 		}
 	}
+
 }
