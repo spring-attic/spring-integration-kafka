@@ -65,11 +65,13 @@ public class WrongTopicNameTest extends AbstractMessageListenerContainerTest {
 
 		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
 
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, new String[]{"WRONG-TOPIC"});
+		final KafkaMessageListenerContainer kafkaMessageListenerContainer
+				= new KafkaMessageListenerContainer(connectionFactory, "WRONG-TOPIC");
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
-		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
+		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter =
+				new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
 
 		StringDecoder decoder = new StringDecoder();
 		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);

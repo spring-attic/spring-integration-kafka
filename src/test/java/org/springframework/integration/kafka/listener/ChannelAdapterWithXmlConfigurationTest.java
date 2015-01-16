@@ -19,6 +19,9 @@ package org.springframework.integration.kafka.listener;
 
 import static org.hamcrest.Matchers.notNullValue;
 
+
+import java.net.URL;
+
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
 import kafka.message.NoCompressionCodec$;
@@ -28,7 +31,11 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.support.FileSystemXmlApplicationContext;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.rule.KafkaRule;
@@ -52,7 +59,9 @@ public class ChannelAdapterWithXmlConfigurationTest extends AbstractMessageListe
 
 		createTopic(TEST_TOPIC,1,1,1);
 
-		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"classpath:kafka-integration-no-namespace.xml"}, false);
+		String location = "classpath:org/springframework/integration/kafka/listener/ChannelAdapterWithXmlConfigurationTest-context.xml";
+		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(
+				new String[]{location}, false);
 
 		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(100, TEST_TOPIC));
 

@@ -70,13 +70,16 @@ public abstract class AbstractBrokerTest {
 	@SuppressWarnings("unchecked")
 	public void createTopic(String topicName, int partitionCount, int brokers, int replication) {
 		MutableMultimap<Integer, Integer> partitionDistribution = createPartitionDistribution(partitionCount, brokers, replication);
-		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZkClient(), topicName, toKafkaPartitionMap(partitionDistribution), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(), AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
+		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZkClient(),
+				topicName, toKafkaPartitionMap(partitionDistribution),
+				AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(),
+				AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
 		if (getKafkaRule().isEmbedded()) {
 			for (int i = 0; i < partitionDistribution.keysView().size(); i++) {
 				TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), topicName, i, 5000L);
 			}
 		} else {
-			sleep(partitionCount * 20);
+			sleep(partitionCount * 200);
 		}
 	}
 
@@ -117,7 +120,8 @@ public abstract class AbstractBrokerTest {
 	}
 
 	public Producer<String, String> createStringProducer(int compression) {
-		Properties producerConfig = TestUtils.getProducerConfig(getKafkaRule().getBrokersAsString(), TestPartitioner.class.getCanonicalName());
+		Properties producerConfig = TestUtils.getProducerConfig(getKafkaRule().getBrokersAsString(),
+				TestPartitioner.class.getCanonicalName());
 		producerConfig.put("serializer.class", StringEncoder.class.getCanonicalName());
 		producerConfig.put("key.serializer.class",  StringEncoder.class.getCanonicalName());
 		producerConfig.put("compression.codec",  Integer.toString(compression));

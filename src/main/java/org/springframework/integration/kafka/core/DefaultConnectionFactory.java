@@ -70,7 +70,9 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 
 	private int socketTimeout = KafkaConsumerDefaults.SOCKET_TIMEOUT_INT;
 
-	private UnifiedMap<BrokerAddress, Connection> kafkaBrokersCache = UnifiedMap.newMap();
+	private int fetchMetadataTimeout = KafkaConsumerDefaults.FETCH_METADATA_TIMEOUT;
+
+	private final UnifiedMap<BrokerAddress, Connection> kafkaBrokersCache = UnifiedMap.newMap();
 
 	public DefaultConnectionFactory(Configuration configuration) {
 		this.configuration = configuration;
@@ -94,10 +96,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		}
 	}
 
-	public int getMinBytes() {
-		return minBytes;
-	}
-
 	/**
 	 * The minimum amount of data that a server fetch operation will wait for before returning, unless {@code maxWaitTimeInMs}
 	 * has elapsed. In conjunction with {@link DefaultConnectionFactory#setMaxWait(int)}, controls latency
@@ -110,10 +108,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	public void setMinBytes(int minBytes) {
 		this.minBytes = minBytes;
-	}
-
-	public int getMaxWait() {
-		return maxWait;
 	}
 
 	/**
@@ -143,10 +137,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		this.clientId = clientId;
 	}
 
-	public int getBufferSize() {
-		return bufferSize;
-	}
-
 	/**
 	 * The buffer size for this client
 	 * @param bufferSize
@@ -155,16 +145,21 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		this.bufferSize = bufferSize;
 	}
 
-	public int getSocketTimeout() {
-		return socketTimeout;
-	}
-
 	/**
 	 * The socket timeout for this client
 	 * @param socketTimeout
 	 */
 	public void setSocketTimeout(int socketTimeout) {
 		this.socketTimeout = socketTimeout;
+	}
+
+	/**
+	 * The timeout on fetching metadata (e.g. partition leaders)
+	 *
+	 * @param fetchMetadataTimeout timeout
+	 */
+	public void setFetchMetadataTimeout(int fetchMetadataTimeout) {
+		this.fetchMetadataTimeout = fetchMetadataTimeout;
 	}
 
 	/**
@@ -209,7 +204,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			}
 			String brokerAddressesAsString = ListIterate.collect(configuration.getBrokerAddresses(), Functions.getToString()).makeString(",");
 			TopicMetadataResponse topicMetadataResponse = new TopicMetadataResponse(ClientUtils$.MODULE$.fetchTopicMetadata(
-					JavaConversions.asScalaSet(new HashSet<String>(topics)), ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString), getClientId(), 10000, 0));
+					JavaConversions.asScalaSet(new HashSet<String>(topics)), ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString), getClientId(), fetchMetadataTimeout, 0));
 			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
 			for (TopicMetadata topicMetadata : topicMetadataResponse.topicsMetadata()) {
 				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {

@@ -40,7 +40,6 @@ import org.springframework.integration.metadata.SimpleMetadataStore;
 
 /**
  * An {@link OffsetManager} that persists offsets into a {@link MetadataStore}.
- * This offset manager maintains a transient internal state, which is the
  *
  * @author Marius Bogoevici
  */
@@ -72,7 +71,8 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 	}
 
 	/**
-	 * The identifier of a consumer of Kafka messages. Allows to store separate sets of offsets in the {@link MetadataStore}.*
+	 * The identifier of a consumer of Kafka messages. Allows to store separate sets of offsets in the
+	 * {@link MetadataStore}.
 	 *
 	 * @param consumerId the consumer ID
 	 */
@@ -179,7 +179,7 @@ public class MetadataStoreOffsetManager implements OffsetManager {
 				storedOffsetValue = Long.parseLong(storedOffsetValueAsString);
 			}
 			catch (NumberFormatException e) {
-				log.warn("Invalid value: " + storedOffsetValue);
+				log.warn("Invalid value: " + storedOffsetValueAsString);
 			}
 		}
 		return storedOffsetValue;

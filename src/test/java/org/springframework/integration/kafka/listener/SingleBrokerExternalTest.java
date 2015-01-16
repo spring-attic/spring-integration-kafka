@@ -102,6 +102,7 @@ public class SingleBrokerExternalTest extends AbstractMessageListenerContainerTe
 	}
 
 	@Test
+	@Ignore
 	public void testLowVolumeHighConcurrency() throws Exception {
 		String topicName = generateTopicName();
 		createTopic(topicName, 100, 1, 1);
@@ -110,6 +111,7 @@ public class SingleBrokerExternalTest extends AbstractMessageListenerContainerTe
 	}
 
 	@Test
+	@Ignore
 	public void testMediumVolumeHighConcurrency() throws Exception {
 		String topicName = generateTopicName();
 		createTopic(topicName, 100, 1, 1);

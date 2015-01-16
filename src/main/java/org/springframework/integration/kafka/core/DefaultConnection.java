@@ -17,8 +17,6 @@
 
 package org.springframework.integration.kafka.core;
 
-import static com.gs.collections.impl.utility.LazyIterate.collect;
-
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -32,6 +30,7 @@ import com.gs.collections.api.block.function.Function2;
 import com.gs.collections.api.tuple.Pair;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.tuple.Tuples;
+import com.gs.collections.impl.utility.LazyIterate;
 import com.gs.collections.impl.utility.MapIterate;
 import kafka.api.FetchRequestBuilder;
 import kafka.api.PartitionOffsetRequestInfo;
@@ -128,7 +127,8 @@ public class DefaultConnection implements Connection {
 			short errorCode = fetchResponse.errorCode(partition.getTopic(), partition.getId());
 			if (ErrorMapping.NoError() == errorCode) {
 				ByteBufferMessageSet messageSet = fetchResponse.messageSet(partition.getTopic(), partition.getId());
-				List<KafkaMessage> kafkaMessages = collect(messageSet, new ConvertToKafkaMessageFunction(request)).toList();
+				List<KafkaMessage> kafkaMessages = LazyIterate.collect(messageSet,
+						new ConvertToKafkaMessageFunction(request)).toList();
 				long highWatermark = fetchResponse.highWatermark(partition.getTopic(), partition.getId());
 				resultBuilder.add(partition).withResult(new KafkaMessageBatch(partition, kafkaMessages, highWatermark));
 			}
@@ -193,7 +193,9 @@ public class DefaultConnection implements Connection {
 			if (ErrorMapping.NoError() == errorCode) {
 				long[] offsets = offsetResponse.offsets(partition.getTopic(), partition.getId());
 				if (offsets.length == 0) {
-					throw new IllegalStateException("No error has been returned, but no offsets either");
+					// normally, we shouldn't get here - either an offset has been returned, or an error
+					// however, in case something went wrong, the check protects against an ArrayIndexOutOfBoundsException
+					throw new ConsumerException("Inconsistent response: no error has been returned, but no offsets either");
 				}
 				resultBuilder.add(partition).withResult(offsets[0]);
 			}

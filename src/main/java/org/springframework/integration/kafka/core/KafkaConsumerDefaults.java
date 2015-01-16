@@ -45,4 +45,6 @@ public abstract class KafkaConsumerDefaults {
 	public static final int MAX_WAIT_TIME_IN_MS = 100;
 
 	public static final long DEFAULT_OFFSET_RESET = OffsetRequest.EarliestTime();
+
+	public static final int FETCH_METADATA_TIMEOUT = 10000;
 }
