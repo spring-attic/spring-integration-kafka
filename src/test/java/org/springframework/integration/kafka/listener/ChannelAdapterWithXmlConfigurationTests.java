@@ -49,7 +49,7 @@ public class ChannelAdapterWithXmlConfigurationTests extends AbstractMessageList
 	public void testConsumptionWithXmlConfiguration() throws Exception {
 
 		System.setProperty("kafka.test.port",
-				String.valueOf(kafkaEmbeddedBrokerRule.getBrokerAddresses().get(0).getPort()));
+				String.valueOf(kafkaEmbeddedBrokerRule.getBrokerAddresses()[0].getPort()));
 		System.setProperty("kafka.test.topic", TEST_TOPIC);
 
 		createTopic(TEST_TOPIC, 1, 1, 1);
