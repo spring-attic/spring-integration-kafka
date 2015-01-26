@@ -382,18 +382,10 @@
 			<xsd:attributeGroup ref="integration:channelAdapterAttributes"/>
 			<xsd:attribute name="send-timeout" type="xsd:string">
 				<xsd:annotation>
-					<xsd:documentation><![CDATA[
-						Allows you to specify how long this inbound-channel-adapter
-						will wait for the message (containing the retrieved entities)
-						to be sent successfully to the message channel, before throwing
-						an exception.
-
-						Keep in mind that when sending to a DirectChannel, the
-						invocation will occur in the sender's thread so the failing
-						of the send operation may be caused by other components
-						further downstream. By default the Inbound Channel Adapter
-						will wait indefinitely. The value is specified in milliseconds.
-					]]>
+					<xsd:documentation>
+						Maximum amount of time in milliseconds to wait when sending a message to the channel
+						if such channel may block. For example, a Queue Channel can block until space is available
+						if its maximum capacity has been reached.
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
@@ -503,18 +495,10 @@
 			<xsd:attributeGroup ref="integration:channelAdapterAttributes"/>
 			<xsd:attribute name="send-timeout" type="xsd:string">
 				<xsd:annotation>
-					<xsd:documentation><![CDATA[
-						Allows you to specify how long this inbound-channel-adapter
-						will wait for the message (containing the retrieved entities)
-						to be sent successfully to the message channel, before throwing
-						an exception.
-
-						Keep in mind that when sending to a DirectChannel, the
-						invocation will occur in the sender's thread so the failing
-						of the send operation may be caused by other components
-						further downstream. By default the Inbound Channel Adapter
-						will wait indefinitely. The value is specified in milliseconds.
-					]]>
+					<xsd:documentation>
+						Maximum amount of time in milliseconds to wait when sending a message to the channel
+						if such channel may block. For example, a Queue Channel can block until space is available
+						if its maximum capacity has been reached.
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>

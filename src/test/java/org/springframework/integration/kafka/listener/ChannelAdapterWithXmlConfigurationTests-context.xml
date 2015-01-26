@@ -11,13 +11,10 @@
 
 	<context:property-placeholder/>
 
-	<bean id="kafkaConfiguration" class="org.springframework.integration.kafka.core.BrokerAddressListConfiguration">
-		<constructor-arg>
-			<bean class="org.springframework.integration.kafka.core.BrokerAddress">
-				<constructor-arg value="localhost"/>
-				<constructor-arg value="${kafka.test.port}"/>
-			</bean>
-		</constructor-arg>
+	<int-kafka:zookeeper-connect id="zkConnect" zk-connect="#{T (kafka.utils.TestZKUtils).zookeeperConnect()}"/>
+	
+	<bean id="kafkaConfiguration" class="org.springframework.integration.kafka.core.ZookeeperConfiguration">
+		<constructor-arg ref="zkConnect"/>
 	</bean>
 
 	<bean id="connectionFactory" class="org.springframework.integration.kafka.core.DefaultConnectionFactory">
