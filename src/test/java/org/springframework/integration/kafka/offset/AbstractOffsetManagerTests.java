@@ -41,7 +41,7 @@ import org.springframework.integration.kafka.listener.OffsetManager;
 import org.springframework.integration.kafka.listener.TestPartitioner;
 import org.springframework.integration.kafka.rule.KafkaEmbedded;
 import org.springframework.integration.kafka.rule.KafkaRule;
-import org.springframework.integration.kafka.util.KafkaUtils;
+import org.springframework.integration.kafka.util.TopicUtils;
 
 /**
  * @author Marius Bogoevici
@@ -63,7 +63,7 @@ public abstract class AbstractOffsetManagerTests {
 
 		int numPartitions = 3;
 
-		KafkaUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
+		TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
 
 		OffsetManager offsetManager1 = createOffsetManager(OffsetRequest.EarliestTime(), "offset1", null);
 
@@ -100,7 +100,7 @@ public abstract class AbstractOffsetManagerTests {
 	public void testUpdate() throws Exception {
 		int numPartitions = 3;
 
-		KafkaUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
+		TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
 
 		OffsetManager offsetManager1 = createOffsetManager(OffsetRequest.EarliestTime(), "offset1", null);
 
@@ -149,7 +149,7 @@ public abstract class AbstractOffsetManagerTests {
 	public void testRemove() throws Exception {
 		int numPartitions = 3;
 
-		KafkaUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
+		TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
 
 		OffsetManager offsetManager1 = createOffsetManager(OffsetRequest.EarliestTime(), "offset1", null);
 
@@ -201,7 +201,7 @@ public abstract class AbstractOffsetManagerTests {
 	public void testInitialOffsets() throws Exception {
 		int numPartitions = 3;
 
-		KafkaUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
+		TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TEST_TOPIC, numPartitions, 1);
 
 		Partition[] partitions = new Partition[numPartitions];
 		for (int i = 0; i < numPartitions; i++) {

@@ -17,7 +17,7 @@
 
 package org.springframework.integration.kafka.listener;
 
-import static org.springframework.integration.kafka.util.KafkaUtils.ensureTopicCreated;
+import static org.springframework.integration.kafka.util.TopicUtils.ensureTopicCreated;
 import static scala.collection.JavaConversions.asScalaBuffer;
 
 import java.util.ArrayList;
@@ -52,7 +52,6 @@ import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 import org.springframework.integration.kafka.rule.KafkaRule;
-import org.springframework.integration.kafka.util.KafkaUtils;
 
 /**
  * @author Marius Bogoevici

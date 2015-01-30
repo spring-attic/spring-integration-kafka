@@ -45,9 +45,9 @@ import org.springframework.retry.support.RetryTemplate;
  *
  * @author Marius Bogoevici
  */
-public class KafkaUtils {
+public class TopicUtils {
 
-	private static Log log = LogFactory.getLog(KafkaUtils.class);
+	private static Log log = LogFactory.getLog(TopicUtils.class);
 
 	public static final int METADATA_VERIFICATION_TIMEOUT = 5000;
 
