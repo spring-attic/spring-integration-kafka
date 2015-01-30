@@ -60,18 +60,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 
 	private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-	private String clientId = KafkaConsumerDefaults.GROUP_ID;
-
-	private int minBytes = KafkaConsumerDefaults.MIN_FETCH_BYTES;
-
-	private int maxWait = KafkaConsumerDefaults.MAX_WAIT_TIME_IN_MS;
-
-	private int bufferSize = KafkaConsumerDefaults.SOCKET_BUFFER_SIZE_INT;
-
-	private int socketTimeout = KafkaConsumerDefaults.SOCKET_TIMEOUT_INT;
-
-	private int fetchMetadataTimeout = KafkaConsumerDefaults.FETCH_METADATA_TIMEOUT;
-
 	private final UnifiedMap<BrokerAddress, Connection> kafkaBrokersCache = UnifiedMap.newMap();
 
 	public DefaultConnectionFactory(Configuration configuration) {
@@ -94,69 +82,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		for (Connection connection : kafkaBrokersCache) {
 			connection.close();
 		}
-	}
-
-	/**
-	 * The minimum amount of data that a server fetch operation will wait for before returning,
-	 * unless {@code maxWaitTimeInMs} has elapsed.
-	 * In conjunction with {@link DefaultConnectionFactory#setMaxWait(int)}, controls latency
-	 * and throughput.
-	 * Smaller values increase responsiveness, but may increase the number of poll operations,
-	 * potentially reducing throughput and increasing CPU consumption.
-	 * @param minBytes the amount of data to fetch
-	 */
-	public void setMinBytes(int minBytes) {
-		this.minBytes = minBytes;
-	}
-
-	/**
-	 * The maximum amount of time that a server fetch operation will wait before returning
-	 * (unless {@code minFetchSizeInBytes}) are available.
-	 * In conjunction with {@link DefaultConnectionFactory#setMinBytes(int)},
-	 * controls latency and throughput.
-	 * Smaller intervals increase responsiveness, but may increase
-	 * the number of poll operations, potentially increasing CPU
-	 * consumption and reducing throughput.
-	 * @param maxWait timeout to wait
-	 */
-	public void setMaxWait(int maxWait) {
-		this.maxWait = maxWait;
-	}
-
-	public String getClientId() {
-		return clientId;
-	}
-
-	/**
-	 * A client name to be used throughout this connection.
-	 * @param clientId the client name
-	 */
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-
-	/**
-	 * The buffer size for this client
-	 * @param bufferSize the buffer size
-	 */
-	public void setBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
-	}
-
-	/**
-	 * The socket timeout for this client
-	 * @param socketTimeout the socket timeout
-	 */
-	public void setSocketTimeout(int socketTimeout) {
-		this.socketTimeout = socketTimeout;
-	}
-
-	/**
-	 * The timeout on fetching metadata (e.g. partition leaders)
-	 * @param fetchMetadataTimeout timeout
-	 */
-	public void setFetchMetadataTimeout(int fetchMetadataTimeout) {
-		this.fetchMetadataTimeout = fetchMetadataTimeout;
 	}
 
 	/**
@@ -207,7 +132,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 							ClientUtils$.MODULE$.fetchTopicMetadata(
 									JavaConversions.asScalaSet(new HashSet<String>(topics)),
 									ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString),
-									getClientId(), fetchMetadataTimeout, 0));
+									this.configuration.getClientId(), this.configuration.getFetchMetadataTimeout(), 0));
 			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
 			for (TopicMetadata topicMetadata : topicMetadataResponse.topicsMetadata()) {
 				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
@@ -242,14 +167,18 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 
 		@Override
 		public Connection valueOf(BrokerAddress brokerAddress) {
-			return new DefaultConnection(brokerAddress, clientId, bufferSize, socketTimeout, minBytes, maxWait);
+			return new DefaultConnection(brokerAddress,
+					DefaultConnectionFactory.this.configuration.getClientId(),
+					DefaultConnectionFactory.this.configuration.getBufferSize(),
+					DefaultConnectionFactory.this.configuration.getSocketTimeout(),
+					DefaultConnectionFactory.this.configuration.getMinBytes(),
+					DefaultConnectionFactory.this.configuration.getMaxWait());
 		}
 
 	}
 
 	@SuppressWarnings("serial")
 	private class GetBrokersByPartitionFunction implements Function<Partition, BrokerAddress> {
-
 		@Override
 		public BrokerAddress valueOf(Partition partition) {
 			return partitionBrokerMapReference.get().getBrokersByPartition().get(partition);

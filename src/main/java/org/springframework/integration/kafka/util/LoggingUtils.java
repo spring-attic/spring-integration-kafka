@@ -14,30 +14,31 @@
  * limitations under the License.
  */
 
-
 package org.springframework.integration.kafka.util;
 
-import kafka.serializer.Decoder;
-import kafka.utils.Utils$;
-
-import org.springframework.integration.kafka.core.KafkaMessage;
-
 /**
+ * Utilities for logging data
+ *
  * @author Marius Bogoevici
  */
-public class MessageUtils {
+public class LoggingUtils {
 
-	public static <T> T decodeKey(KafkaMessage message, Decoder<T> decoder) {
-		if (!message.getMessage().hasKey()) {
-			return null;
+	public static String asCommaSeparatedHexDump(byte[] bytes) {
+		if (bytes == null || bytes.length == 0) {
+			return "[]";
 		}
-		return decoder.fromBytes(Utils$.MODULE$.readBytes(message.getMessage().key()));
-	}
-
-	public static <T> T decodePayload(KafkaMessage message, Decoder<T> decoder) {
-		if (message.getMessage().isNull()) {
-			return null;
+		else if (bytes.length == 1) {
+			return String.format("[%s]", Integer.toHexString(bytes[0]));
 		}
-		return decoder.fromBytes(Utils$.MODULE$.readBytes(message.getMessage().payload()));
+		else {
+			StringBuilder buffer = new StringBuilder("[");
+			for (int i = 0; i < bytes.length - 1; i++) {
+				buffer.append(Integer.toHexString(bytes[i]));
+				buffer.append(",");
+			}
+			buffer.append(Integer.toHexString(bytes[bytes.length]));
+			buffer.append("]");
+			return buffer.toString();
+		}
 	}
 }

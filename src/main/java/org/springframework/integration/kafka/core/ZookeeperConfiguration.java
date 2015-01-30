@@ -49,6 +49,10 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 
 	private int connectionTimeout;
 
+	public ZookeeperConfiguration(String zookeeperConnectionString) {
+		this(new ZookeeperConnect(zookeeperConnectionString));
+	}
+
 	public ZookeeperConfiguration(ZookeeperConnect zookeeperConnect) {
 		this.zookeeperServers = zookeeperConnect.getZkConnect();
 		try {

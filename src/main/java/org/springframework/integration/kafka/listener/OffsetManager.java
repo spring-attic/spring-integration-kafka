@@ -45,6 +45,15 @@ public interface OffsetManager extends Closeable, Flushable {
 	long getOffset(Partition partition);
 
 	/**
+	 * Removes the offset for a given {@link Partition}. Useful
+	 * for components that need to clean up after themselves.
+	 *
+	 * @param partition for which to delete the JavaDoc
+	 *
+	 */
+	void deleteOffset(Partition partition);
+
+	/**
 	 * Resets offsets for the given {@link Partition}s. To be invoked when the values stored are invalid,
 	 * so a client cannot resume from that position. Implementations must decide on the best strategy to follow.
 	 * @param partition to reset

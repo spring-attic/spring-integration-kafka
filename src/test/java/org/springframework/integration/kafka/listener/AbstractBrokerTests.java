@@ -17,6 +17,7 @@
 
 package org.springframework.integration.kafka.listener;
 
+import static org.springframework.integration.kafka.util.KafkaUtils.ensureTopicCreated;
 import static scala.collection.JavaConversions.asScalaBuffer;
 
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import kafka.producer.Producer;
 import kafka.producer.ProducerConfig;
 import kafka.serializer.StringEncoder;
 import kafka.utils.TestUtils;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
@@ -50,6 +52,7 @@ import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 import org.springframework.integration.kafka.rule.KafkaRule;
+import org.springframework.integration.kafka.util.KafkaUtils;
 
 /**
  * @author Marius Bogoevici
@@ -69,25 +72,21 @@ public abstract class AbstractBrokerTests {
 
 	@SuppressWarnings("unchecked")
 	public void createTopic(String topicName, int partitionCount, int brokers, int replication) {
+		createTopic(getKafkaRule().getZkClient(), topicName, partitionCount, brokers, replication);
+	}
+
+	@SuppressWarnings("unchecked")
+	public void createTopic(ZkClient zkClient, String topicName, int partitionCount, int brokers, int replication) {
 		MutableMultimap<Integer, Integer> partitionDistribution = createPartitionDistribution(partitionCount, brokers, replication);
-		AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(getKafkaRule().getZkClient(),
-				topicName, toKafkaPartitionMap(partitionDistribution),
-				AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$4(),
-				AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK$default$5());
-		if (getKafkaRule().isEmbedded()) {
-			for (int i = 0; i < partitionDistribution.keysView().size(); i++) {
-				TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), topicName, i, 5000L);
-			}
-		} else {
-			sleep(partitionCount * 200);
-		}
+		ensureTopicCreated(zkClient, topicName, partitionCount, new Properties(), toKafkaPartitionMap(partitionDistribution));
 	}
 
 	public void deleteTopic(String topicName) {
 		AdminUtils.deleteTopic(getKafkaRule().getZkClient(), topicName);
 		if (getKafkaRule().isEmbedded()) {
 			TestUtils.waitUntilMetadataIsPropagated(asScalaBuffer(getKafkaRule().getKafkaServers()), topicName, 0, 5000L);
-		} else {
+		}
+		else {
 			sleep(1000);
 		}
 	}
@@ -108,12 +107,12 @@ public abstract class AbstractBrokerTests {
 	}
 
 	public static scala.collection.Seq<KeyedMessage<String, String>> createMessages(int count, String topic) {
-		return createMessagesInRange(0,count-1,topic);
+		return createMessagesInRange(0, count - 1, topic);
 	}
 
 	public static scala.collection.Seq<KeyedMessage<String, String>> createMessagesInRange(int start, int end, String topic) {
-		List<KeyedMessage<String,String>> messages = new ArrayList<KeyedMessage<String, String>>();
-		for (int i=start; i<= end; i++) {
+		List<KeyedMessage<String, String>> messages = new ArrayList<KeyedMessage<String, String>>();
+		for (int i = start; i <= end; i++) {
 			messages.add(new KeyedMessage<String, String>(topic, "Key " + i, i, "Message " + i));
 		}
 		return asScalaBuffer(messages).toSeq();
@@ -123,8 +122,8 @@ public abstract class AbstractBrokerTests {
 		Properties producerConfig = TestUtils.getProducerConfig(getKafkaRule().getBrokersAsString(),
 				TestPartitioner.class.getCanonicalName());
 		producerConfig.put("serializer.class", StringEncoder.class.getCanonicalName());
-		producerConfig.put("key.serializer.class",  StringEncoder.class.getCanonicalName());
-		producerConfig.put("compression.codec",  Integer.toString(compression));
+		producerConfig.put("key.serializer.class", StringEncoder.class.getCanonicalName());
+		producerConfig.put("compression.codec", Integer.toString(compression));
 		return new Producer<String, String>(new ProducerConfig(producerConfig));
 	}
 
