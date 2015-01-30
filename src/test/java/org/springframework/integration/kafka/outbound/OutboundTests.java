@@ -33,8 +33,8 @@ import kafka.api.OffsetRequest;
 import kafka.common.TopicExistsException;
 import kafka.serializer.Decoder;
 import kafka.serializer.Encoder;
-import org.junit.AfterClass;
-import org.junit.ClassRule;
+import org.junit.After;
+import org.junit.Rule;
 import org.junit.Test;
 
 import org.springframework.context.expression.MapAccessor;
@@ -46,7 +46,8 @@ import org.springframework.integration.kafka.core.ZookeeperConfiguration;
 import org.springframework.integration.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.integration.kafka.listener.MessageListener;
 import org.springframework.integration.kafka.listener.MetadataStoreOffsetManager;
-import org.springframework.integration.kafka.rule.KafkaRunning;
+import org.springframework.integration.kafka.rule.KafkaEmbedded;
+import org.springframework.integration.kafka.rule.KafkaRule;
 import org.springframework.integration.kafka.serializer.common.StringDecoder;
 import org.springframework.integration.kafka.serializer.common.StringEncoder;
 import org.springframework.integration.kafka.support.KafkaHeaders;
@@ -56,6 +57,7 @@ import org.springframework.integration.kafka.support.ProducerFactoryBean;
 import org.springframework.integration.kafka.support.ProducerMetadata;
 import org.springframework.integration.kafka.support.ZookeeperConnect;
 import org.springframework.integration.kafka.util.MessageUtils;
+import org.springframework.integration.kafka.util.TopicUtils;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
@@ -68,13 +70,13 @@ public class OutboundTests {
 
 	private static final String TOPIC = "springintegrationtest";
 
-	@ClassRule
-	public static KafkaRunning kafkaRunning = KafkaRunning.isRunning();
+	@Rule
+	public KafkaRule kafkaRule = new KafkaEmbedded(1);
 
-	@AfterClass
-	public static void tearDown() {
+	@After
+	public void tearDown() {
 		try {
-			AdminUtils.deleteTopic(kafkaRunning.getZkClient(), TOPIC);
+			AdminUtils.deleteTopic(kafkaRule.getZkClient(), TOPIC);
 		}
 		catch (Exception e) {
 		}
@@ -86,7 +88,7 @@ public class OutboundTests {
 		// create the topic
 
 		try {
-			AdminUtils.createTopic(kafkaRunning.getZkClient(), TOPIC, 1, 1, new Properties());
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC, 1, 1);
 		}
 		catch (TopicExistsException e) {
 			// do nothing
@@ -94,7 +96,7 @@ public class OutboundTests {
 
 		final String suffix = UUID.randomUUID().toString();
 
-		ZookeeperConfiguration configuration = new ZookeeperConfiguration(new ZookeeperConnect());
+		ZookeeperConfiguration configuration = new ZookeeperConfiguration(new ZookeeperConnect(kafkaRule.getZookeeperConnectionString()));
 		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(configuration);
 		connectionFactory.afterPropertiesSet();
 		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, TOPIC);
@@ -130,7 +132,7 @@ public class OutboundTests {
 		Properties props = new Properties();
 		props.put("queue.buffering.max.ms", "15000");
 		ProducerFactoryBean<String, String> producer =
-				new ProducerFactoryBean<String, String>(producerMetadata, "localhost:9092", props);
+				new ProducerFactoryBean<String, String>(producerMetadata, kafkaRule.getBrokersAsString(), props);
 		ProducerConfiguration<String, String> config =
 				new ProducerConfiguration<String, String>(producerMetadata, producer.getObject());
 		kafkaProducerContext.setProducerConfigurations(Collections.singletonMap(TOPIC, config));
