@@ -16,8 +16,10 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.Assert.assertThat;
 
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.gs.collections.api.multimap.MutableMultimap;
+import com.gs.collections.impl.factory.Multimaps;
 import kafka.admin.AdminUtils;
 import kafka.api.OffsetRequest;
 import kafka.common.TopicExistsException;
@@ -70,8 +74,12 @@ public class OutboundTests {
 
 	private static final String TOPIC = "springintegrationtest";
 
+	private static final String TOPIC2 = "springintegrationtest2";
+
 	@Rule
 	public KafkaRule kafkaRule = new KafkaEmbedded(1);
+
+	private final Decoder<String> decoder = new StringDecoder();
 
 	@After
 	public void tearDown() {
@@ -96,17 +104,7 @@ public class OutboundTests {
 
 		final String suffix = UUID.randomUUID().toString();
 
-		ZookeeperConfiguration configuration = new ZookeeperConfiguration(new ZookeeperConnect(kafkaRule.getZookeeperConnectionString()));
-		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(configuration);
-		connectionFactory.afterPropertiesSet();
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, TOPIC);
-		kafkaMessageListenerContainer.setMaxFetch(100);
-		kafkaMessageListenerContainer.setConcurrency(1);
-		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory);
-		// start reading at the end of the
-		offsetManager.setReferenceTimestamp(OffsetRequest.LatestTime());
-		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
-		final Decoder<String> decoder = new StringDecoder();
+		KafkaMessageListenerContainer kafkaMessageListenerContainer = createMessageListenerContainer(TOPIC);
 
 		int expectedMessageCount = 2;
 		final List<String> payloads = new ArrayList<String>();
@@ -121,6 +119,133 @@ public class OutboundTests {
 
 		kafkaMessageListenerContainer.start();
 
+		KafkaProducerContext<String, String> producerContext = createProducerContext();
+		KafkaProducerMessageHandler<String, String> handler =
+				new KafkaProducerMessageHandler<String, String>(producerContext);
+
+		handler.handleMessage(MessageBuilder.withPayload("foo" + suffix)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC)
+				.build());
+
+		SpelExpressionParser parser = new SpelExpressionParser();
+		handler.setMessageKeyExpression(parser.parseExpression("headers.foo"));
+		handler.setTopicExpression(parser.parseExpression("headers.bar"));
+		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
+		evaluationContext.addPropertyAccessor(new MapAccessor());
+		handler.setIntegrationEvaluationContext(evaluationContext);
+		handler.handleMessage(MessageBuilder.withPayload("bar" + suffix)
+				.setHeader("foo", "3")
+				.setHeader("bar", TOPIC)
+				.build());
+
+		producerContext.stop();
+
+		latch.await(1000, TimeUnit.MILLISECONDS);
+		assertThat(latch.getCount(), equalTo(0L));
+		for (String payload : payloads) {
+			assertThat(payload, endsWith(suffix));
+		}
+		kafkaMessageListenerContainer.stop();
+	}
+
+	@Test
+	public void testHeaderRouting() throws Exception {
+
+		// create the topic
+
+		try {
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC, 1, 1);
+		}
+		catch (TopicExistsException e) {
+			// do nothing
+		}
+
+		try {
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC2, 1, 1);
+		}
+		catch (TopicExistsException e) {
+			// do nothing
+		}
+
+		final String suffix = UUID.randomUUID().toString();
+
+		KafkaMessageListenerContainer kafkaMessageListenerContainer = createMessageListenerContainer(TOPIC,TOPIC2);
+
+		final Decoder<String> decoder = new StringDecoder();
+
+		int expectedMessageCount = 4;
+		final MutableMultimap<String, String> payloadsByTopic = Multimaps.mutable.list.with();
+		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
+		kafkaMessageListenerContainer.setMessageListener(new MessageListener() {
+			@Override
+			public void onMessage(KafkaMessage message) {
+				payloadsByTopic.put(message.getMetadata().getPartition().getTopic(),
+						MessageUtils.decodePayload(message, decoder));
+				latch.countDown();
+			}
+		});
+
+		kafkaMessageListenerContainer.start();
+
+		KafkaProducerContext<String, String> producerContext = createProducerContext();
+		KafkaProducerMessageHandler<String, String> handler
+				= new KafkaProducerMessageHandler<String, String>(producerContext);
+
+		handler.handleMessage(MessageBuilder.withPayload("fooTopic1" + suffix)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC)
+				.build());
+
+		handler.handleMessage(MessageBuilder.withPayload("fooTopic2" + suffix)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC2)
+				.build());
+
+		SpelExpressionParser parser = new SpelExpressionParser();
+		handler.setMessageKeyExpression(parser.parseExpression("headers.foo"));
+		handler.setTopicExpression(parser.parseExpression("headers.bar"));
+		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
+		evaluationContext.addPropertyAccessor(new MapAccessor());
+		handler.setIntegrationEvaluationContext(evaluationContext);
+		handler.handleMessage(MessageBuilder.withPayload("bar1" + suffix)
+				.setHeader("foo", "3")
+				.setHeader("bar", TOPIC)
+				.build());
+
+		handler.handleMessage(MessageBuilder.withPayload("bar2" + suffix)
+				.setHeader("foo", "3")
+				.setHeader("bar", TOPIC2)
+				.build());
+
+		producerContext.stop();
+
+		latch.await(1000, TimeUnit.MILLISECONDS);
+		assertThat(latch.getCount(), equalTo(0L));
+		// messages are routed to both topics
+		assertThat(payloadsByTopic.keysView(), hasItem(TOPIC));
+		assertThat(payloadsByTopic.keysView(), hasItem(TOPIC2));
+		assertThat(payloadsByTopic.toMap().get(TOPIC), contains("fooTopic1" + suffix, "bar1" + suffix));
+		assertThat(payloadsByTopic.toMap().get(TOPIC2), contains("fooTopic2" + suffix, "bar2" + suffix));
+
+		kafkaMessageListenerContainer.stop();
+	}
+
+	private KafkaMessageListenerContainer createMessageListenerContainer(String... topics) throws Exception {
+		ZookeeperConfiguration configuration = new ZookeeperConfiguration(new ZookeeperConnect(kafkaRule.getZookeeperConnectionString()));
+		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(configuration);
+		connectionFactory.afterPropertiesSet();
+		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, topics);
+		kafkaMessageListenerContainer.setMaxFetch(100);
+		kafkaMessageListenerContainer.setConcurrency(1);
+		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory);
+		// start reading at the end of the
+		offsetManager.setReferenceTimestamp(OffsetRequest.LatestTime());
+		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
+		return kafkaMessageListenerContainer;
+	}
+
+	private KafkaProducerContext<String, String> createProducerContext() throws Exception {
 		KafkaProducerContext<String, String> kafkaProducerContext = new KafkaProducerContext<String, String>();
 		ProducerMetadata<String, String> producerMetadata = new ProducerMetadata<String, String>(TOPIC);
 		producerMetadata.setValueClassType(String.class);
@@ -136,32 +261,6 @@ public class OutboundTests {
 		ProducerConfiguration<String, String> config =
 				new ProducerConfiguration<String, String>(producerMetadata, producer.getObject());
 		kafkaProducerContext.setProducerConfigurations(Collections.singletonMap(TOPIC, config));
-		KafkaProducerMessageHandler<String, String> handler = new KafkaProducerMessageHandler<String, String>(kafkaProducerContext);
-
-		handler.handleMessage(MessageBuilder.withPayload("foo"+suffix)
-				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
-				.setHeader(KafkaHeaders.TOPIC, TOPIC)
-				.build());
-
-		SpelExpressionParser parser = new SpelExpressionParser();
-		handler.setMessageKeyExpression(parser.parseExpression("headers.foo"));
-		handler.setTopicExpression(parser.parseExpression("headers.bar"));
-		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
-		evaluationContext.addPropertyAccessor(new MapAccessor());
-		handler.setIntegrationEvaluationContext(evaluationContext);
-		handler.handleMessage(MessageBuilder.withPayload("bar"+suffix)
-				.setHeader("foo", "3")
-				.setHeader("bar", TOPIC)
-				.build());
-
-		kafkaProducerContext.stop();
-
-		latch.await(1000, TimeUnit.MILLISECONDS);
-		assertThat(latch.getCount(), equalTo(0L));
-		for (String payload : payloads) {
-			assertThat(payload, endsWith(suffix));
-		}
-		kafkaMessageListenerContainer.stop();
+		return kafkaProducerContext;
 	}
-
 }
