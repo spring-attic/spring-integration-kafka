@@ -19,7 +19,6 @@ package org.springframework.integration.kafka.core;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,20 +26,22 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gs.collections.api.block.function.Function;
+import com.gs.collections.api.block.predicate.Predicate;
+import com.gs.collections.api.partition.PartitionIterable;
 import com.gs.collections.impl.block.factory.Functions;
-import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import com.gs.collections.impl.utility.Iterate;
 import com.gs.collections.impl.utility.ListIterate;
 import kafka.client.ClientUtils$;
-import kafka.common.KafkaException;
-import kafka.javaapi.PartitionMetadata;
+import kafka.common.ErrorMapping;
 import kafka.javaapi.TopicMetadata;
 import kafka.javaapi.TopicMetadataResponse;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import scala.collection.JavaConversions;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.util.Assert;
 
 /**
@@ -50,13 +51,18 @@ import org.springframework.util.Assert;
  */
 public class DefaultConnectionFactory implements InitializingBean, ConnectionFactory, DisposableBean {
 
+	private final static Log log = LogFactory.getLog(DefaultConnectionFactory.class);
+
+	public static final Predicate<TopicMetadata> errorlessTopicMetadataPredicate = new ErrorlessTopicMetadataPredicate();
+
 	private final GetBrokersByPartitionFunction getBrokersByPartitionFunction = new GetBrokersByPartitionFunction();
 
 	private final ConnectionInstantiationFunction connectionInstantiationFunction = new ConnectionInstantiationFunction();
 
 	private final Configuration configuration;
 
-	private final AtomicReference<PartitionBrokerMap> partitionBrokerMapReference = new AtomicReference<PartitionBrokerMap>();
+	private final AtomicReference<MetadataCache> metadataCacheHolder =
+			new AtomicReference<MetadataCache>(new MetadataCache(Collections.<TopicMetadata>emptySet()));
 
 	private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -89,7 +95,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	@Override
 	public Map<Partition, BrokerAddress> getLeaders(Iterable<Partition> partitions) {
-		return FastList.newList(partitions).toMap(Functions.<Partition>getPassThru(), getBrokersByPartitionFunction);
+		return Iterate.toMap(partitions, Functions.<Partition>getPassThru(), getBrokersByPartitionFunction);
 	}
 
 	/**
@@ -97,12 +103,17 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	@Override
 	public BrokerAddress getLeader(Partition partition) {
-		try {
-			lock.readLock().lock();
-			return this.getLeaders(Collections.singleton(partition)).get(partition);
+		if (metadataCacheHolder.get().containsPartition(partition)) {
+			return metadataCacheHolder.get().getLeader(partition);
 		}
-		finally {
-			lock.readLock().unlock();
+		else {
+			this.refreshLeaders(Collections.singleton(partition.getTopic()));
+			if (!metadataCacheHolder.get().containsPartition(partition)) {
+				throw new PartitionNotFoundException(partition);
+			}
+			else {
+				return metadataCacheHolder.get().getLeader(partition);
+			}
 		}
 	}
 
@@ -126,21 +137,20 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			}
 			String brokerAddressesAsString =
 					ListIterate.collect(configuration.getBrokerAddresses(), Functions.getToString())
-					.makeString(",");
+							.makeString(",");
 			TopicMetadataResponse topicMetadataResponse =
 					new TopicMetadataResponse(
 							ClientUtils$.MODULE$.fetchTopicMetadata(
 									JavaConversions.asScalaSet(new HashSet<String>(topics)),
 									ClientUtils$.MODULE$.parseBrokerList(brokerAddressesAsString),
 									this.configuration.getClientId(), this.configuration.getFetchMetadataTimeout(), 0));
-			Map<Partition, BrokerAddress> kafkaBrokerAddressMap = new HashMap<Partition, BrokerAddress>();
-			for (TopicMetadata topicMetadata : topicMetadataResponse.topicsMetadata()) {
-				for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
-					kafkaBrokerAddressMap.put(new Partition(topicMetadata.topic(), partitionMetadata.partitionId()),
-							new BrokerAddress(partitionMetadata.leader().host(), partitionMetadata.leader().port()));
-				}
+			PartitionIterable<TopicMetadata> selectWithoutErrors = Iterate.partition(topicMetadataResponse.topicsMetadata(),
+					errorlessTopicMetadataPredicate);
+			this.metadataCacheHolder.set(this.metadataCacheHolder.get().merge(selectWithoutErrors.getSelected()));
+			for (TopicMetadata topicMetadata : selectWithoutErrors.getRejected()) {
+				log.error(String.format("No metadata could be retrieved for '%s'", topicMetadata.topic()),
+						ErrorMapping.exceptionFor(topicMetadata.errorCode()));
 			}
-			this.partitionBrokerMapReference.set(new PartitionBrokerMap(UnifiedMap.newMap(kafkaBrokerAddressMap)));
 		}
 		finally {
 			lock.writeLock().unlock();
@@ -152,14 +162,48 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	@Override
 	public Collection<Partition> getPartitions(String topic) {
-		if (!getPartitionBrokerMap().getPartitionsByTopic().containsKey(topic)) {
+		// first, we try to read the topic from the cache. We use the read lock to block if a write is in progress
+		Collection<Partition> returnedPartitions = null;
+		try {
+			lock.readLock().lock();
+			if (getMetadataCache().containsTopic(topic)) {
+				returnedPartitions = getMetadataCache().getPartitions(topic);
+			}
+		}
+		finally {
+			lock.readLock().unlock();
+		}
+		// if we got here, it means that the data was not available, we should try a refresh. The lock is reentrant
+		// so we will not block ourselves
+		if (returnedPartitions == null) {
+			try {
+				lock.writeLock().lock();
+				this.refreshLeaders(Collections.singleton(topic));
+				// if data is not available after refreshing, it means that the topic was not found
+				if (getMetadataCache().containsTopic(topic)) {
+					returnedPartitions = getMetadataCache().getPartitions(topic);
+				}
+			}
+			finally {
+				lock.writeLock().unlock();
+			}
+		}
+		if (returnedPartitions == null) {
 			throw new TopicNotFoundException(topic);
 		}
-		return getPartitionBrokerMap().getPartitionsByTopic().get(topic).toList();
+		return returnedPartitions;
 	}
 
-	private PartitionBrokerMap getPartitionBrokerMap() {
-		return partitionBrokerMapReference.get();
+	private MetadataCache getMetadataCache() {
+		return metadataCacheHolder.get();
+	}
+
+	@SuppressWarnings("serial")
+	private static class ErrorlessTopicMetadataPredicate implements Predicate<TopicMetadata> {
+		@Override
+		public boolean accept(TopicMetadata topicMetadata) {
+			return topicMetadata.errorCode() == ErrorMapping.NoError();
+		}
 	}
 
 	@SuppressWarnings("serial")
@@ -181,7 +225,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	private class GetBrokersByPartitionFunction implements Function<Partition, BrokerAddress> {
 		@Override
 		public BrokerAddress valueOf(Partition partition) {
-			return partitionBrokerMapReference.get().getBrokersByPartition().get(partition);
+			return metadataCacheHolder.get().getLeader(partition);
 		}
 
 	}

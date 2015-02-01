@@ -292,7 +292,6 @@ public class KafkaTopicOffsetManager extends AbstractOffsetManager implements In
 		Collection<Partition> partitions = retryValidateTopic.execute(new RetryCallback<Collection<Partition>, Exception>() {
 			@Override
 			public Collection<Partition> doWithRetry(RetryContext context) throws Exception {
-				connectionFactory.refreshLeaders(Collections.<String>emptySet());
 				return connectionFactory.getPartitions(topic);
 			}
 		});
@@ -304,7 +303,7 @@ public class KafkaTopicOffsetManager extends AbstractOffsetManager implements In
 		Properties properties = AdminUtils$.MODULE$.fetchTopicConfig(zkClient, topic);
 		if (!properties.containsKey(CLEANUP_POLICY)
 				|| !CLEANUP_POLICY_COMPACT.equals(properties.getProperty(CLEANUP_POLICY))) {
-			// we set the property to compact, but if a topic withu
+			// we set the property to compact, but if using an already created topic, we must check if it is set up correctly
 			throw new BeanInitializationException("Property 'cleanup.policy' must be set to 'compact' on offset topic");
 		}
 	}
@@ -445,9 +444,8 @@ public class KafkaTopicOffsetManager extends AbstractOffsetManager implements In
 			Key key = (Key) o;
 
 			if (!consumerId.equals(key.consumerId)) return false;
-			if (!partition.equals(key.partition)) return false;
+			return partition.equals(key.partition);
 
-			return true;
 		}
 
 		@Override
