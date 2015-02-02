@@ -74,7 +74,7 @@ import org.springframework.util.ObjectUtils;
  * @author Marius Bogoevici
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class KafkaTopicOffsetManager extends AbstractOffsetManager implements InitializingBean, Closeable {
+public class KafkaTopicOffsetManager extends AbstractOffsetManager implements InitializingBean {
 
 	private static final Log log = LogFactory.getLog(KafkaTopicOffsetManager.class);
 

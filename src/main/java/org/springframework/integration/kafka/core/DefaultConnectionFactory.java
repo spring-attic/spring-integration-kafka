@@ -79,7 +79,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		Assert.notNull(this.configuration, "Kafka configuration cannot be empty");
-		this.refreshLeaders(configuration.getDefaultTopic() == null ? Collections.<String>emptyList() :
+		this.refreshMetadata(configuration.getDefaultTopic() == null ? Collections.<String>emptyList() :
 				Collections.singletonList(configuration.getDefaultTopic()));
 	}
 
@@ -103,18 +103,32 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	 */
 	@Override
 	public BrokerAddress getLeader(Partition partition) {
-		if (metadataCacheHolder.get().containsPartition(partition)) {
-			return metadataCacheHolder.get().getLeader(partition);
-		}
-		else {
-			this.refreshLeaders(Collections.singleton(partition.getTopic()));
-			if (!metadataCacheHolder.get().containsPartition(partition)) {
-				throw new PartitionNotFoundException(partition);
-			}
-			else {
-				return metadataCacheHolder.get().getLeader(partition);
+		BrokerAddress leader = null;
+		try {
+			lock.readLock().lock();
+			if (getMetadataCache().containsPartition(partition)) {
+				leader = getMetadataCache().getLeader(partition);
 			}
 		}
+		finally {
+			lock.readLock().unlock();
+		}
+		if (leader == null) {
+			try {
+				lock.writeLock().lock();
+				this.refreshMetadata(Collections.singleton(partition.getTopic()));
+				if (getMetadataCache().containsPartition(partition)) {
+					leader = getMetadataCache().getLeader(partition);
+				}
+			}
+			finally {
+				lock.writeLock().unlock();
+			}
+		}
+		if (leader == null) {
+			throw new PartitionNotFoundException(partition);
+		}
+		return leader;
 	}
 
 	/**
@@ -126,10 +140,10 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	}
 
 	/**
-	 * @see ConnectionFactory#refreshLeaders(Collection)
+	 * @see ConnectionFactory#refreshMetadata(Collection)
 	 */
 	@Override
-	public void refreshLeaders(Collection<String> topics) {
+	public void refreshMetadata(Collection<String> topics) {
 		try {
 			lock.writeLock().lock();
 			for (Connection connection : kafkaBrokersCache) {
@@ -178,7 +192,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		if (returnedPartitions == null) {
 			try {
 				lock.writeLock().lock();
-				this.refreshLeaders(Collections.singleton(topic));
+				this.refreshMetadata(Collections.singleton(topic));
 				// if data is not available after refreshing, it means that the topic was not found
 				if (getMetadataCache().containsTopic(topic)) {
 					returnedPartitions = getMetadataCache().getPartitions(topic);

@@ -30,7 +30,7 @@ import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.PartitionNotFoundException;
 import org.springframework.integration.kafka.core.Result;
-import org.springframework.integration.metadata.MetadataStore;
+import org.springframework.util.Assert;
 
 /**
  * Base implementation for {@link OffsetManager}. Subclasses may customize functionality as necessary.
@@ -48,6 +48,7 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 	protected Map<Partition, Long> initialOffsets;
 
 	public AbstractOffsetManager(ConnectionFactory connectionFactory, Map<Partition, Long> initialOffsets) {
+		Assert.notNull(connectionFactory, "A ConnectionFactory must be provided");
 		this.connectionFactory = connectionFactory;
 		this.initialOffsets = initialOffsets == null ? new HashMap<Partition, Long>() : initialOffsets;
 	}
@@ -57,8 +58,7 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 	}
 
 	/**
-	 * The identifier of a consumer of Kafka messages. Allows to store separate sets of offsets in the
-	 * {@link MetadataStore}.
+	 * The identifier of a consumer of Kafka messages. Allows to manage offsets separately by consumer
 	 *
 	 * @param consumerId the consumer ID
 	 */
@@ -67,7 +67,8 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 	}
 
 	/**
-	 * A timestamp to be used for resetting initial offsets, if they are not available in the {@link MetadataStore}
+	 * A timestamp to be used for resetting initial offsets
+	 *
 	 * @param referenceTimestamp the reset timestamp for initial offsets
 	 */
 	public void setReferenceTimestamp(long referenceTimestamp) {
@@ -88,8 +89,8 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 	 */
 	@Override
 	public synchronized final long getOffset(Partition partition) {
-		Long offsetInMetadataStore = doGetOffset(partition);
-		if (offsetInMetadataStore == null) {
+		Long storedOffset = doGetOffset(partition);
+		if (storedOffset == null) {
 			if (this.initialOffsets.containsKey(partition)) {
 				return this.initialOffsets.get(partition);
 			}
@@ -110,7 +111,7 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 			}
 		}
 		else {
-			return offsetInMetadataStore;
+			return storedOffset;
 		}
 	}
 

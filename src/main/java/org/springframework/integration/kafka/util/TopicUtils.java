@@ -146,13 +146,12 @@ public class TopicUtils {
 					return topicMetadata;
 				}
 			});
-			// work around an issue in Spring
-
 			return topicMetadata;
 		}
 		catch (Exception e) {
-			log.error("Cannot initialize MessageBus", e);
-			throw new RuntimeException("Cannot initialize message bus:", e);
+			String message = String.format("Cannot retrieve metadata for topic '%s'", topicName);
+			log.error(message, e);
+			throw new RuntimeException(message,e);
 		}
 	}
 }
