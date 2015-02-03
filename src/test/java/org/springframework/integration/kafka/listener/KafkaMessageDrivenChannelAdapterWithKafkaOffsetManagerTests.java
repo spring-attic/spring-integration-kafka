@@ -106,7 +106,6 @@ public class KafkaMessageDrivenChannelAdapterWithKafkaOffsetManagerTests extends
 				return addedSuccessfully;
 			}
 
-
 			@Override
 			public boolean send(Message<?> message, long timeout) {
 				return send(message);

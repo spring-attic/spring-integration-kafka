@@ -106,9 +106,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		BrokerAddress leader = null;
 		try {
 			lock.readLock().lock();
-			if (getMetadataCache().containsPartition(partition)) {
-				leader = getMetadataCache().getLeader(partition);
-			}
+			leader = getMetadataCache().getLeader(partition);
 		}
 		finally {
 			lock.readLock().unlock();
@@ -117,14 +115,10 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			try {
 				lock.writeLock().lock();
 				// double lock check
-				if (getMetadataCache().containsPartition(partition)) {
-					leader = getMetadataCache().getLeader(partition);
-				}
+				leader = getMetadataCache().getLeader(partition);
 				if (leader == null) {
 					this.refreshMetadata(Collections.singleton(partition.getTopic()));
-					if (getMetadataCache().containsPartition(partition)) {
-						leader = getMetadataCache().getLeader(partition);
-					}
+					leader = getMetadataCache().getLeader(partition);
 				}
 			}
 			finally {
@@ -186,9 +180,7 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 		Collection<Partition> returnedPartitions = null;
 		try {
 			lock.readLock().lock();
-			if (getMetadataCache().containsTopic(topic)) {
-				returnedPartitions = getMetadataCache().getPartitions(topic);
-			}
+			returnedPartitions = getMetadataCache().getPartitions(topic);
 		}
 		finally {
 			lock.readLock().unlock();
@@ -199,15 +191,11 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 			try {
 				lock.writeLock().lock();
 				// double lock check
-				if (getMetadataCache().containsTopic(topic)) {
-					returnedPartitions = getMetadataCache().getPartitions(topic);
-				}
+				returnedPartitions = getMetadataCache().getPartitions(topic);
 				if (returnedPartitions == null) {
 					this.refreshMetadata(Collections.singleton(topic));
 					// if data is not available after refreshing, it means that the topic was not found
-					if (getMetadataCache().containsTopic(topic)) {
-						returnedPartitions = getMetadataCache().getPartitions(topic);
-					}
+					returnedPartitions = getMetadataCache().getPartitions(topic);
 				}
 			}
 			finally {

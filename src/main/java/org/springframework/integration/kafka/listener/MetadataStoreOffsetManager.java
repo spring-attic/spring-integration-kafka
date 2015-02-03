@@ -21,10 +21,6 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.metadata.MetadataStore;
@@ -36,8 +32,6 @@ import org.springframework.integration.metadata.SimpleMetadataStore;
  * @author Marius Bogoevici
  */
 public class MetadataStoreOffsetManager extends AbstractOffsetManager {
-
-	private final static Log log = LogFactory.getLog(MetadataStoreOffsetManager.class);
 
 	private MetadataStore metadataStore = new SimpleMetadataStore();
 

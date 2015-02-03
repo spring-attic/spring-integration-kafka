@@ -43,7 +43,7 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractOffsetManager implements OffsetManager, DisposableBean {
 
-	private static final Log log = LogFactory.getLog(AbstractOffsetManager.class);
+	protected final Log log = LogFactory.getLog(this.getClass());
 
 	protected String consumerId = KafkaConsumerDefaults.GROUP_ID;
 

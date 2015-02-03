@@ -75,8 +75,6 @@ import org.springframework.util.ObjectUtils;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class KafkaTopicOffsetManager extends AbstractOffsetManager implements InitializingBean {
 
-	private static final Log log = LogFactory.getLog(KafkaTopicOffsetManager.class);
-
 	private static final KeyEncoderDecoder KEY_CODEC = new KeyEncoderDecoder();
 
 	private static final LongEncoderDecoder VALUE_CODEC = new LongEncoderDecoder();
@@ -456,6 +454,9 @@ public class KafkaTopicOffsetManager extends AbstractOffsetManager implements In
 	}
 
 	public static class KeyEncoderDecoder implements Encoder<Key>, Decoder<Key> {
+
+		private static final Log log = LogFactory.getLog(KeyEncoderDecoder.class);
+
 		@Override
 		public Key fromBytes(byte[] bytes) {
 			if (bytes == null || bytes.length <= 0) {

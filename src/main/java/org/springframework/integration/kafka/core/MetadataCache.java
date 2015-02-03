@@ -17,11 +17,9 @@
 package org.springframework.integration.kafka.core;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 
 import com.gs.collections.api.block.function.Function;
-import com.gs.collections.impl.block.factory.Functions;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import com.gs.collections.impl.utility.Iterate;
 import kafka.javaapi.PartitionMetadata;
@@ -61,22 +59,15 @@ class MetadataCache {
 	}
 
 	public Collection<Partition> getPartitions(String topic) {
-		if (!containsTopic(topic)) {
-			return Collections.emptySet();
+		if (metadatasByTopic.containsKey(topic)) {
+			return metadatasByTopic.get(topic).keySet();
+		} else {
+			return null;
 		}
-		return metadatasByTopic.get(topic).keySet();
-	}
-
-	public boolean containsTopic(String topic) {
-		return metadatasByTopic.containsKey(topic);
-	}
-
-	public boolean containsPartition(Partition partition) {
-		return metadatasByTopic.containsKey(partition.getTopic()) && metadatasByTopic.get(partition.getTopic()).containsKey(partition);
 	}
 
 	public BrokerAddress getLeader(Partition partition) {
-		if (!containsTopic(partition.getTopic())) {
+		if (!metadatasByTopic.containsKey(partition.getTopic())) {
 			return null;
 		}
 		Map<Partition, PartitionMetadata> partitionMetadatasForTopic = metadatasByTopic.get(partition.getTopic());

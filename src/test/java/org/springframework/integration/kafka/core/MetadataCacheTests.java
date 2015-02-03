@@ -58,7 +58,7 @@ public class MetadataCacheTests {
 
 		// blank metadatacache is empty
 		assertThat(metadataCache.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), nullValue());
 	}
 
 	@Test
@@ -75,7 +75,7 @@ public class MetadataCacheTests {
 
 		// Initializing MetadataCache with some topic metadatas will find the data in
 		assertThat(metadataCache.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), hasSize(2));
 		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 0)));
 		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 1)));
@@ -101,16 +101,16 @@ public class MetadataCacheTests {
 		MetadataCache metadataCache = new MetadataCache(Collections.<TopicMetadata>emptySet());
 
 		assertThat(metadataCache.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCache.getLeader(new Partition(EXISTING_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), nullValue());
 
 
 		MetadataCache newMetadataCache = metadataCache.merge(topicMetadatas);
 
 		// merging MetadataCache with new topic metadata results in an object that also has the new data
 		assertThat(newMetadataCache.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(newMetadataCache.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(newMetadataCache.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(newMetadataCache.getPartitions(EXISTING_TOPIC), hasSize(2));
 		assertThat(newMetadataCache.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 0)));
 		assertThat(newMetadataCache.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 1)));
@@ -138,17 +138,17 @@ public class MetadataCacheTests {
 
 		//empty MetadataCache has no data
 		assertThat(metadataCache.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCache.getLeader(new Partition(EXISTING_TOPIC, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), empty());
+		assertThat(metadataCache.getPartitions(EXISTING_TOPIC), nullValue());
 		assertThat(metadataCache.getLeader(new Partition(EXISTING_TOPIC_2, 0)), nullValue());
-		assertThat(metadataCache.getPartitions(EXISTING_TOPIC_2), empty());
+		assertThat(metadataCache.getPartitions(EXISTING_TOPIC_2), nullValue());
 
 		MetadataCache metadataCacheWithTopic1 = metadataCache.merge(topicMetadatas);
 
 		// merging MetadataCache with new topic metadata results in an object that also has the new data
 		assertThat(metadataCacheWithTopic1.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCacheWithTopic1.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCacheWithTopic1.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCacheWithTopic1.getPartitions(EXISTING_TOPIC), hasSize(2));
 		assertThat(metadataCacheWithTopic1.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 0)));
 		assertThat(metadataCacheWithTopic1.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 1)));
@@ -174,7 +174,7 @@ public class MetadataCacheTests {
 
 
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCacheWithTopic2.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCacheWithTopic2.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC), hasSize(2));
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 0)));
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 1)));
@@ -185,6 +185,7 @@ public class MetadataCacheTests {
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC, 1)).getHost(), equalTo("host1"));
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC, 1)).getPort(), equalTo(1001));
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC, 2)), nullValue());
+		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC_2), notNullValue());
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC_2), hasSize(3));
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC_2), hasItem(new Partition(EXISTING_TOPIC_2, 0)));
 		assertThat(metadataCacheWithTopic2.getPartitions(EXISTING_TOPIC_2), hasItem(new Partition(EXISTING_TOPIC_2, 1)));
@@ -199,7 +200,7 @@ public class MetadataCacheTests {
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC_2, 2)).getHost(), equalTo("host3"));
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC_2, 2)).getPort(), equalTo(1004));
 		assertThat(metadataCacheWithTopic2.getLeader(new Partition(EXISTING_TOPIC_2, 3)), nullValue());
-		
+
 		// merging overrides data
 		List<TopicMetadata> overridingTopicMetadatas = new ArrayList<TopicMetadata>();
 		HashSet<PartitionMetadata> overridingPartitionsMetadatas = HashSet$.MODULE$.empty();
@@ -213,11 +214,11 @@ public class MetadataCacheTests {
 				emptySeq(), ErrorMapping.NoError()));
 		overridingTopicMetadatas.add(new TopicMetadata(new kafka.api.TopicMetadata(EXISTING_TOPIC,
 				overridingPartitionsMetadatas.toSeq(), ErrorMapping.NoError())));
-		
+
 		MetadataCache metadataCacheOverridden = metadataCacheWithTopic2.merge(overridingTopicMetadatas);
 
 		assertThat(metadataCacheOverridden.getLeader(new Partition(NONEXISTENT_TOPIC, 0)), nullValue());
-		assertThat(metadataCacheOverridden.getPartitions(NONEXISTENT_TOPIC), empty());
+		assertThat(metadataCacheOverridden.getPartitions(NONEXISTENT_TOPIC), nullValue());
 		assertThat(metadataCacheOverridden.getPartitions(EXISTING_TOPIC), hasSize(4));
 		assertThat(metadataCacheOverridden.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 0)));
 		assertThat(metadataCacheOverridden.getPartitions(EXISTING_TOPIC), hasItem(new Partition(EXISTING_TOPIC, 1)));
