@@ -61,7 +61,7 @@ In addition, the `<int-kafka:outbound-channel-adapter>` provides `topic` (`topic
 **Important. Since the last Milestone, we have introduced the `KafkaHeaders` interface with constants. The `messageKey` and `topic`
 default headers now require a `kafka_` prefix. When migrating from an earlier version, you need to specify
 `message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
-the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`. Or, of course, configure them on the adapter if you are using constant values.** 
+the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`. Or, of course, configure them on the adapter if you are using constant values.**
 
 Here is how kafka outbound channel adapter is configured:
 
@@ -315,9 +315,9 @@ Message Driven Channel Adapter:
 The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses the Kafka
 `SimpleConsumer`(https://cwiki.apache.org/confluence/display/KAFKA/0.8.0+SimpleConsumer+Example) internally. Although it is called
 'simple', the API and usage is not so simple. To simplify the configuration and provide a higher-level API based on
-Spring Integration concepts, the `KafkaMessageListenerContainer` has been introduced. It supports 'leader election' 
-with `org.springframework.integration.kafka.core.ConnectionFactory` and 'offset management' with 
-`org.springframework.integration.kafka.listener.OffsetManager` abstractions. The `DefaultConnectionFactory` requires 
+Spring Integration concepts, the `KafkaMessageListenerContainer` has been introduced. It supports 'leader election'
+with `org.springframework.integration.kafka.core.ConnectionFactory` and 'offset management' with
+`org.springframework.integration.kafka.listener.OffsetManager` abstractions. The `DefaultConnectionFactory` requires
 `org.springframework.integration.kafka.core.Configuration` for Kafka. `ZookeeperConfiguration` and
 `BrokerAddressListConfiguration` are presented as configuration options.
 
@@ -325,7 +325,7 @@ The `KafkaMessageDrivenChannelAdapter` implements `MessageProducer`, reads a
 `KafkaMessage` with its `Metadata` and sends it as a Spring Integration message to the provided `MessageChannel`. The
 `KafkaMessageListenerContainer` or `ConnectionFactory` and `topics` pair are required for the `MessageDrivenChannelAdapter`
 configuration. The typical Java based configuration is:
- 
+
 ```java
 @Bean
 public Configuration zkConfiguration() {
@@ -365,10 +365,11 @@ The xml configuration variant is typical too:
 ```
 
 Where `offsetManager` is a bean that is an implementation of `org.springframework.integration.kafka.listener.OffsetManager`.
-The default implementation is `MetadataStoreOffsetManager`, which is based on the `MetadataStore` to store and fetch 
+The default implementation is `MetadataStoreOffsetManager`, which is based on the `MetadataStore` to store and fetch
 `offsets` under the key based on the provided `Partition` and preconfigured `consumerId` option. The `KafkaMessageListenerContainer`
-takes care about `offsets` management during its internal process. 
- 
+takes care about `offsets` management during its internal process. Another implementation is `KafkaTopicOffsetManager`
+ to free application from any other external system like Redis for the `MetadataStoreOffsetManager`.
+
 The `KafkaMessageListenerContainer` can be configured with `concurrency` to run several internal
 `QueueingMessageListenerInvoker` concurrent fetch tasks.
 
