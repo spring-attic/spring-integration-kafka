@@ -17,6 +17,9 @@
 
 package org.springframework.integration.kafka.core;
 
+import kafka.cluster.Broker;
+
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -44,6 +47,12 @@ public class BrokerAddress {
 		this(host, DEFAULT_PORT);
 	}
 
+	public BrokerAddress(Broker broker) {
+		Assert.notNull(broker, "Broker cannot be null");
+		this.host = broker.host();
+		this.port = broker.port();
+	}
+
 	public static BrokerAddress fromAddress(String address) {
 		String[] split = address.split(":");
 		if (split.length == 0 || split.length > 2) {
@@ -55,7 +64,6 @@ public class BrokerAddress {
 		else {
 			return new BrokerAddress(split[0]);
 		}
-
 	}
 
 	public String getHost() {
@@ -82,14 +90,8 @@ public class BrokerAddress {
 
 		BrokerAddress brokerAddress = (BrokerAddress) o;
 
-		if (port != brokerAddress.port) {
-			return false;
-		}
-		if (!host.equals(brokerAddress.host)) {
-			return false;
-		}
+		return port == brokerAddress.port && host.equals(brokerAddress.host);
 
-		return true;
 	}
 
 	@Override

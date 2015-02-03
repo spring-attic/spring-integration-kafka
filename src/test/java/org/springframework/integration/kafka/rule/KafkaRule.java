@@ -34,6 +34,8 @@ public interface KafkaRule extends TestRule {
 
 	ZkClient getZkClient();
 
+	String getZookeeperConnectionString();
+
 	BrokerAddress[] getBrokerAddresses();
 
 	String getBrokersAsString();

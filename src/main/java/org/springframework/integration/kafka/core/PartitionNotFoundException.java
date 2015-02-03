@@ -15,29 +15,16 @@
  */
 
 
-package org.springframework.integration.kafka.util;
-
-import kafka.serializer.Decoder;
-import kafka.utils.Utils$;
-
-import org.springframework.integration.kafka.core.KafkaMessage;
+package org.springframework.integration.kafka.core;
 
 /**
  * @author Marius Bogoevici
  */
-public class MessageUtils {
+@SuppressWarnings("serial")
+public class PartitionNotFoundException extends ConsumerException {
 
-	public static <T> T decodeKey(KafkaMessage message, Decoder<T> decoder) {
-		if (!message.getMessage().hasKey()) {
-			return null;
-		}
-		return decoder.fromBytes(Utils$.MODULE$.readBytes(message.getMessage().key()));
-	}
-
-	public static <T> T decodePayload(KafkaMessage message, Decoder<T> decoder) {
-		if (message.getMessage().isNull()) {
-			return null;
-		}
-		return decoder.fromBytes(Utils$.MODULE$.readBytes(message.getMessage().payload()));
+	public PartitionNotFoundException(Partition partition) {
+		super(String.format("Partition [%s,%d] has no leader or has not been found",
+				partition.getTopic(), partition.getId()));
 	}
 }
