@@ -31,6 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import scala.collection.Map;
 import scala.collection.Seq;
 
+import org.springframework.integration.kafka.core.TopicNotFoundException;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryPolicy;
@@ -149,9 +150,8 @@ public class TopicUtils {
 			return topicMetadata;
 		}
 		catch (Exception e) {
-			String message = String.format("Cannot retrieve metadata for topic '%s'", topicName);
-			log.error(message, e);
-			throw new RuntimeException(message,e);
+			log.error(String.format("Cannot retrieve metadata for topic '%s'", topicName), e);
+			throw new TopicNotFoundException(topicName);
 		}
 	}
 }

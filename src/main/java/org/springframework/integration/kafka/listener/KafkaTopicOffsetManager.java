@@ -17,7 +17,6 @@
 
 package org.springframework.integration.kafka.listener;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;

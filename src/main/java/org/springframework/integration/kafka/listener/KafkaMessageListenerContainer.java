@@ -238,12 +238,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				catch (IOException e) {
 					log.error("Error while flushing:", e);
 				}
-				try {
-					this.offsetManager.close();
-				}
-				catch (IOException e) {
-					log.error("Error while closing:", e);
-				}
 				this.messageDispatcher.stop();
 			}
 		}

@@ -16,12 +16,16 @@
 
 package org.springframework.integration.kafka.listener;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import kafka.common.ErrorMapping;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.Connection;
 import org.springframework.integration.kafka.core.ConnectionFactory;
@@ -37,7 +41,9 @@ import org.springframework.util.Assert;
  *
  * @author Marius Bogoevici
  */
-public abstract class AbstractOffsetManager implements OffsetManager {
+public abstract class AbstractOffsetManager implements OffsetManager, DisposableBean {
+
+	private static final Log log = LogFactory.getLog(AbstractOffsetManager.class);
 
 	protected String consumerId = KafkaConsumerDefaults.GROUP_ID;
 
@@ -75,6 +81,21 @@ public abstract class AbstractOffsetManager implements OffsetManager {
 		this.referenceTimestamp = referenceTimestamp;
 	}
 
+	@Override
+	public void destroy() throws Exception {
+		try {
+			this.flush();
+		}
+		catch (IOException e) {
+			log.error("Error while flushing the OffsetManager", e);
+		}
+		try {
+			this.close();
+		}
+		catch (IOException e) {
+			log.error("Error while closing the OffsetManager", e);
+		}
+	}
 
 	/**
 	 * @see OffsetManager#updateOffset(Partition, long)
