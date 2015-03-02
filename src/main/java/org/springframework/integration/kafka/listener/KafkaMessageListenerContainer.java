@@ -46,9 +46,7 @@ import com.gs.collections.impl.block.function.checked.CheckedFunction;
 import com.gs.collections.impl.factory.Lists;
 import com.gs.collections.impl.factory.Multimaps;
 import com.gs.collections.impl.list.mutable.FastList;
-
 import kafka.common.ErrorMapping;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -105,7 +103,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private int queueSize = 1024;
 
-	private MessageListener messageListener;
+	private boolean autoCommitOffset = true;
+
+	private Object messageListener;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
@@ -142,12 +142,21 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.offsetManager = offsetManager;
 	}
 
-	public MessageListener getMessageListener() {
+	public Object getMessageListener() {
 		return messageListener;
 	}
 
-	public void setMessageListener(MessageListener messageListener) {
-		this.messageListener = messageListener;
+	public void setMessageListener(Object messageListener) {
+		if (autoCommitOffset) {
+			Assert.isTrue(messageListener instanceof MessageListener,
+					"When automatic offset committing is disabled, a "
+							+ MessageListener.class.getName() + " must be provided");
+		}
+		else {
+			Assert.isTrue(messageListener instanceof AcknowledgingMessageListener,
+					"When automatic offset committing is disabled, a "
+							+ AcknowledgingMessageListener.class.getName() + " must be provided");
+		} this.messageListener = messageListener;
 	}
 
 	public ErrorHandler getErrorHandler() {
@@ -218,6 +227,15 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.maxFetch = maxFetch;
 	}
 
+	/**
+	 * Controls whether the offsets should be automatically updated after a message has been processed.
+	 *
+	 * @param autoCommitOffset
+	 */
+	public void setAutoCommitOffset(boolean autoCommitOffset) {
+		this.autoCommitOffset = autoCommitOffset;
+	}
+
 	@Override
 	public boolean isAutoStartup() {
 		return autoStartup;
@@ -261,7 +279,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				ImmutableList<Partition> partitionsAsList = Lists.immutable.with(partitions);
 				this.fetchOffsets = new ConcurrentHashMap<Partition, Long>(partitionsAsList.toMap(passThru, getOffset));
 				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, errorHandler,
-						Arrays.asList(partitions), offsetManager, concurrency, queueSize);
+						Arrays.asList(partitions), offsetManager, concurrency, queueSize, autoCommitOffset);
 				this.messageDispatcher.start();
 				partitionsByBrokerMap.putAll(partitionsAsList.groupBy(getLeader));
 				if (fetchTaskExecutor == null) {
