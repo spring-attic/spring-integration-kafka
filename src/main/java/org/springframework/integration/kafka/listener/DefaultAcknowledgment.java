@@ -25,7 +25,7 @@ import org.springframework.integration.kafka.core.Partition;
  *
  * @author Marius Bogoevici
  */
-public class DefaultAcknowdledgment implements Acknowledgment {
+public class DefaultAcknowledgment implements Acknowledgment {
 
 	private final OffsetManager offsetManager;
 
@@ -33,13 +33,13 @@ public class DefaultAcknowdledgment implements Acknowledgment {
 
 	private final Long offset;
 
-	public DefaultAcknowdledgment(OffsetManager offsetManager, Partition partition, Long offset) {
+	public DefaultAcknowledgment(OffsetManager offsetManager, Partition partition, Long offset) {
 		this.offsetManager = offsetManager;
 		this.partition = partition;
 		this.offset = offset;
 	}
 
-	public DefaultAcknowdledgment(OffsetManager offsetManager, KafkaMessage message) {
+	public DefaultAcknowledgment(OffsetManager offsetManager, KafkaMessage message) {
 		this(offsetManager, message.getMetadata().getPartition(), message.getMetadata().getNextOffset());
 	}
 

@@ -124,7 +124,7 @@ class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 						messageListener.onMessage(message);
 					}
 					else {
-						acknowledgingMessageListener.onMessage(message, new DefaultAcknowdledgment(offsetManager, message));
+						acknowledgingMessageListener.onMessage(message, new DefaultAcknowledgment(offsetManager, message));
 					}
 				}
 				catch (Exception e) {
