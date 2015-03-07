@@ -57,28 +57,6 @@ public class SingleBrokerWithManualAckTests extends AbstractMessageListenerConta
 		return kafkaEmbeddedBrokerRule;
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testAcknowledgingMessageListenerRequiredIfNoAutoAckFail() throws Exception {
-		createTopic(TEST_TOPIC, 5, 1, 1);
-		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
-		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
-		for (int i = 0; i < 5; i++) {
-			if(i % 1 == 0) {
-				readPartitions.add(new Partition(TEST_TOPIC, i));
-			}
-		}
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer = new KafkaMessageListenerContainer(connectionFactory, readPartitions.toArray(new Partition[readPartitions.size()]));
-		kafkaMessageListenerContainer.setMaxFetch(100);
-		kafkaMessageListenerContainer.setConcurrency(2);
-		kafkaMessageListenerContainer.setAutoCommitOffset(false);
-
-		kafkaMessageListenerContainer.setMessageListener(new MessageListener() {
-			@Override
-			public void onMessage(KafkaMessage message) {
-				// do nothing
-			}
-		});
-	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testMessageListenerRequiredIfAutoAckFail() throws Exception {
@@ -94,12 +72,7 @@ public class SingleBrokerWithManualAckTests extends AbstractMessageListenerConta
 		kafkaMessageListenerContainer.setMaxFetch(100);
 		kafkaMessageListenerContainer.setConcurrency(2);
 
-		kafkaMessageListenerContainer.setMessageListener(new AcknowledgingMessageListener() {
-			@Override
-			public void onMessage(KafkaMessage message, Acknowledgment acknowledgment) {
-				// do nothing
-			}
-		});
+		kafkaMessageListenerContainer.setMessageListener(new Object());
 	}
 
 	@Test
@@ -120,7 +93,6 @@ public class SingleBrokerWithManualAckTests extends AbstractMessageListenerConta
 		SimpleMetadataStore metadataStore = new SimpleMetadataStore();
 		offsetManager.setMetadataStore(metadataStore);
 		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
-		kafkaMessageListenerContainer.setAutoCommitOffset(false);
 
 		int expectedMessageCount = 100;
 

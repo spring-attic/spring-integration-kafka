@@ -43,26 +43,23 @@ class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 
 	private final ErrorHandler errorHandler;
 
-	private final boolean autoCommitOffset;
-
 	public QueueingMessageListenerInvoker(int capacity, OffsetManager offsetManager, Object delegate,
-			ErrorHandler errorHandler, boolean autoCommitOffset) {
-		if (autoCommitOffset) {
-			Assert.isTrue(delegate instanceof MessageListener, "When automatic offset committing is disabled, a " + MessageListener.class.getName() + " must be provided");
+			ErrorHandler errorHandler) {
+		if (delegate instanceof MessageListener) {
 			this.messageListener = (MessageListener) delegate;
 			this.acknowledgingMessageListener = null;
 		}
-		else {
-			Assert.isTrue(delegate instanceof AcknowledgingMessageListener, "When automatic offset committing is disabled, a " + AcknowledgingMessageListener.class.getName() + " must be provided");
+		else if (delegate instanceof AcknowledgingMessageListener) {
 			this.acknowledgingMessageListener = (AcknowledgingMessageListener) delegate;
 			this.messageListener = null;
 		}
-		Assert.isTrue(delegate instanceof MessageListener || delegate instanceof AcknowledgingMessageListener,
-				"Message Listener must be a " + MessageListener.class.getName()
-						+ " or a " + AcknowledgingMessageListener.class.getName());
+		else {
+			// it's neither, an exception will be thrown
+			throw new IllegalArgumentException("Either a " + MessageListener.class.getName() + " or a "
+					+ AcknowledgingMessageListener.class.getName() + " must be provided");
+		}
 		this.offsetManager = offsetManager;
 		this.errorHandler = errorHandler;
-		this.autoCommitOffset = autoCommitOffset;
 		this.messages = new ArrayBlockingQueue<KafkaMessage>(capacity, true);
 	}
 
@@ -120,7 +117,7 @@ class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 			try {
 				KafkaMessage message = messages.take();
 				try {
-					if (autoCommitOffset) {
+					if (messageListener != null) {
 						messageListener.onMessage(message);
 					}
 					else {
@@ -133,7 +130,7 @@ class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 					}
 				}
 				finally {
-					if (autoCommitOffset) {
+					if (messageListener != null) {
 						offsetManager.updateOffset(message.getMetadata().getPartition(),
 								message.getMetadata().getNextOffset());
 					}

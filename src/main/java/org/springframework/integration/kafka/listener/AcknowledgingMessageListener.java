@@ -23,6 +23,7 @@ import org.springframework.integration.kafka.core.KafkaMessage;
  * can invoke when the message has been processed.
  *
  * @author Marius Bogoevici
+ * @since 1.0.1
  */
 public interface AcknowledgingMessageListener {
 

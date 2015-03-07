@@ -64,7 +64,7 @@ public abstract class AbstractOffsetManager implements OffsetManager, Disposable
 		Assert.notNull(connectionFactory, "A 'connectionFactory' can't be null");
 		Assert.notNull(initialOffsets, "An initialOffsets can't be null");
 		this.connectionFactory = connectionFactory;
-		this.initialOffsets = initialOffsets;
+		this.initialOffsets = new HashMap<Partition, Long>(initialOffsets);
 	}
 
 	public String getConsumerId() {

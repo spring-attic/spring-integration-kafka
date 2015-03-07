@@ -65,7 +65,6 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 
 	@Override
 	protected void onInit() {
-		this.messageListenerContainer.setAutoCommitOffset(autoCommitOffset);
 		this.messageListenerContainer.setMessageListener(autoCommitOffset ?
 				new AutoAcknowledgingChannelForwardingMessageListener()
 				: new AcknowledgingChannelForwardingMessageListener());
