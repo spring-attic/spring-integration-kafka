@@ -24,6 +24,7 @@ import org.springframework.integration.kafka.core.Partition;
  * {@link OffsetManager}.
  *
  * @author Marius Bogoevici
+ * @since 1.0.1
  */
 public class DefaultAcknowledgment implements Acknowledgment {
 

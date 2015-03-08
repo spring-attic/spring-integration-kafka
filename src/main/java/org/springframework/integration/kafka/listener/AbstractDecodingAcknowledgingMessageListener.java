@@ -30,6 +30,7 @@ import org.springframework.integration.kafka.util.MessageUtils;
  * implementations for both the key and the payload.
  *
  * @author Marius Bogoevici
+ * @since 1.0.1
  */
 public abstract class AbstractDecodingAcknowledgingMessageListener<K, P> implements AcknowledgingMessageListener {
 
