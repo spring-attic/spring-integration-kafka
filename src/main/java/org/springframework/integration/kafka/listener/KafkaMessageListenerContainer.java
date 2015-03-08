@@ -46,9 +46,7 @@ import com.gs.collections.impl.block.function.checked.CheckedFunction;
 import com.gs.collections.impl.factory.Lists;
 import com.gs.collections.impl.factory.Multimaps;
 import com.gs.collections.impl.list.mutable.FastList;
-
 import kafka.common.ErrorMapping;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -105,7 +103,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private int queueSize = 1024;
 
-	private MessageListener messageListener;
+	private Object messageListener;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
@@ -142,11 +140,16 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.offsetManager = offsetManager;
 	}
 
-	public MessageListener getMessageListener() {
+	public Object getMessageListener() {
 		return messageListener;
 	}
 
-	public void setMessageListener(MessageListener messageListener) {
+	public void setMessageListener(Object messageListener) {
+		Assert.isTrue
+				(messageListener instanceof MessageListener
+								|| messageListener instanceof AcknowledgingMessageListener,
+						"Either a " + MessageListener.class.getName() + " or a "
+								+ AcknowledgingMessageListener.class.getName() + " must be provided");
 		this.messageListener = messageListener;
 	}
 
