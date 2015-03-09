@@ -45,7 +45,7 @@ class QueueingMessageListenerInvoker implements Runnable, Lifecycle {
 		this.offsetManager = offsetManager;
 		this.delegate = delegate;
 		this.errorHandler = errorHandler;
-		this.messages = new ArrayBlockingQueue<KafkaMessage>(capacity, true);
+		this.messages = new ArrayBlockingQueue<KafkaMessage>(capacity);
 	}
 
 	/**
