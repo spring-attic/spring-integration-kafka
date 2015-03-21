@@ -192,12 +192,12 @@ public class KafkaMessageDrivenChannelAdapter extends MessageProducerSupport imp
 		headers.put(KafkaHeaders.NEXT_OFFSET, metadata.getNextOffset());
 
 		// pre-set the message id header if set to not generate
-		if (!generateMessageId) {
+		if (!this.generateMessageId) {
 			headers.put(MessageHeaders.ID, MessageHeaders.ID_VALUE_NONE);
 		}
 
 		// pre-set the timestamp header if set to not generate
-		if (!generateTimestamp) {
+		if (!this.generateTimestamp) {
 			headers.put(MessageHeaders.TIMESTAMP, -1L);
 		}
 
