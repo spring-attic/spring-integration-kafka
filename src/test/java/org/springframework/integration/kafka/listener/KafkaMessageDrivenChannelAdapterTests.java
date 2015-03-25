@@ -21,7 +21,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -30,8 +29,10 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.hamcrest.Matchers;
-import org.junit.Assert;
+import com.gs.collections.api.multimap.list.MutableListMultimap;
+import com.gs.collections.impl.list.mutable.FastList;
+import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
+import kafka.message.NoCompressionCodec$;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -46,12 +47,6 @@ import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.integration.metadata.SimpleMetadataStore;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-
-import com.gs.collections.api.multimap.list.MutableListMultimap;
-import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
-
-import kafka.message.NoCompressionCodec$;
 
 /**
  * @author Marius Bogoevici

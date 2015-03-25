@@ -34,8 +34,6 @@ import org.springframework.integration.kafka.core.KafkaMessage;
  */
 class QueueingMessageListenerInvoker implements Runnable {
 
-	private static Logger log = LogManager.getLogger(QueueingMessageListenerInvoker.class);
-
 	private BlockingQueue<KafkaMessage> messages;
 
 	private volatile boolean running = false;
