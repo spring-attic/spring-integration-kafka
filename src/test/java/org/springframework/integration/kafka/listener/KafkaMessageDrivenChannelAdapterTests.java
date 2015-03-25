@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -221,132 +222,6 @@ public class KafkaMessageDrivenChannelAdapterTests extends AbstractMessageListen
 		for (Partition readPartition : readPartitions) {
 			assertThat(metadataStore.get(offsetManager.generateKey(readPartition)), equalTo(String.valueOf(20)));
 		}
-	}
-
-	@Test
-	@SuppressWarnings("serial")
-	public void testShutdownWaitsForContainerToStop() throws Exception {
-		createTopic(TEST_TOPIC, 5, 1, 1);
-
-		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
-		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
-		for (int i = 0; i < 5; i++) {
-			readPartitions.add(new Partition(TEST_TOPIC, i));
-		}
-
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer =
-				new KafkaMessageListenerContainer(connectionFactory,
-						readPartitions.toArray(new Partition[readPartitions.size()]));
-		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory);
-		SimpleMetadataStore metadataStore = new SimpleMetadataStore();
-		offsetManager.setMetadataStore(metadataStore);
-		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
-		kafkaMessageListenerContainer.setMaxFetch(100);
-		kafkaMessageListenerContainer.setConcurrency(1);
-		kafkaMessageListenerContainer.setStopTimeout(3000);
-
-		int expectedMessageCount = 1;
-
-
-		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter =
-				new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
-
-		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
-
-		StringDecoder decoder = new StringDecoder();
-		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);
-		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(decoder);
-		kafkaMessageDrivenChannelAdapter.setBeanFactory(mock(BeanFactory.class));
-		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
-			@Override
-			public boolean send(Message<?> message) {
-				try {
-					Thread.sleep(2000L);
-				}
-				catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				return true;
-			}
-
-			@Override
-			public boolean send(Message<?> message, long timeout) {
-				return send(message);
-			}
-		});
-
-		kafkaMessageDrivenChannelAdapter.setAutoCommitOffset(false);
-		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
-		kafkaMessageDrivenChannelAdapter.start();
-
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(1, TEST_TOPIC));
-
-		long startTime = System.currentTimeMillis();
-		kafkaMessageDrivenChannelAdapter.stop();
-		Assert.assertThat(System.currentTimeMillis() - startTime, Matchers.greaterThan(1500L));
-	}
-
-	@Test
-	@SuppressWarnings("serial")
-	public void testShutdownTimesOut() throws Exception {
-		createTopic(TEST_TOPIC, 5, 1, 1);
-
-		ConnectionFactory connectionFactory = getKafkaBrokerConnectionFactory();
-		ArrayList<Partition> readPartitions = new ArrayList<Partition>();
-		for (int i = 0; i < 5; i++) {
-			readPartitions.add(new Partition(TEST_TOPIC, i));
-		}
-
-		final KafkaMessageListenerContainer kafkaMessageListenerContainer =
-				new KafkaMessageListenerContainer(connectionFactory,
-						readPartitions.toArray(new Partition[readPartitions.size()]));
-		MetadataStoreOffsetManager offsetManager = new MetadataStoreOffsetManager(connectionFactory);
-		SimpleMetadataStore metadataStore = new SimpleMetadataStore();
-		offsetManager.setMetadataStore(metadataStore);
-		kafkaMessageListenerContainer.setOffsetManager(offsetManager);
-		kafkaMessageListenerContainer.setMaxFetch(100);
-		kafkaMessageListenerContainer.setConcurrency(1);
-
-		int expectedMessageCount = 1;
-
-
-		KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter =
-				new KafkaMessageDrivenChannelAdapter(kafkaMessageListenerContainer);
-
-		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
-
-		StringDecoder decoder = new StringDecoder();
-		kafkaMessageDrivenChannelAdapter.setKeyDecoder(decoder);
-		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(decoder);
-		kafkaMessageDrivenChannelAdapter.setBeanFactory(mock(BeanFactory.class));
-		kafkaMessageDrivenChannelAdapter.setOutputChannel(new MessageChannel() {
-			@Override
-			public boolean send(Message<?> message) {
-				try {
-					Thread.sleep(2000L);
-				}
-				catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				return true;
-			}
-
-			@Override
-			public boolean send(Message<?> message, long timeout) {
-				return send(message);
-			}
-		});
-
-		kafkaMessageDrivenChannelAdapter.setAutoCommitOffset(false);
-		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
-		kafkaMessageDrivenChannelAdapter.start();
-
-		createStringProducer(NoCompressionCodec$.MODULE$.codec()).send(createMessages(1, TEST_TOPIC));
-
-		long startTime = System.currentTimeMillis();
-		kafkaMessageDrivenChannelAdapter.stop();
-		Assert.assertThat(System.currentTimeMillis() - startTime, Matchers.greaterThan(900L));
-		Assert.assertThat(System.currentTimeMillis() - startTime, Matchers.lessThan(1500L));
 	}
 
 }
