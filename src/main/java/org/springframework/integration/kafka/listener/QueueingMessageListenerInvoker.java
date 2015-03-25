@@ -21,9 +21,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-
 import org.springframework.integration.kafka.core.KafkaMessage;
 
 /**
@@ -107,8 +104,9 @@ class QueueingMessageListenerInvoker implements Runnable {
 			shutdownLatch.await(stopTimeout, TimeUnit.MILLISECONDS);
 		}
 		catch (InterruptedException e) {
-			e.printStackTrace();
+			Thread.currentThread().interrupt();
 		}
+		messages.clear();
 	}
 
 	/**
