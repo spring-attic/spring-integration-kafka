@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -285,6 +286,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, errorHandler,
 						Arrays.asList(partitions), offsetManager, concurrency, queueSize);
 				this.messageDispatcher.start();
+				partitionsByBrokerMap.clear();
 				partitionsByBrokerMap.putAll(partitionsAsList.groupBy(getLeader));
 				if (fetchTaskExecutor == null) {
 					fetchTaskExecutor = Executors.newFixedThreadPool(partitionsByBrokerMap.size());
