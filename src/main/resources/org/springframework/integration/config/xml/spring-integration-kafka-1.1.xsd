@@ -248,7 +248,7 @@
 													<xsd:annotation>
 														<xsd:documentation>
 															Regex pattern to match topic
-														</xsd:documentation>
+			                                           </xsd:documentation>
 													</xsd:annotation>
 												</xsd:attribute>
 												<xsd:attribute name="streams" type="xsd:string" use="required">
@@ -547,7 +547,7 @@
 					<xsd:documentation>
 						A 'org.springframework.integration.kafka.listener.KafkaMessageListenerContainer' bean reference.
 						Mutually exclusive with 'connection-factory', 'topics', 'offset-manager', 'error-handler',
-						'task-executor', 'concurrency', 'max-fetch', 'queue-size'.
+						'task-executor', 'concurrency', 'stop-timeout', 'max-fetch', 'queue-size'.
 					</xsd:documentation>
 					<xsd:appinfo>
 						<tool:annotation kind="ref">
@@ -632,6 +632,15 @@
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
+			<xsd:attribute name="stop-timeout" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						The maximum amount of time (in milliseconds) to wait for each 'org.springframework.integration.kafka.listener.QueueingMessageListenerInvoker' to finish before stopping.
+						Defaults to '1000'.
+						Mutually exclusive with 'listener-container'.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
 			<xsd:attribute name="max-fetch" type="xsd:string">
 				<xsd:annotation>
 					<xsd:documentation>
@@ -648,6 +657,48 @@
 						Increasing the value may increase throughput, but also increases the memory consumption.
 						Defaults to '1024'.
 						Mutually exclusive with 'listener-container'.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="auto-commit" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						When 'true', the adapter automatically commits the offset. When 'false', the adapter
+						inserts a 'kafka_acknowledgment` header allowing the user to manually commit the offset
+						using the `Acknowledgment.acknowledge()` method. Default 'true'.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="use-context-message-builder" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						When 'true', use the configured message builder from the integration application context
+						(bean:"messageBuilderFactory", which defaults to a "DefaultMessageBuilderFactory").
+						When 'false', use an internal, optimized, message creation algorithm. Default 'false'.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="set-id" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						When 'true', generate a unique ID header for each new message.
+						Default 'false'. Set to `true` if messages contain collections and you use a splitter
+						later in the flow, or a router where a message is sent to multiple recipients with
+						'apply-sequence' set to 'true'. In this cases, the message id is used as the correlation
+						id of the resulting messages. If 'use-context-message-builder' is 'true', this
+						setting may be ignored by the configured message builder factory (this is the case
+						for the 'DefaultMessageBuilderFactory', where an ID is always generated).
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="set-timestamp" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						When 'true', generate a TIMESTAMP header for each new message.
+						Default 'false' (TIMESTAMP header is set to -1).
+						If 'use-context-message-builder' is 'true', this
+						setting may be ignored by the configured message builder factory (this is the case
+						for the 'DefaultMessageBuilderFactory', where a timestamp header is always generated).
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
