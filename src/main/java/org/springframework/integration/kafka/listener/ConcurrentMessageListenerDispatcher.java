@@ -40,7 +40,7 @@ import org.springframework.util.Assert;
  *
  * @author Marius Bogoevici
  */
-class ConcurrentMessageListenerDispatcher implements Lifecycle {
+class ConcurrentMessageListenerDispatcher {
 
 	public static final CustomizableThreadFactory THREAD_FACTORY = new CustomizableThreadFactory("dispatcher-");
 
@@ -87,33 +87,26 @@ class ConcurrentMessageListenerDispatcher implements Lifecycle {
 		this.queueSize = queueSize;
 	}
 
-	@Override
 	public void start() {
 		synchronized (lifecycleMonitor) {
-			if (!isRunning()) {
+			if (!this.running) {
 				initializeAndStartDispatching();
 				this.running = true;
 			}
 		}
 	}
 
-	@Override
-	public void stop() {
+	public void stop(int stopTimeout) {
 		synchronized (lifecycleMonitor) {
-			if (isRunning()) {
+			if (this.running) {
 				this.running = false;
-				delegates.flip().keyBag().toSet().forEach(stopDelegateProcedure);
+				delegates.flip().keyBag().toSet().forEachWith(stopDelegateProcedure, stopTimeout);
 			}
 		}
 	}
 
-	@Override
-	public boolean isRunning() {
-		return running;
-	}
-
 	public void dispatch(KafkaMessage message) {
-		if (isRunning()) {
+		if (this.running) {
 			delegates.get(message.getMetadata().getPartition()).enqueue(message);
 		}
 	}
@@ -141,11 +134,11 @@ class ConcurrentMessageListenerDispatcher implements Lifecycle {
 	}
 
 	@SuppressWarnings("serial")
-	private static class StopDelegateProcedure implements Procedure<QueueingMessageListenerInvoker> {
+	private static class StopDelegateProcedure implements Procedure2<QueueingMessageListenerInvoker, Integer> {
 
 		@Override
-		public void value(QueueingMessageListenerInvoker delegate) {
-			delegate.stop();
+		public void value(QueueingMessageListenerInvoker delegate, Integer stopTimeout) {
+			delegate.stop(stopTimeout);
 		}
 
 	}
