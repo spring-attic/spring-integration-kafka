@@ -61,8 +61,6 @@ import org.springframework.integration.kafka.core.KafkaMessageBatch;
 import org.springframework.integration.kafka.core.KafkaTemplate;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.Result;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.policy.NeverRetryPolicy;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
