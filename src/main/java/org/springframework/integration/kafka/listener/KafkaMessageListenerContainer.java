@@ -31,23 +31,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.context.SmartLifecycle;
-import org.springframework.integration.kafka.core.BrokerAddress;
-import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.ConsumerException;
-import org.springframework.integration.kafka.core.FetchRequest;
-import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
-import org.springframework.integration.kafka.core.KafkaMessage;
-import org.springframework.integration.kafka.core.KafkaMessageBatch;
-import org.springframework.integration.kafka.core.KafkaTemplate;
-import org.springframework.integration.kafka.core.Partition;
-import org.springframework.integration.kafka.core.Result;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-
 import com.gs.collections.api.RichIterable;
 import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.block.predicate.Predicate;
@@ -63,13 +46,32 @@ import com.gs.collections.impl.block.function.checked.CheckedFunction;
 import com.gs.collections.impl.factory.Lists;
 import com.gs.collections.impl.factory.Multimaps;
 import com.gs.collections.impl.list.mutable.FastList;
-
 import kafka.common.ErrorMapping;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.springframework.context.SmartLifecycle;
+import org.springframework.integration.kafka.core.BrokerAddress;
+import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.ConsumerException;
+import org.springframework.integration.kafka.core.FetchRequest;
+import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
+import org.springframework.integration.kafka.core.KafkaMessage;
+import org.springframework.integration.kafka.core.KafkaMessageBatch;
+import org.springframework.integration.kafka.core.KafkaTemplate;
+import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.core.Result;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.policy.NeverRetryPolicy;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author Marius Bogoevici
  */
 public class KafkaMessageListenerContainer implements SmartLifecycle {
+
+	public static final int DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY = 5000;
 
 	private static final int DEFAULT_STOP_TIMEOUT = 1000;
 
@@ -406,14 +408,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							}
 						}
 						catch (ConsumerException e) {
-							// this is a broker error, and we cannot recover from it.
-							// Reset leaders and stop fetching data from this broker altogether
-							log.error(e);
 							resetLeaders(fetchPartitions.toImmutable());
-							if (wasInterrupted) {
-								Thread.currentThread().interrupt();
-							}
-							return;
 						}
 					} while (!hasErrors && isRunning() && !partitionsWithRemainingData.isEmpty());
 				}
@@ -452,13 +447,33 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 			@Override
 			public void run() {
-				FastList<Partition> partitionsAsList = FastList.newList(partitionsToReset);
-				FastList<String> topics = partitionsAsList.collect(new PartitionToTopicFunction()).distinct();
-				kafkaTemplate.getConnectionFactory().refreshMetadata(topics);
-				Map<Partition, BrokerAddress> leaders = kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset);
-				synchronized (partitionsByBrokerMap) {
-					forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
-					partitionsByBrokerMap.notifyAll();
+				// fetch can complete successfully or unsuccessfully
+				boolean fetchCompleted = false;
+				while (!fetchCompleted && isRunning()) {
+					try {
+						FastList<Partition> partitionsAsList = FastList.newList(partitionsToReset);
+						FastList<String> topics = partitionsAsList.collect(new PartitionToTopicFunction()).distinct();
+						kafkaTemplate.getConnectionFactory().refreshMetadata(topics);
+						Map<Partition, BrokerAddress> leaders = kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset);
+						synchronized (partitionsByBrokerMap) {
+							forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
+							partitionsByBrokerMap.notifyAll();
+						}
+						System.out.println("Partitions fetched successfully");
+						fetchCompleted = true;
+					}
+					catch (Exception e) {
+						if (isRunning()) {
+							try {
+								Thread.sleep(DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY);
+							}
+							catch (InterruptedException e1) {
+								Thread.currentThread().interrupt();
+								log.error("Interrupted after refresh leaders failure");
+								fetchCompleted = true;
+							}
+						}
+					}
 				}
 			}
 
