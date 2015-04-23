@@ -46,6 +46,7 @@ import com.gs.collections.impl.block.function.checked.CheckedFunction;
 import com.gs.collections.impl.factory.Lists;
 import com.gs.collections.impl.factory.Multimaps;
 import com.gs.collections.impl.list.mutable.FastList;
+import com.gs.collections.impl.utility.Iterate;
 import kafka.common.ErrorMapping;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -457,7 +458,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
 							partitionsByBrokerMap.notifyAll();
 						}
-						System.out.println("Partitions fetched successfully");
 						fetchCompleted = true;
 					}
 					catch (Exception e) {
@@ -467,7 +467,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							}
 							catch (InterruptedException e1) {
 								Thread.currentThread().interrupt();
-								log.error("Interrupted after refresh leaders failure");
+								log.error("Interrupted after refresh leaders failure for: " + Iterate.makeString(partitionsToReset,","));
 								fetchCompleted = true;
 							}
 						}
