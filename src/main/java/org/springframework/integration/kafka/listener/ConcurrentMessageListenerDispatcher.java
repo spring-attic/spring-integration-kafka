@@ -30,6 +30,8 @@ import org.springframework.util.Assert;
 import com.gs.collections.api.block.procedure.Procedure2;
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Dispatches {@link KafkaMessage}s to a {@link MessageListener}. Messages may be
@@ -41,6 +43,8 @@ import com.gs.collections.impl.factory.Maps;
 class ConcurrentMessageListenerDispatcher {
 
 	public static final CustomizableThreadFactory THREAD_FACTORY = new CustomizableThreadFactory("dispatcher-");
+
+	private static final Log log = LogFactory.getLog(ConcurrentMessageListenerDispatcher.class);
 
 	private static final StartDelegateProcedure startDelegateProcedure = new StartDelegateProcedure();
 
@@ -100,6 +104,8 @@ class ConcurrentMessageListenerDispatcher {
 				this.running = false;
 				delegates.flip().keyBag().toSet().forEachWith(stopDelegateProcedure, stopTimeout);
 			}
+			this.taskExecutor = null;
+			this.delegates = null;
 		}
 	}
 
@@ -136,7 +142,14 @@ class ConcurrentMessageListenerDispatcher {
 
 		@Override
 		public void value(QueueingMessageListenerInvoker delegate, Integer stopTimeout) {
-			delegate.stop(stopTimeout);
+			try {
+				delegate.stop(stopTimeout);
+			} catch (Exception e) {
+				// ignore the exception, but log it
+				if(log.isInfoEnabled()) {
+					log.info("Exception thrown while stopping dispatcher:", e);
+				}
+			}
 		}
 
 	}
