@@ -53,12 +53,12 @@ Here is an example.
 This will create a message with a payload and two header entries as key/value pairs - one for
 the `message key` and another for the `topic` that this message will be sent to.
 
-In addition, the `<int-kafka:outbound-channel-adapter>` provides `topic` (`topic-expression`) and
- `message-key` (`message-key-expression`) mutually exclusive optional pairs of attributes to allow the specification of
- `topic` and/or `message-key` as static values on the adapter, or to dynamically evaluate their values at runtime against
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the mutually exclusive pairs of attributes `topic`/`topic-expression`,
+ `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of
+ `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against
  the request message.
 
-**Important. Since the last Milestone, we have introduced the `KafkaHeaders` interface with constants. The `messageKey` and `topic`
+**Important. The `KafkaHeaders` interface contains constants used for interacting with headers. The `messageKey` and `topic`
 default headers now require a `kafka_` prefix. When migrating from an earlier version, you need to specify
 `message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
 the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`. Or, of course, configure them on the adapter if you are using constant values.**
@@ -93,16 +93,15 @@ Producer context is at the heart of the kafka outbound adapter. Here is an examp
                        key-class-type="java.lang.String"
                        value-class-type="java.lang.String"
                        topic="test1"
-                       value-encoder="kafkaEncoder"
-                       key-encoder="kafkaEncoder"
-                       compression-codec="default"/>
+                       value-serializer="kafkaSerializer"
+                       key-serializer="kafkaSerializer"
+                       compression-type="none"/>
             <int-kafka:producer-configuration broker-list="localhost:9092"
                        topic="test2"
-                       compression-codec="default"
-                       async="true"/>
+                       compression-type="none"/>
             <int-kafka:producer-configuration broker-list="localhost:9092"
                         topic="regextopic.*"
-                        compression-codec="default"/>
+                        compression-type="gzip"/>
         </int-kafka:producer-configurations>
     </int-kafka:producer-context>
 ```
@@ -115,30 +114,27 @@ test1 and another for test2. Each producer can take the following:
 
 	broker-list				List of comma separated brokers that this producer connects to
 	topic					Topic name or Java regex pattern of topic name
-	compression-codec		Compression method to be used. Default is no compression. Supported compression codec are gzip and snappy.
-							Anything else would result in no compression
-	value-encoder			Serializer to be used for encoding messages.
-	key-encoder				Serializer to be used for encoding the partition key
+	compression-type		Compression method to be used. Supported compression types are `none`, `gzip` and `snappy`. Default is `none`.
+	value-serializer			Serializer to be used for encoding messages.
+	key-serializer				Serializer to be used for encoding the partition key
 	key-class-type			Type of the key class. This will be ignored if no key-encoder is provided
 	value-class-type		Type of the value class. This will be ignored if no value-encoder is provided.
 	partitioner				Custom implementation of a Kafka Partitioner interface.
-	async					True/False - default is false. Setting this to true would make the Kafka producer to use
-							an async producer
-	batch-num-messages		Number of messages to batch at the producer. If async is false, then this has no effect.
+	batch-bytes		Number of bytes to batch at the producer. If async is false, then this has no effect.
 
-The value-encoder and key-encoder are referring to other spring beans. They are essentially implementations of an
-interface provided by Kafka, the Encoder interface. Similarly, partitioner also refers a Spring bean which implements
-the Kafka Partitioner interface.
-
+The `value-serializer` and `key-serializer` are referring to other spring beans. They are essentially implementations of an
+interface provided by Kafka, the Serializer interface.
 Here is an example of configuring an encoder.
 
 ```xml
-	<bean id="kafkaEncoder" class="org.springframework.integration.kafka.serializer.avro.AvroSpecificDatumBackedKafkaEncoder">
-		<constructor-arg value="com.company.AvroGeneratedSpecificRecord" />
-	</bean>
+	<bean id="kafkaSerializer" class="com.acme.KryoSerializer"/>
 ```
 
-Spring Integration Kafaka adapter provides Apache Avro backed encoders out of the box, as this is a popular choice
+Spring Integration Kafka allows the reuse of pre-0.8.2 `Encoder`s. To do so, the attributes `key-encoder` and `value-encoder`
+can be used instead of `key-serializer` and `value-serializer` respectively. For either the key or
+ value, you can configure either a `Serializer` or an `Encoder` but not both.
+
+Spring Integration Kafka provides Apache Avro backed encoders out of the box, as this is a popular choice
 for serialization in the big data spectrum. If no encoders are specified as beans, the default encoders provided
 by Kafka will be used. On that not, if the encoder is configured only for the message and not for the key, the same encoder
 will be used for both. These are standard Kafka behaviors. Spring Integration Kafka adapter does simply enforce those behaviours.
@@ -147,7 +143,7 @@ When default encoders are used, there are two ways a message can be sent.
 Either, the sender of the message to the channel
 can simply put byte arrays as message key and payload. Or, the key and value can be sent as Java Serializable object.
 In the latter case, the Kafka adapter will automatically convert them to byte arrays before sending to Kafka broker.
-If the encoders are default and the objets sent are not serializalbe, then that would cause an error. By providing explicit encoders
+If the encoders are default and the objects sent are not serializable, then that would cause an error. By providing explicit encoders
 it is totally up to the developer to configure how the objects are serialized. In that case, the objects may or may not implement
 the Serializable interface.
 
@@ -189,11 +185,11 @@ These properties will be applied to all Producer Configurations within the produ
 ```xml
     <bean id="producerProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
         <property name="properties">
-            <props>
-                <prop key="topic.metadata.refresh.interval.ms">3600000</prop>
-                <prop key="message.send.max.retries">5</prop>
-                <prop key="send.buffer.bytes">5242880</prop>
-            </props>
+          <props>
+            <prop key="topic.metadata.refresh.interval.ms">3600000</prop>
+                    <prop key="message.send.max.retries">5</prop>
+                    <prop key="send.buffer.bytes">5242880</prop>
+          </props>
         </property>
     </bean>
 
