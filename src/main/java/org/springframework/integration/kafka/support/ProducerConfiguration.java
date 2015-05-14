@@ -90,22 +90,28 @@ public class ProducerConfiguration<K, V> {
 
 	private K convertKeyIfNecessary(Object messageKey) {
 		if (messageKey != null) {
-			if (getProducerMetadata().getKeyClassType().isAssignableFrom(messageKey.getClass())) {
+			if (getProducerMetadata().getKeyClassType().isAssignableFrom(
+					messageKey.getClass())) {
 				return getProducerMetadata().getKeyClassType().cast(messageKey);
 			}
-			return conversionService.convert(messageKey, producerMetadata.getKeyClassType());
-		} else {
+			return conversionService.convert(messageKey,
+					producerMetadata.getKeyClassType());
+		}
+		else {
 			return null;
 		}
 	}
 
 	private V convertPayloadIfNecessary(Object messagePayload) {
 		if (messagePayload != null) {
-			if (getProducerMetadata().getKeyClassType().isAssignableFrom(messagePayload.getClass())) {
+			if (getProducerMetadata().getKeyClassType().isAssignableFrom(
+					messagePayload.getClass())) {
 				return getProducerMetadata().getValueClassType().cast(messagePayload);
 			}
-			return conversionService.convert(messagePayload, producerMetadata.getValueClassType());
-		} else {
+			return conversionService.convert(messagePayload,
+					producerMetadata.getValueClassType());
+		}
+		else {
 			return null;
 		}
 	}

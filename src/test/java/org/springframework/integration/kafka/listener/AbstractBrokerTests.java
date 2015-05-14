@@ -179,11 +179,13 @@ public abstract class AbstractBrokerTests {
 			for (ProducerRecord<K, V> record : records) {
 					lastFuture = producer.send(record);
 			}
+			// only block if there is at least one message to be sent
 			if (lastFuture != null) {
 				try {
+					// block until the last message has been sent, so we make this deterministic
 					lastFuture.get();
 				} catch (InterruptedException e) {
-					// not being able to confirm the
+					// not being able to confirm that all messages have been sent, fail the test
 					throw new RuntimeException(e);
 				} catch (ExecutionException e) {
 					throw new RuntimeException(e);

@@ -71,7 +71,7 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 	}
 
 	private void parseProducerConfigurations(Element topics, ParserContext parserContext,
-																					 BeanDefinitionBuilder builder, Element parentElem) {
+			BeanDefinitionBuilder builder, Element parentElem) {
 		Map<String, BeanMetadataElement> producerConfigurationsMap = new ManagedMap<String, BeanMetadataElement>();
 
 		for (Element producerConfiguration : DomUtils.getChildElementsByTagName(topics, "producer-configuration")) {
@@ -85,7 +85,7 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 			String keySerializer = producerConfiguration.getAttribute("key-serializer");
 			String keyEncoder = producerConfiguration.getAttribute("key-encoder");
 			Assert.isTrue((StringUtils.hasText(keySerializer) ^ StringUtils.hasText(keyEncoder)),
-					"Exactly one of 'key-serializer' or 'key-encoder' can be specified");
+					"Exactly one of 'key-serializer' or 'key-encoder' must be specified");
 			if (StringUtils.hasText(keyEncoder)) {
 				if (log.isWarnEnabled()) {
 					log.warn("'key-encoder' is a deprecated option, use 'key-serializer' instead.");
@@ -106,7 +106,8 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 				if (log.isWarnEnabled()) {
 					log.warn("'value-encoder' is a deprecated option, use 'value-serializer' instead.");
 				}
-				BeanDefinitionBuilder encoderAdaptingSerializerBean = BeanDefinitionBuilder.genericBeanDefinition(EncoderAdaptingSerializer.class);
+				BeanDefinitionBuilder encoderAdaptingSerializerBean =
+						BeanDefinitionBuilder.genericBeanDefinition(EncoderAdaptingSerializer.class);
 				encoderAdaptingSerializerBean.addConstructorArgReference(valueEncoder);
 				producerMetadataBuilder.addConstructorArgValue(encoderAdaptingSerializerBean.getBeanDefinition());
 			}
@@ -118,7 +119,8 @@ public class KafkaProducerContextParser extends AbstractSimpleBeanDefinitionPars
 					"partitioner");
 			if (StringUtils.hasText(producerConfiguration.getAttribute("partitioner"))) {
 				if (log.isWarnEnabled()) {
-					log.warn("'partitioner' is a deprecated option. Use the 'kafka_partitionId' message header or the partition argument in the send() or convertAndSend() methods");
+					log.warn("'partitioner' is a deprecated option. Use the 'kafka_partitionId' message header or " +
+							"the partition argument in the send() or convertAndSend() methods");
 				}
 			}
 			IntegrationNamespaceUtils.setValueIfAttributeDefined(producerMetadataBuilder, producerConfiguration,

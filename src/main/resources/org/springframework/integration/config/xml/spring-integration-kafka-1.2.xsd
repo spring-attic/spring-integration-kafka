@@ -109,7 +109,7 @@
 										<xsd:annotation>
 											<xsd:appinfo>
 												<xsd:documentation>
-													Class type used for the value
+													Class type used for the key
 												</xsd:documentation>
 												<tool:annotation kind="direct">
 													<tool:expected-type type="java.lang.Class"/>
@@ -133,7 +133,7 @@
 										<xsd:annotation>
 											<xsd:appinfo>
 												<xsd:documentation>
-													Custom implementation of a Kafka Encoder for encoding message values.
+													Custom implementation of a Kafka Encoder for encoding message values. This option is deprecated, 'value-serializer' is the recommended option.
 												</xsd:documentation>
 												<tool:annotation kind="ref">
 													<tool:expected-type type="kafka.serializer.Encoder"/>
@@ -145,7 +145,7 @@
 										<xsd:annotation>
 											<xsd:appinfo>
 												<xsd:documentation>
-													Custom implementation of a Kafka Encoder for encoding message values.
+													Custom implementation of a Kafka Serializer for message values.
 												</xsd:documentation>
 												<tool:annotation kind="ref">
 													<tool:expected-type type="org.apache.kafka.common.serialization.Serializer"/>
@@ -169,7 +169,7 @@
 										<xsd:annotation>
 											<xsd:appinfo>
 												<xsd:documentation>
-													Custom implementation of a Kafka Encoder for encoding message keys.
+													Custom implementation of a Kafka Serializer for message keys.
 												</xsd:documentation>
 												<tool:annotation kind="ref">
 													<tool:expected-type type="kafka.serializer.Encoder"/>

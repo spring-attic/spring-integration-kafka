@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -30,8 +33,6 @@ import org.springframework.util.Assert;
 import com.gs.collections.api.block.procedure.Procedure2;
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Dispatches {@link KafkaMessage}s to a {@link MessageListener}. Messages may be
@@ -71,7 +72,7 @@ class ConcurrentMessageListenerDispatcher {
 	private Executor taskExecutor;
 
 	public ConcurrentMessageListenerDispatcher(Object delegateListener, ErrorHandler errorHandler,
-			Collection<Partition> partitions, OffsetManager offsetManager, int consumers, int queueSize) {
+			Collection<Partition> partitions, OffsetManager offsetManager, int consumers, int queueSize, Executor taskExecutor) {
 		Assert.isTrue
 				(delegateListener instanceof MessageListener
 								|| delegateListener instanceof AcknowledgingMessageListener,
@@ -87,6 +88,7 @@ class ConcurrentMessageListenerDispatcher {
 		this.offsetManager = offsetManager;
 		this.consumers = consumers;
 		this.queueSize = queueSize;
+		this.taskExecutor = taskExecutor;
 	}
 
 	public void start() {
@@ -104,7 +106,6 @@ class ConcurrentMessageListenerDispatcher {
 				this.running = false;
 				delegates.flip().keyBag().toSet().forEachWith(stopDelegateProcedure, stopTimeout);
 			}
-			this.taskExecutor = null;
 			this.delegates = null;
 		}
 	}
