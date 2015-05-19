@@ -5,7 +5,7 @@ Welcome to the *Spring Integration Kafka adapter*. Apache Kafka is a distributed
 data at constant time. For more information on Kafka and its design goals, please see [Kafka main page](http://kafka.apache.org/)
 
 Spring Integration Kafka adapters are built for Kafka 0.8 and since 0.8 is not backward compatible with any previous versions, Spring Integration will not
-support any Kafka versions prior to 0.8. As of this writing, Kafka 0.8 is still WIP, however a beta release is available [here](http://http://kafka.apache.org/downloads.html).
+support any Kafka versions prior to 0.8. As of this writing, Kafka 0.8 is still WIP, however a beta release is available [here](http://kafka.apache.org/downloads.html).
 
 Checking out and building
 -----------------------------
