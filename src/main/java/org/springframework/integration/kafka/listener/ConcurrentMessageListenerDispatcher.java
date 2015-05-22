@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import com.gs.collections.api.block.procedure.Procedure;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -65,11 +66,11 @@ class ConcurrentMessageListenerDispatcher {
 
 	private final int queueSize;
 
+	private final Executor taskExecutor;
+
 	private volatile boolean running;
 
 	private MutableMap<Partition, QueueingMessageListenerInvoker> delegates;
-
-	private Executor taskExecutor;
 
 	public ConcurrentMessageListenerDispatcher(Object delegateListener, ErrorHandler errorHandler,
 			Collection<Partition> partitions, OffsetManager offsetManager, int consumers, int queueSize, Executor taskExecutor) {
@@ -120,9 +121,9 @@ class ConcurrentMessageListenerDispatcher {
 		// allocate delegate instances index them
 		List<QueueingMessageListenerInvoker> delegateList = new ArrayList<QueueingMessageListenerInvoker>(consumers);
 		for (int i = 0; i < consumers; i++) {
-			QueueingMessageListenerInvoker blockingQueueMessageListenerInvoker =
-					new QueueingMessageListenerInvoker(queueSize, offsetManager, delegateListener, errorHandler);
-			delegateList.add(blockingQueueMessageListenerInvoker);
+			QueueingMessageListenerInvoker queueingMessageListenerInvoker =
+					new QueueingMessageListenerInvoker(queueSize, offsetManager, delegateListener, errorHandler, taskExecutor);
+			delegateList.add(queueingMessageListenerInvoker);
 		}
 		// evenly distribute partitions across delegates
 		delegates = Maps.mutable.of();
@@ -130,12 +131,12 @@ class ConcurrentMessageListenerDispatcher {
 		for (Partition partition : partitions) {
 			delegates.put(partition, delegateList.get((i++) % consumers));
 		}
-		// initialize task executor
-		if (this.taskExecutor == null) {
-			this.taskExecutor = Executors.newFixedThreadPool(consumers, THREAD_FACTORY);
-		}
+//		// initialize task executor
+//		if (this.taskExecutor == null) {
+//			this.taskExecutor = Executors.newFixedThreadPool(consumers, THREAD_FACTORY);
+//		}
 		// start dispatchers
-		delegates.flip().keyBag().toSet().forEachWith(startDelegateProcedure, taskExecutor);
+		delegates.flip().keyBag().toSet().forEach(startDelegateProcedure);
 	}
 
 	@SuppressWarnings("serial")
@@ -156,12 +157,11 @@ class ConcurrentMessageListenerDispatcher {
 	}
 
 	@SuppressWarnings("serial")
-	private static class StartDelegateProcedure implements Procedure2<QueueingMessageListenerInvoker, Executor> {
+	private static class StartDelegateProcedure implements Procedure<QueueingMessageListenerInvoker> {
 
 		@Override
-		public void value(QueueingMessageListenerInvoker delegate, Executor executor) {
+		public void value(QueueingMessageListenerInvoker delegate) {
 			delegate.start();
-			executor.execute(delegate);
 		}
 
 	}

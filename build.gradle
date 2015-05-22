@@ -8,6 +8,7 @@ apply plugin: 'idea'
 group = 'org.springframework.integration'
 
 repositories {
+        mavenLocal()
 	maven {
 		url 'https://repository.apache.org/content/groups/public'
 	}
@@ -23,6 +24,7 @@ ext {
 	kafkaVersion = '0.8.2.1'
 	metricsVersion = '2.2.0'
 	scalaVersion = '2.10'
+	reactor2Version = '2.0.2.RELEASE'
 	springIntegrationVersion = '4.1.3.RELEASE'
 
 	idPrefix = 'kafka'
@@ -57,6 +59,7 @@ dependencies {
 	compile "org.apache.avro:avro:$avroVersion"
 	compile "org.apache.avro:avro-compiler:$avroVersion"
 	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+	compile "io.projectreactor:reactor-core:$reactor2Version"
 
 	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
 	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
