@@ -58,6 +58,7 @@ dependencies {
 	compile "org.apache.avro:avro:$avroVersion"
 	compile "org.apache.avro:avro-compiler:$avroVersion"
 	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+	compile "io.projectreactor:reactor-core:$reactor2Version"
 
 	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
 	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
