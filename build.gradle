@@ -23,6 +23,7 @@ ext {
 	kafkaVersion = '0.8.2.1'
 	metricsVersion = '2.2.0'
 	scalaVersion = '2.10'
+	reactor2Version = '2.0.3.RELEASE'
 	springIntegrationVersion = '4.1.4.RELEASE'
 
 	idPrefix = 'kafka'
@@ -139,12 +140,12 @@ task schemaZip(type: Zip) {
 	def shortName = idPrefix.replaceFirst("${idPrefix}-", '')
 
 	project.sourceSets.main.resources.find {
-		it.path.endsWith("META-INF${File.separator}spring.schemas")
+		it.path.endsWith('META-INF/spring.schemas')
 	}?.withInputStream { schemas.load(it) }
 
 	for (def key : schemas.keySet()) {
 		File xsdFile = project.sourceSets.main.resources.find {
-			it.path.endsWith(schemas.get(key).replace('/',"${File.separator}"))
+			it.path.endsWith(schemas.get(key))
 		}
 		assert xsdFile != null
 		into("integration/${shortName}") {
