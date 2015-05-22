@@ -60,6 +60,7 @@ public class ProducerFactoryBean<K, V> implements FactoryBean<Producer<K, V>> {
 		props.putAll(producerProperties);
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);
 		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerMetadata.getCompressionType().name());
+		props.put(ProducerConfig.BATCH_SIZE_CONFIG,producerMetadata.getBatchBytes());
 		LOGGER.info("Using producer properties => " + props);
 		return new KafkaProducer<>(props,
 				producerMetadata.getKeySerializer(),
