@@ -139,12 +139,12 @@ task schemaZip(type: Zip) {
 	def shortName = idPrefix.replaceFirst("${idPrefix}-", '')
 
 	project.sourceSets.main.resources.find {
-		it.path.endsWith('META-INF/spring.schemas')
+		it.path.endsWith("META-INF${File.separator}spring.schemas")
 	}?.withInputStream { schemas.load(it) }
 
 	for (def key : schemas.keySet()) {
 		File xsdFile = project.sourceSets.main.resources.find {
-			it.path.endsWith(schemas.get(key))
+			it.path.endsWith(schemas.get(key).replace('/',"${File.separator}"))
 		}
 		assert xsdFile != null
 		into("integration/${shortName}") {
