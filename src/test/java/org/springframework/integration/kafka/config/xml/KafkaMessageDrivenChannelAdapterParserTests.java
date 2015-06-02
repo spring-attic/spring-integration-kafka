@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -49,6 +50,7 @@ import org.springframework.integration.kafka.listener.OffsetManager;
 import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -135,7 +137,7 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 			public void doWith(Method method) throws IllegalArgumentException, IllegalAccessException {
 				method.setAccessible(true);
 				toMessage.set(method);
-;			}
+			}
 		},
 		new MethodFilter() {
 
@@ -167,9 +169,7 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 
 		m = getAMessageFrom(this.withOverrideIdTS, toMessage.get());
 		assertNotNull(m.getHeaders().getId());
-//TODO org.springframework.messaging.support.MessageBuilder doesn't support simple way
-// to provide TIMESTAMP generation option.
-//		assertNotNull(m.getHeaders().getTimestamp());
+		assertNotNull(m.getHeaders().getTimestamp());
 		assertNull(m.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT));
 		assertRest(m);
 	}
