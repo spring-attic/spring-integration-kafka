@@ -1,17 +1,15 @@
 Spring Integration Kafka Adapter
 =================================================
 
-Welcome to the *Spring Integration Kafka adapter*. Apache Kafka is a distributed publish-subscribe messaging system that is designed for handling terra bytes of high throughput
-data at constant time. For more information on Kafka and its design goals, please see [Kafka main page](http://kafka.apache.org/)
-
-Spring Integration Kafka adapters are built for Kafka 0.8 and since 0.8 is not backward compatible with any previous versions, Spring Integration will not
-support any Kafka versions prior to 0.8. As of this writing, Kafka 0.8 is still WIP, however a beta release is available [here](http://kafka.apache.org/downloads.html).
+Welcome to the *Spring Integration Kafka adapter*. Apache Kafka is a distributed publish-subscribe messaging system
+that is designed for high throughput (terabytes of data) and low latency (miliseconds). For more information on Kafka
+and its design goals, see [Kafka main page](http://kafka.apache.org/).
 
 Checking out and building
 -----------------------------
 
-Currently Spring Integration Kafka adapter is built against kafka 0.8 that is backed by
-Scala 2.9.2.
+Currently Spring Integration Kafka adapter is built against Kafka 0.8.2.1 that is backed by
+Scala 2.10.4.
 
 In order to build the project:
 
@@ -21,23 +19,27 @@ In order to install this into your local maven cache:
 
 	./gradlew install
 
-Spring Integration Kafka project currently supports the following two components. Please keep in mind that
+Spring Integration Kafka project currently supports the following components. Please keep in mind that
 this is very early stage in development and do not yet fully make use of all the features that Kafka provides.
 
 * Outbound Channel Adapter
-* Inbound Channel Adapter based on the High level consumer API
 * Message Driven Channel Adapter based on the simple consumer API
+* Inbound Channel Adapter based on the High level consumer API
 
 Outbound Channel Adapter:
 --------------------------------------------
 
-The Outbound channel adapter is used to send messages to Kafka. Messages are read from a Spring Integration channel. One can specify this channel in the application context and then wire
-this in the application where messages are sent to kafka.
+The Outbound channel adapter is used to publish messages from a Spring Integration channel to Kafka. The channel is
+defined in the application context and then wired in the application that sends messages to Kafka. After that, sender
+applications can publish to Kafka via Spring Integration messages, which are internally converted to Kafka messages by
+the outbound channel adapter, as follows: the payload of the Spring Integration message will be used to populate the
+payload of the Kafka message, and the `kafka_messageKey` header of the Spring Integration message will be used to
+populate the key of the Kafka message.
 
-Once a channel is configured, then messages can be sent to Kafka through this channel. Spring Integration messages are sent to the adapter and they will
-internally be converted to Kafka messages before sending. You can specify a `message key` and the `topic` as
-header values and the message to send as the payload.
-Here is an example.
+The target topic and partition for publishing the message can be customized through the `kafka_topic` and `kafka_partitionId`
+headers, respectively.
+
+Here's an example for sending a message with an arbitrary payload and the String `"key"` as value on the `test` topic.
 
 ```java
     final MessageChannel channel = ctx.getBean("inputToKafka", MessageChannel.class);
@@ -50,16 +52,15 @@ Here is an example.
             );
 ```
 
-This will create a message with a payload and two header entries as key/value pairs - one for
-the `message key` and another for the `topic` that this message will be sent to.
-
-In addition, the `<int-kafka:outbound-channel-adapter>` provides the mutually exclusive pairs of attributes `topic`/`topic-expression`,
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and
+target partition by applying SpEL expressions on the outbound message. To that end, it supports the mutually exclusive
+pairs of attributes `topic`/`topic-expression`,
  `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of
- `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against
- the request message.
+ `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their
+ values at runtime against the request message.
 
 **Important. The `KafkaHeaders` interface contains constants used for interacting with headers. The `messageKey` and `topic`
-default headers now require a `kafka_` prefix. When migrating from an earlier version, you need to specify
+default headers now require a `kafka_` prefix. When migrating from an earlier version that used the old headers, you need to specify
 `message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
 the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`. Or, of course, configure them on the adapter if you are using constant values.**
 
@@ -76,15 +77,14 @@ Here is how kafka outbound channel adapter is configured:
     </int-kafka:outbound-channel-adapter>
 ```
 
-The key aspect in this configuration is the producer-context-ref. Producer context contains all the producer configuration for all the topics that this adapter is expected to handle.
-A channel in which messages are arriving is configured with the adapter and therefore
-any message sent to that channel will be handled by this adapter. You can also configure a poller
-depending on the
-type of the channel used. For example, in the above configuration, we use a queue based channel
+The key aspect in this configuration is the producer-context-ref. The producer context contains all the producer
+configurations for the topics that this adapter is expected to handle. The adapter will subscribe to a channel and any
+message sent to that channel will be handled by this adapter. You can also configure a poller
+depending on the type of the channel used. For example, in the above configuration, we use a queue based channel
 and thus a poller is configured with a task executor. If no messages are available in the queue it will timeout immediately because of
 the receive-timeout configuration. Then it will poll again with a delay of 1 second.
 
-Producer context is at the heart of the kafka outbound adapter. Here is an example of how it is configured.
+The producer context is at the heart of the kafka outbound adapter. Here is an example of how it is configured.
 
 ```xml
     <int-kafka:producer-context id="kafkaProducerContext">
@@ -107,7 +107,7 @@ Producer context is at the heart of the kafka outbound adapter. Here is an examp
 ```
 
 There are a few things going on here. So, lets go one by one. First of all, producer context is simply a holder of, as the name
-indicates, a context for the Kafa producer. It contains one ore more producer configurations. Each producer configuration
+indicates, a context for the Kafka producer. It contains one ore more producer configurations. Each producer configuration
 is ultimately gets translated into a Kafka native producer. Each producer configuration is per topic based right now.
 If you go by the above example, there are two producers generated from this configuration - one for topic named
 test1 and another for test2. Each producer can take the following:
