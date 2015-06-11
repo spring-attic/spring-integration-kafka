@@ -1,9 +1,26 @@
+buildscript {
+	repositories {
+		maven { url 'https://repo.spring.io/plugins-release' }
+	}
+	dependencies {
+		classpath 'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE'
+	}
+}
+
 description = 'Spring Integration Kafka Support'
 
 apply plugin: 'java'
 apply from: "${rootProject.projectDir}/publish-maven.gradle"
 apply plugin: 'eclipse'
 apply plugin: 'idea'
+
+if (project.hasProperty('platformVersion')) {
+	apply plugin: 'spring-io'
+
+	dependencies {
+		springIoVersions "io.spring.platform:platform-bom:${platformVersion}@properties"
+	}
+}
 
 group = 'org.springframework.integration'
 
@@ -12,6 +29,9 @@ repositories {
 		url 'https://repository.apache.org/content/groups/public'
 	}
 	maven { url 'http://repo.spring.io/libs-milestone' }
+	if (project.hasProperty('platformVersion')) {
+		maven { url 'https://repo.spring.io/snapshot' }
+	}
 }
 
 sourceCompatibility = targetCompatibility = 1.7
@@ -63,12 +83,7 @@ dependencies {
 	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
 	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
 
-	compile("org.apache.kafka:kafka_$scalaVersion:$kafkaVersion") {
-		exclude module: 'jms'
-		exclude module: 'jmxtools'
-		exclude module: 'jmxri'
-	}
-
+	compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 	compile "org.apache.kafka:kafka-clients:$kafkaVersion"
 
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
