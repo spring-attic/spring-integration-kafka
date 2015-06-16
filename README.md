@@ -1,9 +1,20 @@
 Spring Integration Kafka Adapter
 =================================================
 
-Welcome to the *Spring Integration Kafka adapter*. Apache Kafka is a distributed publish-subscribe messaging system
+The *Spring Integration Kafka Adapter* provides client components for Apache Kafka. Apache Kafka is a distributed publish-subscribe messaging system
 that is designed for high throughput (terabytes of data) and low latency (miliseconds). For more information on Kafka
 and its design goals, see [Kafka main page](http://kafka.apache.org/).
+
+In particular, Spring Integration provides:
+
+* A consumer client library based on the Simple Consumer API with the following features:
+  * Dependency injection-friendly `ConnectionFactory` for infrastructure management;
+  * `KafkaTemplate` for broker read operations, following the general Spring Template model, with the ability of reading from specific partitions and offsets;
+  * Message-driven `KafkaMessageListenerContainer` with support for:
+    * Listening to specific partitions and starting offsets;
+    * Customizing offset management via the `OffsetManager` abstraction, with the ability of choosing between various offset storage and update strategies; 
+    * Manual acknowledgment of offsets for asynchronous operation;
+* Inbound and outbound channel adapters for Spring Integration
 
 Checking out and building
 -----------------------------
