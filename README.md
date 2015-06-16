@@ -5,7 +5,7 @@ The *Spring Integration Kafka Adapter* provides client components for Apache Kaf
 that is designed for high throughput (terabytes of data) and low latency (miliseconds). For more information on Kafka
 and its design goals, see [Kafka main page](http://kafka.apache.org/).
 
-In particular, Spring Integration provides:
+In particular, Spring Integration Kafka provides:
 
 * A consumer client library based on the Simple Consumer API with the following features:
   * Dependency injection-friendly `ConnectionFactory` for infrastructure management;
