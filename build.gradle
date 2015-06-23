@@ -43,6 +43,7 @@ ext {
 	kafkaVersion = '0.8.2.1'
 	metricsVersion = '2.2.0'
 	scalaVersion = '2.10'
+	slf4jVersion = '1.7.12'
 	reactor2Version = '2.0.3.RELEASE'
 	springIntegrationVersion = '4.1.5.RELEASE'
 
@@ -75,8 +76,8 @@ configurations {
 
 dependencies {
 	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
-	compile "org.apache.avro:avro:$avroVersion"
-	compile "org.apache.avro:avro-compiler:$avroVersion"
+	compile ("org.apache.avro:avro:$avroVersion", otional)
+	compile ("org.apache.avro:avro-compiler:$avroVersion", otional)
 	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 	compile "io.projectreactor:reactor-core:$reactor2Version"
 
@@ -89,7 +90,7 @@ dependencies {
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
 	testCompile "org.springframework.integration:spring-integration-stream:$springIntegrationVersion"
 	testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
-	testCompile "org.slf4j:slf4j-log4j12:1.7.7"
+	testCompile "org.slf4j:slf4j-log4j12:$slf4jVersion"
 
 	jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
 }
