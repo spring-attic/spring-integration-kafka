@@ -76,8 +76,8 @@ configurations {
 
 dependencies {
 	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
-	compile ("org.apache.avro:avro:$avroVersion", otional)
-	compile ("org.apache.avro:avro-compiler:$avroVersion", otional)
+	compile ("org.apache.avro:avro:$avroVersion", optional)
+	compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
 	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 	compile "io.projectreactor:reactor-core:$reactor2Version"
 
