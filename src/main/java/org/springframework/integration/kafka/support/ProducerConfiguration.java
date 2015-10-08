@@ -76,6 +76,11 @@ public class ProducerConfiguration<K, V> {
 
 	public Future<RecordMetadata> send(String topic, Integer partition, K messageKey, V messagePayload) {
 		String targetTopic = StringUtils.hasText(topic) ? topic : this.producerMetadata.getTopic();
+		//If partition is sent by producer context then that takes precedence over custom partitioner.
+		if (partition == null && this.getProducerMetadata().getPartitioner() != null) {
+			partition = this.getProducerMetadata().getPartitioner().partition(messageKey,
+					this.producer.partitionsFor(targetTopic).size());
+		}
 		return this.producer.send(new ProducerRecord<>(targetTopic, partition, messageKey, messagePayload));
 	}
 
