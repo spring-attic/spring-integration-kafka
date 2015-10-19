@@ -75,6 +75,7 @@ public abstract class AbstractBrokerTests {
 
 	public void createTopic(String topicName, int partitionCount, int brokers, int replication) {
 		createTopic(getKafkaRule().getZkClient(), topicName, partitionCount, brokers, replication);
+		sleep(6000);
 	}
 
 	@SuppressWarnings("unchecked")
