@@ -16,6 +16,11 @@ In particular, Spring Integration Kafka provides:
     * Manual acknowledgment of offsets for asynchronous operation;
 * Inbound and outbound channel adapters for Spring Integration
 
+Quick Start
+-----------
+
+See the [Spring Integration kafka Sample](https://github.com/spring-projects/spring-integration-samples/tree/master/basic/kafka) for a simple Spring Boot application that sends and receives messages.
+
 Checking out and building
 -----------------------------
 
