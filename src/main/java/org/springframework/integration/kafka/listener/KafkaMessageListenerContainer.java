@@ -351,8 +351,8 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 		@Override
 		public void run() {
-			boolean wasInterrupted = false;
-			while (isRunning()) {
+			boolean interruptThread = false;
+			while (isRunning() && !interruptThread) {
 				MutableCollection<Partition> fetchPartitions;
 				synchronized (partitionsByBrokerMap) {
 					// retrieve the partitions for the current polling cycle
@@ -369,7 +369,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
 						}
 						catch (InterruptedException e) {
-							wasInterrupted = true;
+							interruptThread = true;
 						}
 					}
 				}
@@ -430,11 +430,13 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 						}
 						catch (ConsumerException e) {
 							resetLeaders(fetchPartitions.toImmutable());
+							interruptThread = true; //end thread for fixed executor and get place for new leader
+							break;
 						}
 					} while (!hasErrors && isRunning() && !partitionsWithRemainingData.isEmpty());
 				}
 			}
-			if (wasInterrupted) {
+			if (interruptThread) {
 				Thread.currentThread().interrupt();
 			}
 		}
@@ -470,7 +472,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			public boolean isLongLived() {
 				return true;
 			}
-			
+
 			@Override
 			public void run() {
 				// fetch can complete successfully or unsuccessfully
@@ -497,6 +499,12 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 								log.error("Interrupted after refresh leaders failure for: " + Iterate.makeString(partitionsToReset,","));
 								fetchCompleted = true;
 							}
+						}
+					} finally {
+						if (fetchCompleted) {
+							//restart Container, and start new fetch task for new Leader
+							stop();
+							start();
 						}
 					}
 				}
