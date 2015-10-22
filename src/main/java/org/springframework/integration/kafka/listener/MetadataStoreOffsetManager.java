@@ -78,7 +78,8 @@ public class MetadataStoreOffsetManager extends AbstractOffsetManager {
 		this.metadataStore.remove(generateKey(partition));
 	}
 
-	protected Long doGetOffset(Partition partition) {
+	@Override
+    protected Long doGetOffset(Partition partition) {
 		String storedOffsetValueAsString = this.metadataStore.get(generateKey(partition));
 		Long storedOffsetValue = null;
 		if (storedOffsetValueAsString != null) {
