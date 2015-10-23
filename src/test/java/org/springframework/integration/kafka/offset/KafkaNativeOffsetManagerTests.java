@@ -18,7 +18,9 @@ package org.springframework.integration.kafka.offset;
 
 import java.util.Map;
 
+import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.core.ZookeeperConfiguration;
 import org.springframework.integration.kafka.listener.KafkaNativeOffsetManager;
 import org.springframework.integration.kafka.listener.OffsetManager;
 import org.springframework.integration.kafka.support.ZookeeperConnect;
@@ -31,8 +33,10 @@ public class KafkaNativeOffsetManagerTests extends AbstractOffsetManagerTests {
 	@Override
 	protected OffsetManager createOffsetManager(long referenceTimestamp, String consumerId,
 			Map<Partition, Long> initialOffsets) throws Exception {
+		ZookeeperConnect zookeeperConnect = new ZookeeperConnect(kafkaRule.getZookeeperConnectionString());
 		KafkaNativeOffsetManager kafkaNativeOffsetManager =
-				new KafkaNativeOffsetManager(new ZookeeperConnect(kafkaRule.getZookeeperConnectionString()),
+				new KafkaNativeOffsetManager(new DefaultConnectionFactory(new ZookeeperConfiguration(zookeeperConnect)),
+						zookeeperConnect,
 				initialOffsets);
 		kafkaNativeOffsetManager.setConsumerId(consumerId);
 		kafkaNativeOffsetManager.afterPropertiesSet();

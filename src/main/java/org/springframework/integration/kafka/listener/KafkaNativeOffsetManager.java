@@ -20,15 +20,20 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.integration.kafka.core.AbstractConfiguration;
 import org.springframework.integration.kafka.core.BrokerAddress;
+import org.springframework.integration.kafka.core.Configuration;
 import org.springframework.integration.kafka.core.Connection;
+import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.ConsumerException;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
+import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.PartitionNotFoundException;
 import org.springframework.integration.kafka.core.Result;
@@ -53,6 +58,7 @@ import kafka.utils.ZKStringSerializer$;
  * Implementation of an {@link OffsetManager} that uses kafka native 'topic' offset storage.
  *
  * @author Chris Lemper
+ * @author Marius Bogoevici
  */
 public class KafkaNativeOffsetManager extends AbstractOffsetManager implements InitializingBean {
 
@@ -60,41 +66,42 @@ public class KafkaNativeOffsetManager extends AbstractOffsetManager implements I
 
 	private static final String PARTITION_ATTRIBUTE = "partition";
 
-	private final ZookeeperConnect zookeeperConnect;
+	private final Map<Partition, BrokerAddress> offsetManagerBrokerAddressCache = new ConcurrentHashMap<>();
 
-	private final Map<Partition, BrokerAddress> offsetManagerBrokerAddressCache;
+	private RetryTemplate retryTemplate;
 
-	private final RetryTemplate retryTemplate;
+	private ZkClient zkClient;
 
 	/**
-	 * @param zookeeperConnect the zookeeper connection information
+	 * @param connectionFactory a Kafka connection factory
+	 * @param zookeeperConnect zookeeper connection for retrieving 
 	 * @param initialOffsets a map of partitions to initial offsets
 	 */
-	public KafkaNativeOffsetManager(ZookeeperConnect zookeeperConnect, Map<Partition, Long> initialOffsets) {
-		super(new DefaultConnectionFactory(new ZookeeperConfiguration(zookeeperConnect)), initialOffsets);
-		this.zookeeperConnect = zookeeperConnect;
-		this.offsetManagerBrokerAddressCache = new ConcurrentHashMap<>();
-		this.retryTemplate = new RetryTemplate();
-		retryTemplate.registerListener(new ResetOffsetManagerBrokerAddressRetryListener());
-		final SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-		retryPolicy.setMaxAttempts(5);
-		retryTemplate.setRetryPolicy(retryPolicy);
-		final ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(125L);
-		backOffPolicy.setMaxInterval(5000L);
-		backOffPolicy.setMultiplier(2);
-		retryTemplate.setBackOffPolicy(backOffPolicy);
+	public KafkaNativeOffsetManager(ConnectionFactory connectionFactory, ZookeeperConnect zookeeperConnect,
+									Map<Partition, Long> initialOffsets) {
+		super(connectionFactory, initialOffsets);
+		final String zkServers = zookeeperConnect.getZkConnect();
+		zkClient = new ZkClient(zkServers, 
+				Integer.parseInt(zookeeperConnect.getZkSessionTimeout()), 
+				Integer.parseInt(zookeeperConnect.getZkConnectionTimeout()),
+				ZKStringSerializer$.MODULE$);
 	}
 
 	/**
+	 * @param connectionFactory a Kafka connection factory
 	 * @param zookeeperConnect the zookeeper connection information
 	 * @param consumerId the kafka consumer ID
 	 * @param referenceTimestamp the reset timestamp for initial offsets
 	 */
-	public KafkaNativeOffsetManager(ZookeeperConnect zookeeperConnect, String consumerId, long referenceTimestamp) {
-		this(zookeeperConnect, Collections.<Partition, Long> emptyMap());
+	public KafkaNativeOffsetManager(ConnectionFactory connectionFactory, ZookeeperConnect zookeeperConnect,
+									String consumerId, long referenceTimestamp) {
+		this(connectionFactory, zookeeperConnect, Collections.<Partition, Long>emptyMap());
 		setConsumerId(consumerId);
 		setReferenceTimestamp(referenceTimestamp);
+	}
+
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		this.retryTemplate = retryTemplate;
 	}
 
 	@Override
@@ -155,17 +162,24 @@ public class KafkaNativeOffsetManager extends AbstractOffsetManager implements I
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		((DefaultConnectionFactory) connectionFactory).afterPropertiesSet();
+		if (retryTemplate == null) {
+			retryTemplate = new RetryTemplate();
+			retryTemplate.registerListener(new ResetOffsetManagerBrokerAddressRetryListener());
+			final SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
+			retryPolicy.setMaxAttempts(5);
+			retryTemplate.setRetryPolicy(retryPolicy);
+			final ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
+			backOffPolicy.setInitialInterval(125L);
+			backOffPolicy.setMaxInterval(5000L);
+			backOffPolicy.setMultiplier(2);
+			retryTemplate.setBackOffPolicy(backOffPolicy);
+		}
 	}
 
 	@Override
 	public void close() throws IOException {
-		try {
-			((DefaultConnectionFactory) this.connectionFactory).destroy();
-		}
-		catch (Exception e) {
-			throw new IOException(e);
-		}
+		// this function left intentionally blank
+		zkClient.close();
 	}
 
 	private class ResetOffsetManagerBrokerAddressRetryListener extends RetryListenerSupport {
@@ -185,26 +199,22 @@ public class KafkaNativeOffsetManager extends AbstractOffsetManager implements I
 	private BrokerAddress getOffsetManagerBrokerAddress(final Partition partition) {
 		BrokerAddress brokerAddress = offsetManagerBrokerAddressCache.get(partition);
 		if (brokerAddress == null) {
-			final String zkServers = zookeeperConnect.getZkConnect();
-			final int zkSessionTimeout = 6000;
-			final int zkConnectionTimeout = 6000;
-			final ZkClient zkClient = new ZkClient(zkServers, zkSessionTimeout, zkConnectionTimeout,
-			        ZKStringSerializer$.MODULE$);
-			try {
-				final int socketTimeoutMs = 3000;
-				final int retryBackOffMs = 1000;
-				final BlockingChannel channel = ClientUtils$.MODULE$.channelToOffsetManager(getConsumerId(), zkClient,
-				        socketTimeoutMs, retryBackOffMs);
-				brokerAddress = new BrokerAddress(channel.host(), channel.port());
-				if (LOGGER.isDebugEnabled()) {
-					LOGGER.debug("Offset manager for [{}] is at [{}].", partition, brokerAddress);
-				}
-				offsetManagerBrokerAddressCache.put(partition, brokerAddress);
-				channel.disconnect();
+			int socketTimeoutMs = KafkaConsumerDefaults.SOCKET_TIMEOUT_INT;
+			int retryBackOffMs = KafkaConsumerDefaults.BACKOFF_INCREMENT_INT;
+			if (connectionFactory instanceof DefaultConnectionFactory) {
+				Configuration configuration = ((DefaultConnectionFactory) connectionFactory).getConfiguration();
+				socketTimeoutMs = configuration.getSocketTimeout();
+				retryBackOffMs = configuration.getBackOff();
 			}
-			finally {
-				zkClient.close();
+			final BlockingChannel channel = ClientUtils$.MODULE$.channelToOffsetManager(
+					getConsumerId(), zkClient, socketTimeoutMs, retryBackOffMs);
+			brokerAddress = new BrokerAddress(channel.host(), channel.port());
+			if (LOGGER.isDebugEnabled()) {
+				LOGGER.debug("Offset manager for [{}] is at [{}].", partition,
+						brokerAddress);
 			}
+			offsetManagerBrokerAddressCache.put(partition, brokerAddress);
+			channel.disconnect();
 		}
 		return brokerAddress;
 	}

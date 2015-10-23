@@ -58,6 +58,7 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 	}
 
 	/**
+	 * @param partitionExpression an expression that returns a partition id
 	 * @deprecated as of 1.3, {@link #setPartitionIdExpression(Expression)} should be used instead
 	 */
 	@Deprecated
