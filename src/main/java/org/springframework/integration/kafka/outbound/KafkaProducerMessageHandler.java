@@ -51,7 +51,7 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 	}
 
 	/**
-	 * Enables the use of headers for determining the target topic and partition of outbound messages. By default it is
+	 * Enable the use of headers for determining the target topic and partition of outbound messages. By default it is
 	 * set to true, but it can be disabled when those values are produced by upstream components that read messages
 	 * from Kafka sources themselves.
 	 *

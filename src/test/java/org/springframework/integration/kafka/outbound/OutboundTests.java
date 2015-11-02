@@ -360,8 +360,10 @@ public class OutboundTests {
 		// create the topic
 
 		try {
-			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC, 1, 1);
-		} catch (TopicExistsException e) {
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(),
+					TOPIC, 1, 1);
+		}
+		catch (TopicExistsException e) {
 			// do nothing
 		}
 
