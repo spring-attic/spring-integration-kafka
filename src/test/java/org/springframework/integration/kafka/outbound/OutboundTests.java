@@ -34,11 +34,16 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import kafka.admin.AdminUtils;
+import kafka.api.OffsetRequest;
+import kafka.common.TopicExistsException;
+import kafka.serializer.Decoder;
+import kafka.serializer.Encoder;
+
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
-
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
@@ -65,12 +70,6 @@ import org.springframework.messaging.support.MessageBuilder;
 
 import com.gs.collections.api.multimap.MutableMultimap;
 import com.gs.collections.impl.factory.Multimaps;
-
-import kafka.admin.AdminUtils;
-import kafka.api.OffsetRequest;
-import kafka.common.TopicExistsException;
-import kafka.serializer.Decoder;
-import kafka.serializer.Encoder;
 
 /**
  * @author Gary Russell
@@ -263,6 +262,97 @@ public class OutboundTests {
 		kafkaMessageListenerContainer.stop();
 	}
 
+	@Test
+	public void testHeaderRoutingDisabled() throws Exception {
+
+		// create the topic
+
+		try {
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC, 1, 1);
+		}
+		catch (TopicExistsException e) {
+			// do nothing
+		}
+
+		try {
+			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC2, 1, 1);
+		}
+		catch (TopicExistsException e) {
+			// do nothing
+		}
+
+		final String suffix = UUID.randomUUID().toString();
+
+		KafkaMessageListenerContainer kafkaMessageListenerContainer = createMessageListenerContainer(TOPIC, TOPIC2);
+
+		final Decoder<String> decoder = new StringDecoder();
+
+		int expectedMessageCount = 2;
+		final MutableMultimap<String, String> payloadsByTopic = Multimaps.mutable.list.with();
+		final CountDownLatch latch = new CountDownLatch(expectedMessageCount);
+		kafkaMessageListenerContainer.setMessageListener(new MessageListener() {
+
+			@Override
+			public void onMessage(KafkaMessage message) {
+				payloadsByTopic.put(message.getMetadata().getPartition().getTopic(),
+						MessageUtils.decodePayload(message, decoder));
+				latch.countDown();
+			}
+
+		});
+
+		kafkaMessageListenerContainer.start();
+
+		int expectedDeliveryConfirmations = 2;
+		final List<RecordMetadata> results = new ArrayList<RecordMetadata>();
+		final CountDownLatch sendResultLatch = new CountDownLatch(expectedDeliveryConfirmations);
+		ProducerListener listener = new ProducerListener() {
+
+			@Override
+			public void onSuccess(String topic, Integer partition, Object key, Object value, RecordMetadata recordMetadata) {
+				results.add(recordMetadata);
+				sendResultLatch.countDown();
+			}
+
+			@Override
+			public void onError(String topic, Integer partition, Object key, Object value, Exception exception) {
+				sendResultLatch.countDown();
+			}
+		};
+
+		KafkaProducerContext producerContext = createProducerContext(listener);
+
+		KafkaProducerMessageHandler handler
+				= new KafkaProducerMessageHandler(producerContext);
+
+		handler.setEnableHeaderRouting(false);
+
+		handler.handleMessage(MessageBuilder.withPayload("fooTopic1Header" + suffix)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC)
+				.build());
+
+		// even if the header is set to TOPIC2, it should be ignored
+		handler.handleMessage(MessageBuilder.withPayload("fooTopic2Header" + suffix)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, "3")
+				.setHeader(KafkaHeaders.TOPIC, TOPIC2)
+				.build());
+
+		assertTrue(sendResultLatch.await(10, TimeUnit.SECONDS));
+		assertThat(results.size(), equalTo(expectedDeliveryConfirmations));
+
+		producerContext.stop();
+
+		latch.await(10000, TimeUnit.MILLISECONDS);
+		assertThat(latch.getCount(), equalTo(0L));
+		// messages are routed to both topics
+		assertThat(payloadsByTopic.keysView().size(), equalTo(1));
+		assertThat(payloadsByTopic.keysView(), hasItem(TOPIC));
+		assertThat(payloadsByTopic.toMap().get(TOPIC),
+				contains("fooTopic1Header" + suffix, "fooTopic2Header" + suffix));
+		kafkaMessageListenerContainer.stop();
+	}
+
 
 	@Test
 	public void testNoHeader() throws Exception {
@@ -271,8 +361,7 @@ public class OutboundTests {
 
 		try {
 			TopicUtils.ensureTopicCreated(kafkaRule.getZookeeperConnectionString(), TOPIC, 1, 1);
-		}
-		catch (TopicExistsException e) {
+		} catch (TopicExistsException e) {
 			// do nothing
 		}
 
