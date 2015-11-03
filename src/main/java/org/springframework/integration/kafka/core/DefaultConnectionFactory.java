@@ -169,9 +169,6 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 	public void refreshMetadata(Collection<String> topics) {
 		try {
 			this.lock.writeLock().lock();
-			for (Connection connection : this.kafkaBrokersCache) {
-				connection.close();
-			}
 			String brokerAddressesAsString =
 					ListIterate.collect(this.configuration.getBrokerAddresses(), Functions.getToString())
 							.makeString(",");
@@ -189,6 +186,20 @@ public class DefaultConnectionFactory implements InitializingBean, ConnectionFac
 					log.info(String.format("No metadata could be retrieved for '%s'", topicMetadata.topic()),
 							ErrorMapping.exceptionFor(topicMetadata.errorCode()));
 				}
+			}
+		}
+		finally {
+			this.lock.writeLock().unlock();
+		}
+	}
+
+	@Override
+	public void disconnect(BrokerAddress brokerAddress) {
+		try {
+			this.lock.writeLock().lock();
+			Connection connection = this.kafkaBrokersCache.get(brokerAddress);
+			if (connection != null) {
+				connection.close();
 			}
 		}
 		finally {

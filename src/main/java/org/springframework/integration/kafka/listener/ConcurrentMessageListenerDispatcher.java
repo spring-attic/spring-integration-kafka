@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,6 +64,8 @@ class ConcurrentMessageListenerDispatcher {
 	private final int queueSize;
 
 	private final Executor taskExecutor;
+
+	private final AtomicInteger partitionAssignmentCounter = new AtomicInteger();
 
 	private volatile boolean running;
 
@@ -120,7 +123,7 @@ class ConcurrentMessageListenerDispatcher {
 
 	private void initializeAndStartDispatching() {
 		// allocate delegate instances index them
-		List<QueueingMessageListenerInvoker> delegateList = new ArrayList<QueueingMessageListenerInvoker>(consumers);
+		List<QueueingMessageListenerInvoker> delegateList = new ArrayList<>(consumers);
 		for (int i = 0; i < consumers; i++) {
 			QueueingMessageListenerInvoker queueingMessageListenerInvoker =
 					new QueueingMessageListenerInvoker(queueSize, offsetManager, delegateListener, errorHandler,
@@ -130,9 +133,8 @@ class ConcurrentMessageListenerDispatcher {
 
 		// evenly distribute partitions across delegates
 		delegates = Maps.mutable.of();
-		int i = 0;
 		for (Partition partition : partitions) {
-			delegates.put(partition, delegateList.get((i++) % consumers));
+			delegates.put(partition, delegateList.get((partitionAssignmentCounter.incrementAndGet()) % consumers));
 		}
 
 		// start dispatchers

@@ -16,25 +16,29 @@
 
 package org.springframework.integration.kafka.listener;
 
-import static com.gs.collections.impl.utility.ArrayIterate.flatCollect;
-import static com.gs.collections.impl.utility.Iterate.partition;
-import static com.gs.collections.impl.utility.MapIterate.forEachKeyValue;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
+import com.gs.collections.api.RichIterable;
+import com.gs.collections.api.block.function.Function;
+import com.gs.collections.api.block.predicate.Predicate;
+import com.gs.collections.api.collection.MutableCollection;
+import com.gs.collections.api.list.ImmutableList;
+import com.gs.collections.api.list.MutableList;
+import com.gs.collections.api.multimap.list.ImmutableListMultimap;
+import com.gs.collections.api.multimap.set.MutableSetMultimap;
+import com.gs.collections.api.partition.PartitionIterable;
+import com.gs.collections.api.set.MutableSet;
+import com.gs.collections.api.tuple.Pair;
+import com.gs.collections.impl.block.factory.Functions;
+import com.gs.collections.impl.block.function.checked.CheckedFunction;
+import com.gs.collections.impl.factory.Lists;
+import com.gs.collections.impl.factory.Sets;
+import com.gs.collections.impl.list.mutable.FastList;
+import com.gs.collections.impl.map.mutable.UnifiedMap;
+import com.gs.collections.impl.utility.Iterate;
+import kafka.common.ErrorMapping;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.integration.kafka.core.BrokerAddress;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.ConsumerException;
@@ -47,26 +51,18 @@ import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.core.Result;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 
-import com.gs.collections.api.RichIterable;
-import com.gs.collections.api.block.function.Function;
-import com.gs.collections.api.block.predicate.Predicate;
-import com.gs.collections.api.block.procedure.Procedure;
-import com.gs.collections.api.block.procedure.Procedure2;
-import com.gs.collections.api.collection.MutableCollection;
-import com.gs.collections.api.list.ImmutableList;
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.api.multimap.MutableMultimap;
-import com.gs.collections.api.partition.PartitionIterable;
-import com.gs.collections.impl.block.factory.Functions;
-import com.gs.collections.impl.block.function.checked.CheckedFunction;
-import com.gs.collections.impl.factory.Lists;
-import com.gs.collections.impl.factory.Multimaps;
-import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.utility.Iterate;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-import kafka.common.ErrorMapping;
+import static com.gs.collections.impl.utility.ArrayIterate.flatCollect;
+import static com.gs.collections.impl.utility.Iterate.partition;
 
 /**
  * @author Marius Bogoevici
@@ -87,8 +83,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private final Function<Partition, Partition> passThru = Functions.getPassThru();
 
-	private final LaunchFetchTaskProcedure launchFetchTask = new LaunchFetchTaskProcedure();
-
 	private final Object lifecycleMonitor = new Object();
 
 	private final KafkaTemplate kafkaTemplate;
@@ -101,7 +95,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private Executor fetchTaskExecutor;
 
-	private Executor adminTaskExecutor = Executors.newSingleThreadExecutor();
+	private Executor adminTaskExecutor;
 
 	private Executor dispatcherTaskExecutor;
 
@@ -125,7 +119,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private ConcurrentMessageListenerDispatcher messageDispatcher;
 
-	private final MutableMultimap<BrokerAddress, Partition> partitionsByBrokerMap = Multimaps.mutable.set.with();
+	private final ConcurrentMap<BrokerAddress, FetchTask> fetchTasksByBroker = new ConcurrentHashMap<>();
 
 	private boolean autoCommitOnError = false;
 
@@ -159,11 +153,10 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	public void setMessageListener(Object messageListener) {
-		Assert.isTrue
-				(messageListener instanceof MessageListener
-								|| messageListener instanceof AcknowledgingMessageListener,
-						"Either a " + MessageListener.class.getName() + " or a "
-								+ AcknowledgingMessageListener.class.getName() + " must be provided");
+		Assert.isTrue(
+				messageListener instanceof MessageListener || messageListener instanceof AcknowledgingMessageListener,
+				"Either a " + MessageListener.class.getName() + " or a " + AcknowledgingMessageListener.class.getName()
+						+ " must be provided");
 		this.messageListener = messageListener;
 	}
 
@@ -180,8 +173,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The maximum number of concurrent {@link MessageListener}s running. Messages from within the same
-	 * partition will be processed sequentially.
+	 * The maximum number of concurrent {@link MessageListener}s running. Messages from
+	 * within the same partition will be processed sequentially.
+	 *
 	 * @param concurrency the concurrency maximum number
 	 */
 	public void setConcurrency(int concurrency) {
@@ -189,7 +183,9 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The timeout for waiting for each concurrent {@link MessageListener} to finish on stopping.
+	 * The timeout for waiting for each concurrent {@link MessageListener} to finish on
+	 * stopping.
+	 *
 	 * @param stopTimeout timeout in milliseconds
 	 * @since 1.1
 	 */
@@ -207,27 +203,29 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	/**
 	 * The task executor for fetch operations
+	 *
 	 * @param fetchTaskExecutor the Executor for fetch operations
 	 */
 	public void setFetchTaskExecutor(Executor fetchTaskExecutor) {
 		this.fetchTaskExecutor = fetchTaskExecutor;
 	}
 
-
 	public Executor getAdminTaskExecutor() {
 		return adminTaskExecutor;
 	}
 
 	/**
-	 * The task executor for leader and offset updates
-	 * @param adminTaskExecutor the task executor for leader and offset updates.
+	 * The task executor for leader, offset, and partition reassignment updates
+	 *
+	 * @param adminTaskScheduler the task executor for leader, offset and partition reassignment updates
 	 */
-	public void setAdminTaskExecutor(Executor adminTaskExecutor) {
-		this.adminTaskExecutor = adminTaskExecutor;
+	public void setAdminTaskExecutor(Executor adminTaskScheduler) {
+		this.adminTaskExecutor = adminTaskScheduler;
 	}
 
 	/**
 	 * The task executor for invoking the MessageListener
+	 *
 	 * @param dispatcherTaskExecutor the task executor for invoking the MessageListener
 	 */
 	public void setDispatcherTaskExecutor(Executor dispatcherTaskExecutor) {
@@ -246,9 +244,10 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The maximum number of messages that are buffered by each concurrent {@link MessageListener} runner.
-	 * Increasing the value may increase throughput, but also increases the memory consumption.
-	 * Must be a positive number and a power of 2.
+	 * The maximum number of messages that are buffered by each concurrent
+	 * {@link MessageListener} runner. Increasing the value may increase throughput, but
+	 * also increases the memory consumption. Must be a positive number and a power of 2.
+	 *
 	 * @param queueSize the queue size
 	 */
 	public void setQueueSize(int queueSize) {
@@ -289,8 +288,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.autoStartup = autoStartup;
 	}
 
-	@Override
-	public void stop(Runnable callback) {
+	@Override public void stop(Runnable callback) {
 		synchronized (lifecycleMonitor) {
 			if (running) {
 				this.running = false;
@@ -326,28 +324,32 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 						Arrays.asList(partitions), offsetManager, concurrency, queueSize, dispatcherTaskExecutor,
 						autoCommitOnError);
 				this.messageDispatcher.start();
-				partitionsByBrokerMap.clear();
-				partitionsByBrokerMap.putAll(partitionsAsList.groupBy(getLeader));
+				fetchTasksByBroker.clear();
+				ImmutableListMultimap<BrokerAddress, Partition> partitionsByLeader = partitionsAsList.groupBy(getLeader);
 				if (fetchTaskExecutor == null) {
-					fetchTaskExecutor = Executors.newFixedThreadPool(partitionsByBrokerMap.keysView().size());
+					fetchTaskExecutor = new SimpleAsyncTaskExecutor("kafka-fetch-");
 				}
-				partitionsByBrokerMap.forEachKey(launchFetchTask);
+				if (adminTaskExecutor == null) {
+					adminTaskExecutor = Executors.newSingleThreadExecutor();
+				}
+				for (Pair<BrokerAddress, RichIterable<Partition>> entry : partitionsByLeader.keyMultiValuePairsView()) {
+					FetchTask fetchTask = new FetchTask(entry.getOne(), entry.getTwo());
+					fetchTaskExecutor.execute(fetchTask);
+					fetchTasksByBroker.put(entry.getOne(), fetchTask);
+				}
 			}
 		}
 	}
 
-	@Override
-	public void stop() {
+	@Override public void stop() {
 		this.stop(null);
 	}
 
-	@Override
-	public boolean isRunning() {
+	@Override public boolean isRunning() {
 		return this.running;
 	}
 
-	@Override
-	public int getPhase() {
+	@Override public int getPhase() {
 		return 0;
 	}
 
@@ -355,7 +357,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		MutableList<Partition> partitionList = flatCollect(topics, new GetPartitionsForTopic(connectionFactory));
 		return partitionList.toArray(new Partition[partitionList.size()]);
 	}
-
 	/**
 	 * Fetches data from Kafka for a group of partitions, located on the same broker.
 	 */
@@ -363,49 +364,37 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 		private final BrokerAddress brokerAddress;
 
-		public FetchTask(BrokerAddress brokerAddress) {
+		private final MutableSet<Partition> listenedPartitions = Sets.mutable.of();
+
+		private volatile boolean active;
+
+		public FetchTask(BrokerAddress brokerAddress, RichIterable<Partition> initialPartitions) {
 			this.brokerAddress = brokerAddress;
+			this.active = true;
+			this.listenedPartitions.addAll(initialPartitions.toSet());
 		}
 
-		@Override
-		public boolean isLongLived() {
+		@Override public boolean isLongLived() {
 			return true;
 		}
 
-		@Override
-		public void run() {
-			boolean wasInterrupted = false;
-			while (isRunning()) {
-				MutableCollection<Partition> fetchPartitions;
-				synchronized (partitionsByBrokerMap) {
-					// retrieve the partitions for the current polling cycle
-					fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
-					// do not proceed until there is something to read from
-					while (isRunning() && CollectionUtils.isEmpty(fetchPartitions)) {
-						try {
-							// we only got here because there were no partitions to read from,
-							// so block until there is a change this prevents FetchTasks
-							// from busy waiting while leaders or offsets are being refreshed
-							// TODO: ideally we should use separate monitors for each task
-							partitionsByBrokerMap.wait();
-							// see if the changes affect us
-							fetchPartitions = partitionsByBrokerMap.get(brokerAddress);
-						}
-						catch (InterruptedException e) {
-							wasInterrupted = true;
-						}
-					}
+		public boolean addListenedPartitionsIfActive(Iterable<Partition> partitions) {
+			synchronized (listenedPartitions) {
+				if (active) {
+					listenedPartitions.addAllIterable(partitions);
 				}
-				// we've just exited a potentially blocking operation. Is the component still running?
-				if (isRunning()) {
-					Set<Partition> partitionsWithRemainingData;
-					boolean hasErrors;
-					do {
-						partitionsWithRemainingData = new HashSet<Partition>();
-						hasErrors = false;
+				return active;
+			}
+		}
+
+		@Override public void run() {
+			boolean wasInterrupted = false;
+			try {
+				while (active && isRunning()) {
+					synchronized (listenedPartitions) {
 						try {
-							MutableCollection<FetchRequest> fetchRequests =
-									fetchPartitions.collect(new PartitionToFetchRequestFunction());
+							MutableCollection<FetchRequest> fetchRequests = listenedPartitions
+									.collect(new PartitionToFetchRequestFunction());
 							Result<KafkaMessageBatch> result = kafkaTemplate.receive(fetchRequests);
 							// process successful messages first
 							Iterable<KafkaMessageBatch> batches = result.getResults().values();
@@ -416,23 +405,18 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 										// fetch operations may return entire blocks of compressed messages,
 										// which may have lower offsets than the ones requested
 										// thus a batch may contain messages that have been processed already
-										if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets.get(batch.getPartition())) {
+										if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets
+												.get(batch.getPartition())) {
 											messageDispatcher.dispatch(kafkaMessage);
 										}
-										highestFetchedOffset =
-												Math.max(highestFetchedOffset, kafkaMessage.getMetadata().getNextOffset());
+										highestFetchedOffset = Math
+												.max(highestFetchedOffset, kafkaMessage.getMetadata().getNextOffset());
 									}
 									fetchOffsets.replace(batch.getPartition(), highestFetchedOffset);
-									// if there are still messages on server, we can go on and retrieve more
-									if (highestFetchedOffset < batch.getHighWatermark()) {
-										partitionsWithRemainingData.add(batch.getPartition());
-									}
 								}
 							}
 							// handle errors
 							if (result.getErrors().size() > 0) {
-								hasErrors = true;
-
 								// find partitions with leader errors and
 								PartitionIterable<Map.Entry<Partition, Short>> partitionByLeaderErrors =
 										partition(result.getErrors().entrySet(), new IsLeaderErrorPredicate());
@@ -441,20 +425,29 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 								resetLeaders(partitionsWithLeaderErrors);
 
 								PartitionIterable<Map.Entry<Partition, Short>> partitionsWithOffsetsOutOfRange =
-										partitionByLeaderErrors.getRejected()
-												.partition(new IsOffsetOutOfRangePredicate());
-								resetOffsets(partitionsWithOffsetsOutOfRange.getSelected()
-										.collect(keyFunction)
-										.toSet());
+										partitionByLeaderErrors.getRejected().partition(new IsOffsetOutOfRangePredicate());
+								resetOffsets(
+										partitionsWithOffsetsOutOfRange.getSelected().collect(keyFunction).toSet());
 								// it's not a leader issue
-								stopFetchingFromPartitions(partitionsWithOffsetsOutOfRange.getRejected()
-										.collect(keyFunction));
+								listenedPartitions.removeAllIterable(
+										partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
 							}
 						}
 						catch (ConsumerException e) {
-							resetLeaders(fetchPartitions.toImmutable());
+							active = false;
+							// the connection is broken, terminate the task
+							kafkaTemplate.getConnectionFactory().disconnect(brokerAddress);
+							resetLeaders(listenedPartitions.toImmutable());
 						}
-					} while (!hasErrors && isRunning() && !partitionsWithRemainingData.isEmpty());
+					}
+				}
+			}
+			finally {
+				active = false;
+				synchronized (fetchTasksByBroker) {
+					if (fetchTasksByBroker.get(brokerAddress) == this) {
+						fetchTasksByBroker.remove(brokerAddress);
+					}
 				}
 			}
 			if (wasInterrupted) {
@@ -462,40 +455,29 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			}
 		}
 
-
 		private void resetLeaders(final Iterable<Partition> partitionsToReset) {
-			stopFetchingFromPartitions(partitionsToReset);
+			listenedPartitions.removeAllIterable(partitionsToReset);
 			adminTaskExecutor.execute(new UpdateLeadersTask(partitionsToReset));
 		}
 
-
 		private void resetOffsets(final Collection<Partition> partitionsToResetOffsets) {
-			stopFetchingFromPartitions(partitionsToResetOffsets);
+			listenedPartitions.removeAllIterable(partitionsToResetOffsets);
 			adminTaskExecutor.execute(new UpdateOffsetsTask(partitionsToResetOffsets));
 		}
 
-		private void stopFetchingFromPartitions(Iterable<Partition> partitions) {
-			synchronized (partitionsByBrokerMap) {
-				for (Partition partition : partitions) {
-					partitionsByBrokerMap.remove(brokerAddress, partition);
-				}
-			}
-		}
-
 		private class UpdateLeadersTask implements SchedulingAwareRunnable {
+
 			private final Iterable<Partition> partitionsToReset;
 
 			public UpdateLeadersTask(Iterable<Partition> partitionsToReset) {
 				this.partitionsToReset = partitionsToReset;
 			}
 
-			@Override
-			public boolean isLongLived() {
+			@Override public boolean isLongLived() {
 				return true;
 			}
 
-			@Override
-			public void run() {
+			@Override public void run() {
 				// fetch can complete successfully or unsuccessfully
 				boolean fetchCompleted = false;
 				while (!fetchCompleted && isRunning()) {
@@ -503,10 +485,23 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 						FastList<Partition> partitionsAsList = FastList.newList(partitionsToReset);
 						FastList<String> topics = partitionsAsList.collect(new PartitionToTopicFunction()).distinct();
 						kafkaTemplate.getConnectionFactory().refreshMetadata(topics);
-						Map<Partition, BrokerAddress> leaders = kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset);
-						synchronized (partitionsByBrokerMap) {
-							forEachKeyValue(leaders, new AddPartitionToBrokerProcedure());
-							partitionsByBrokerMap.notifyAll();
+
+						MutableSetMultimap<BrokerAddress, Partition> partitionsByBroker = UnifiedMap
+								.newMap(kafkaTemplate.getConnectionFactory().getLeaders(partitionsToReset)).flip();
+						for (Pair<BrokerAddress, RichIterable<Partition>> pair : partitionsByBroker
+								.keyMultiValuePairsView()) {
+							synchronized (fetchTasksByBroker) {
+								boolean addedSuccessfully = false;
+								FetchTask fetchTask = fetchTasksByBroker.get(pair.getOne());
+								if (fetchTask != null) {
+									addedSuccessfully = fetchTask.addListenedPartitionsIfActive(pair.getTwo());
+								}
+								if (!addedSuccessfully) {
+									fetchTask = new FetchTask(pair.getOne(), pair.getTwo());
+									fetchTaskExecutor.execute(fetchTask);
+									fetchTasksByBroker.put(pair.getOne(), fetchTask);
+								}
+							}
 						}
 						fetchCompleted = true;
 					}
@@ -517,7 +512,8 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 							}
 							catch (InterruptedException e1) {
 								Thread.currentThread().interrupt();
-								log.error("Interrupted after refresh leaders failure for: " + Iterate.makeString(partitionsToReset,","));
+								log.error("Interrupted after refresh leaders failure for: " + Iterate
+										.makeString(partitionsToReset, ","));
 								fetchCompleted = true;
 							}
 						}
@@ -535,50 +531,50 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				this.partitionsToResetOffsets = partitionsToResetOffsets;
 			}
 
-			@Override
-			public void run() {
+			@Override public void run() {
 				offsetManager.resetOffsets(partitionsToResetOffsets);
 				for (Partition partition : partitionsToResetOffsets) {
 					fetchOffsets.replace(partition, offsetManager.getOffset(partition));
 				}
-				synchronized (partitionsByBrokerMap) {
-					for (Partition partitionsToResetOffset : partitionsToResetOffsets) {
-						partitionsByBrokerMap.put(brokerAddress, partitionsToResetOffset);
+				synchronized (fetchTasksByBroker) {
+					boolean addedSuccessfully = false;
+					FetchTask fetchTask = fetchTasksByBroker.get(brokerAddress);
+					if (fetchTask != null) {
+						addedSuccessfully = fetchTask.addListenedPartitionsIfActive(partitionsToResetOffsets);
 					}
-					// notify any waiting task that the partition allocation has changed
-					partitionsByBrokerMap.notifyAll();
+					if (!addedSuccessfully) {
+						fetchTask = new FetchTask(brokerAddress, Sets.immutable.ofAll(partitionsToResetOffsets));
+						fetchTaskExecutor.execute(fetchTask);
+						fetchTasksByBroker.put(brokerAddress, fetchTask);
+					}
 				}
 			}
 
 		}
 
-		@SuppressWarnings("serial")
-		private class IsLeaderErrorPredicate implements Predicate<Map.Entry<Partition, Short>> {
+		@SuppressWarnings("serial") private class IsLeaderErrorPredicate
+				implements Predicate<Map.Entry<Partition, Short>> {
 
-			@Override
-			public boolean accept(Map.Entry<Partition, Short> each) {
-				return each.getValue() == ErrorMapping.NotLeaderForPartitionCode()
-						|| each.getValue() == ErrorMapping.UnknownTopicOrPartitionCode();
+			@Override public boolean accept(Map.Entry<Partition, Short> each) {
+				return each.getValue() == ErrorMapping.NotLeaderForPartitionCode() || each.getValue() == ErrorMapping
+						.UnknownTopicOrPartitionCode();
 			}
 
 		}
 
-		@SuppressWarnings("serial")
-		private class IsOffsetOutOfRangePredicate implements Predicate<Map.Entry<Partition, Short>> {
+		@SuppressWarnings("serial") private class IsOffsetOutOfRangePredicate
+				implements Predicate<Map.Entry<Partition, Short>> {
 
-			@Override
-			public boolean accept(Map.Entry<Partition, Short> each) {
+			@Override public boolean accept(Map.Entry<Partition, Short> each) {
 				return each.getValue() == ErrorMapping.OffsetOutOfRangeCode();
 			}
 
 		}
 	}
 
-	@SuppressWarnings("serial")
-	class GetOffsetForPartitionFunction extends CheckedFunction<Partition, Long> {
+	@SuppressWarnings("serial") class GetOffsetForPartitionFunction extends CheckedFunction<Partition, Long> {
 
-		@Override
-		public Long safeValueOf(Partition object) throws Exception {
+		@Override public Long safeValueOf(Partition object) throws Exception {
 			try {
 				return offsetManager.getOffset(object);
 			}
@@ -590,38 +586,35 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	}
 
-	@SuppressWarnings("serial")
-	private class PartitionToLeaderFunction implements Function<Partition, BrokerAddress> {
+	@SuppressWarnings("serial") private class PartitionToLeaderFunction implements Function<Partition, BrokerAddress> {
 
-		@Override
-		public BrokerAddress valueOf(Partition partition) {
+		@Override public BrokerAddress valueOf(Partition partition) {
 			return kafkaTemplate.getConnectionFactory().getLeader(partition);
 		}
 
 	}
 
-	@SuppressWarnings("serial")
-	private class LaunchFetchTaskProcedure implements Procedure<BrokerAddress> {
+	// @SuppressWarnings("serial")
+	// private class LaunchFetchTaskProcedure implements Procedure<BrokerAddress> {
+	//
+	// @Override
+	// public void value(BrokerAddress brokerAddress) {
+	// fetchTaskExecutor.execute(new FetchTask(brokerAddress));
+	// }
+	//
+	// }
 
-		@Override
-		public void value(BrokerAddress brokerAddress) {
-			fetchTaskExecutor.execute(new FetchTask(brokerAddress));
-		}
+	@SuppressWarnings("serial") private class PartitionToFetchRequestFunction
+			implements Function<Partition, FetchRequest> {
 
-	}
-
-	@SuppressWarnings("serial")
-	private class PartitionToFetchRequestFunction implements Function<Partition, FetchRequest> {
-
-		@Override
-		public FetchRequest valueOf(Partition partition) {
+		@Override public FetchRequest valueOf(Partition partition) {
 			return new FetchRequest(partition, fetchOffsets.get(partition), maxFetch);
 		}
 
 	}
 
-	@SuppressWarnings("serial")
-	static class GetPartitionsForTopic extends CheckedFunction<String, Iterable<Partition>> {
+	@SuppressWarnings("serial") static class GetPartitionsForTopic
+			extends CheckedFunction<String, Iterable<Partition>> {
 
 		private final ConnectionFactory connectionFactory;
 
@@ -629,29 +622,16 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 			this.connectionFactory = connectionFactory;
 		}
 
-		@Override
-		public Iterable<Partition> safeValueOf(String topic) throws Exception {
+		@Override public Iterable<Partition> safeValueOf(String topic) throws Exception {
 			return connectionFactory.getPartitions(topic);
 		}
 
 	}
 
-	@SuppressWarnings("serial")
-	private class PartitionToTopicFunction implements Function<Partition, String> {
+	@SuppressWarnings("serial") private class PartitionToTopicFunction implements Function<Partition, String> {
 
-		@Override
-		public String valueOf(Partition object) {
+		@Override public String valueOf(Partition object) {
 			return object.getTopic();
-		}
-
-	}
-
-	@SuppressWarnings("serial")
-	private class AddPartitionToBrokerProcedure implements Procedure2<Partition, BrokerAddress> {
-
-		@Override
-		public void value(Partition partition, BrokerAddress newBrokerAddress) {
-			partitionsByBrokerMap.put(newBrokerAddress, partition);
 		}
 
 	}
