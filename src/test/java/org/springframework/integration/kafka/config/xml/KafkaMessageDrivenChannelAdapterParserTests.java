@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -123,10 +124,11 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 		assertEquals(1024, container.getQueueSize());
 		assertEquals(5000, container.getStopTimeout());
 		assertArrayEquals(new String[] {"foo", "bar"}, TestUtils.getPropertyValue(container, "topics", String[].class));
-		assertOverrides(this.kafkaListener, false, false, false, true);
-		assertOverrides(this.withMBFactoryOverrideAndId, true, true, false, false);
-		assertOverrides(this.withMBFactoryOverrideAndTS, true, false, true, true);
-		assertOverrides(this.withOverrideIdTS, false, true, true, true);
+		assertOverrides(this.kafkaListener, false, false, false, true, false);
+		assertOverrides(this.withMBFactoryOverrideAndId, true, true, false, false, false);
+		assertOverrides(this.withMBFactoryOverrideAndTS, true, false, true, true, false);
+		assertOverrides(this.withOverrideIdTS, false, true, true, true, true);
+
 
 		final AtomicReference<Method> toMessage = new AtomicReference<Method>();
 		ReflectionUtils.doWithMethods(KafkaMessageDrivenChannelAdapter.class, new MethodCallback() {
@@ -173,11 +175,13 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 	}
 
 	private void assertOverrides(KafkaMessageDrivenChannelAdapter kafkaListener, boolean mbf, boolean id, boolean ts,
-			boolean ac) {
+								 boolean ac, boolean ace) {
 		assertThat(TestUtils.getPropertyValue(kafkaListener, "autoCommitOffset", Boolean.class), equalTo(ac));
 		assertThat(TestUtils.getPropertyValue(kafkaListener, "useMessageBuilderFactory", Boolean.class), equalTo(mbf));
 		assertThat(TestUtils.getPropertyValue(kafkaListener, "generateMessageId", Boolean.class), equalTo(id));
 		assertThat(TestUtils.getPropertyValue(kafkaListener, "generateTimestamp", Boolean.class), equalTo(ts));
+		Object messageListenerContainer = TestUtils.getPropertyValue(kafkaListener, "messageListenerContainer");
+		assertEquals(TestUtils.getPropertyValue(messageListenerContainer,"autoCommitOnError", Boolean.class),ace);
 	}
 
 	private void assertRest(Message<?> m) {
