@@ -26,6 +26,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.util.Assert;
@@ -57,6 +58,22 @@ public class ProducerConfiguration<K, V> {
 		this.producerMetadata = producerMetadata;
 		this.producer = producer;
 		GenericConversionService genericConversionService = new GenericConversionService();
+		genericConversionService.addConverter(String.class, byte[].class, new Converter<String, byte[]>() {
+
+			@Override
+			public byte[] convert(String source) {
+				return source.getBytes(ProducerConfiguration.this.producerMetadata.getCharset());
+			}
+
+		});
+		genericConversionService.addConverter(byte[].class, String.class, new Converter<byte[], String>() {
+
+			@Override
+			public String convert(byte[] source) {
+				return new String(source, ProducerConfiguration.this.producerMetadata.getCharset());
+			}
+
+		});
 		genericConversionService.addConverter(Object.class, byte[].class, new SerializingConverter());
 		this.conversionService = genericConversionService;
 	}
