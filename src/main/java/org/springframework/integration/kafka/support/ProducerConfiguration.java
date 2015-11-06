@@ -16,6 +16,8 @@
 
 package org.springframework.integration.kafka.support;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -25,8 +27,10 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
+
 import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.util.Assert;
@@ -58,22 +62,7 @@ public class ProducerConfiguration<K, V> {
 		this.producerMetadata = producerMetadata;
 		this.producer = producer;
 		GenericConversionService genericConversionService = new GenericConversionService();
-		genericConversionService.addConverter(String.class, byte[].class, new Converter<String, byte[]>() {
-
-			@Override
-			public byte[] convert(String source) {
-				return source.getBytes(ProducerConfiguration.this.producerMetadata.getCharset());
-			}
-
-		});
-		genericConversionService.addConverter(byte[].class, String.class, new Converter<byte[], String>() {
-
-			@Override
-			public String convert(byte[] source) {
-				return new String(source, ProducerConfiguration.this.producerMetadata.getCharset());
-			}
-
-		});
+		genericConversionService.addConverter(new StringBytesConverter());
 		genericConversionService.addConverter(Object.class, byte[].class, new SerializingConverter());
 		this.conversionService = genericConversionService;
 	}
@@ -185,6 +174,28 @@ public class ProducerConfiguration<K, V> {
 				", producerMetadata=" + this.producerMetadata +
 				", conversionService=" + this.conversionService +
 				'}';
+	}
+
+	private class StringBytesConverter implements GenericConverter {
+
+		@Override
+		public Set<ConvertiblePair> getConvertibleTypes() {
+			Set<ConvertiblePair> convertiblePairs = new HashSet<ConvertiblePair>();
+			convertiblePairs.add(new ConvertiblePair(String.class, byte[].class));
+			convertiblePairs.add(new ConvertiblePair(byte[].class, String.class));
+			return convertiblePairs;
+		}
+
+		@Override
+		public Object convert(Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+			if (source instanceof String) {
+				return ((String) source).getBytes(ProducerConfiguration.this.producerMetadata.getCharset());
+			}
+			else {
+				return new String((byte[]) source, ProducerConfiguration.this.producerMetadata.getCharset());
+			}
+		}
+
 	}
 
 }
