@@ -154,6 +154,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		return zookeeper.connectString();
 	}
 
+	public BrokerAddress getBrokerAddress(int i) {
+		KafkaServer kafkaServer = this.kafkaServers.get(i);
+		return new BrokerAddress(kafkaServer.config().hostName(),kafkaServer.config().port());
+	}
+
 	@Override
 	public BrokerAddress[] getBrokerAddresses() {
 		return ListIterate.collect(this.kafkaServers,
