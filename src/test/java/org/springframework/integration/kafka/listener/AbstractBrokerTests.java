@@ -140,6 +140,16 @@ public abstract class AbstractBrokerTests {
 		return new Sender<>(producer);
 	}
 
+	public Sender<String, String> createMessageSender(String compression, int brokerIndex) {
+		Properties producerConfig = new Properties();
+		producerConfig.setProperty("bootstrap.servers", getKafkaRule().getBrokerAddresses()[brokerIndex].toString());
+		producerConfig.setProperty("compression.type", compression);
+		KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfig,
+				new EncoderAdaptingSerializer<>(new StringEncoder()),
+				new EncoderAdaptingSerializer<>(new StringEncoder()));
+		return new Sender<>(producer);
+	}
+
 	public ConnectionFactory getKafkaBrokerConnectionFactory() throws Exception {
 		DefaultConnectionFactory connectionFactory = new DefaultConnectionFactory(getKafkaConfiguration());
 		connectionFactory.afterPropertiesSet();

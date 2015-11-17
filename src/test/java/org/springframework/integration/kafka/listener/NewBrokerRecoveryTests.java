@@ -47,7 +47,6 @@ import org.springframework.integration.kafka.rule.KafkaEmbedded;
 
 public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTests {
 
-	public static final int SETTLEMENT_TIME_IN_MILLIS = 1000;
 	@Rule
 	public KafkaEmbedded kafkaEmbeddedBrokerRule = new KafkaEmbedded(2);
 
@@ -77,7 +76,7 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		kafkaMessageListenerContainer.setConcurrency(1);
 
 		final int expectedMessageCount = 200;
-		createMessageSender("none").send(createMessagesInRange(0, 49, TEST_TOPIC,partitionCount));
+		createMessageSender("none",1).send(createMessagesInRange(0, 49, TEST_TOPIC,partitionCount));
 
 		final MutableListMultimap<Integer, KeyedMessageWithOffset> receivedData =
 				new SynchronizedPutFastListMultimap<Integer, KeyedMessageWithOffset>();
@@ -100,7 +99,7 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		kafkaMessageListenerContainer.start();
 
 		// now start sending messages again
-		createMessageSender("none").send(createMessagesInRange(50, 99, TEST_TOPIC,partitionCount));
+		createMessageSender("none", 1).send(createMessagesInRange(50, 99, TEST_TOPIC,partitionCount));
 
 		// start the other Kafka instance
 		kafkaEmbeddedBrokerRule.restart(0);
@@ -110,7 +109,7 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		kafkaEmbeddedBrokerRule.bounce(1);
 
 		// now start sending messages again
-		createMessageSender("none").send(createMessagesInRange(100, 149, TEST_TOPIC,partitionCount));
+		createMessageSender("none",0).send(createMessagesInRange(100, 149, TEST_TOPIC,partitionCount));
 
 		// stop the other Kafka instance
 		kafkaEmbeddedBrokerRule.restart(1);
@@ -121,7 +120,7 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		kafkaEmbeddedBrokerRule.bounce(0);
 
 		// now start sending messages again
-		createMessageSender("none").send(createMessagesInRange(149, 199, TEST_TOPIC,partitionCount));
+		createMessageSender("none",1).send(createMessagesInRange(149, 199, TEST_TOPIC,partitionCount));
 
 
 		latch.await(50, TimeUnit.SECONDS);

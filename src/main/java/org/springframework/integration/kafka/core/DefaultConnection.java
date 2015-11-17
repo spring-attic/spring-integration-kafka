@@ -122,8 +122,8 @@ public class DefaultConnection implements Connection {
 		ResultBuilder<KafkaMessageBatch> resultBuilder = new ResultBuilder<KafkaMessageBatch>();
 		for (final FetchRequest request : requests) {
 			Partition partition = request.getPartition();
-			if (log.isDebugEnabled()) {
-				log.debug("Reading from " + partition + "@" + request.getOffset());
+			if (log.isTraceEnabled()) {
+				log.trace("Reading from " + partition + "@" + request.getOffset());
 			}
 			short errorCode = fetchResponse.errorCode(partition.getTopic(), partition.getId());
 			if (ErrorMapping.NoError() == errorCode) {

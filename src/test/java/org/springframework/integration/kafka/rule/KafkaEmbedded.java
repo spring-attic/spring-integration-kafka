@@ -212,8 +212,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 					if (Errors.forCode(topicMetadata.errorCode()).exception() == null) {
 						for (PartitionMetadata partitionMetadata :
 								JavaConversions.asJavaCollection(topicMetadata.partitionsMetadata())) {
-							Collection<Broker> isr = JavaConversions.asJavaCollection(partitionMetadata.isr());
-							for (Broker broker : isr) {
+							Collection<Broker> inSyncReplicas = JavaConversions.asJavaCollection(partitionMetadata.isr());
+							for (Broker broker : inSyncReplicas) {
 								if (broker.id() == index) {
 									canExit = false;
 								}
