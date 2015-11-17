@@ -16,13 +16,18 @@
 
 package org.springframework.integration.kafka.listener;
 
-import static com.gs.collections.impl.utility.ArrayIterate.flatCollect;
-import static com.gs.collections.impl.utility.Iterate.partition;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import com.gs.collections.api.RichIterable;
 import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.block.predicate.Predicate;
-import com.gs.collections.api.collection.MutableCollection;
 import com.gs.collections.api.list.ImmutableList;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.api.multimap.list.ImmutableListMultimap;
@@ -36,10 +41,12 @@ import com.gs.collections.impl.factory.Lists;
 import com.gs.collections.impl.factory.Sets;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import com.gs.collections.impl.utility.ArrayIterate;
 import com.gs.collections.impl.utility.Iterate;
 import kafka.common.ErrorMapping;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.integration.kafka.core.BrokerAddress;
@@ -55,15 +62,6 @@ import org.springframework.integration.kafka.core.Result;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
 /**
  * @author Marius Bogoevici
  */
@@ -74,8 +72,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	private static final int DEFAULT_STOP_TIMEOUT = 1000;
 
 	private static final Log log = LogFactory.getLog(KafkaMessageListenerContainer.class);
-
-	public static final Function<Map.Entry<Partition, ?>, Partition> keyFunction = Functions.getKeyFunction();
 
 	private final GetOffsetForPartitionFunction getOffset = new GetOffsetForPartitionFunction();
 
@@ -175,7 +171,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	/**
 	 * The maximum number of concurrent {@link MessageListener}s running. Messages from
 	 * within the same partition will be processed sequentially.
-	 *
 	 * @param concurrency the concurrency maximum number
 	 */
 	public void setConcurrency(int concurrency) {
@@ -185,7 +180,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	/**
 	 * The timeout for waiting for each concurrent {@link MessageListener} to finish on
 	 * stopping.
-	 *
 	 * @param stopTimeout timeout in milliseconds
 	 * @since 1.1
 	 */
@@ -202,8 +196,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The task executor for fetch operations
-	 *
+	 * The task executor for fetch operations.
 	 * @param fetchTaskExecutor the Executor for fetch operations
 	 */
 	public void setFetchTaskExecutor(Executor fetchTaskExecutor) {
@@ -215,17 +208,15 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	/**
-	 * The task executor for leader, offset, and partition reassignment updates
-	 *
-	 * @param adminTaskScheduler the task executor for leader, offset and partition reassignment updates
+	 * The task executor for leader, offset, and partition reassignment updates.
+	 * @param adminTaskExecutor the task executor for leader, offset and partition reassignment updates
 	 */
-	public void setAdminTaskExecutor(Executor adminTaskScheduler) {
-		this.adminTaskExecutor = adminTaskScheduler;
+	public void setAdminTaskExecutor(Executor adminTaskExecutor) {
+		this.adminTaskExecutor = adminTaskExecutor;
 	}
 
 	/**
 	 * The task executor for invoking the MessageListener
-	 *
 	 * @param dispatcherTaskExecutor the task executor for invoking the MessageListener
 	 */
 	public void setDispatcherTaskExecutor(Executor dispatcherTaskExecutor) {
@@ -247,7 +238,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	 * The maximum number of messages that are buffered by each concurrent
 	 * {@link MessageListener} runner. Increasing the value may increase throughput, but
 	 * also increases the memory consumption. Must be a positive number and a power of 2.
-	 *
 	 * @param queueSize the queue size
 	 */
 	public void setQueueSize(int queueSize) {
@@ -267,7 +257,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	 * component will try to continue processing incoming messages. In the latter case, it is possible that
 	 * a successful message will commit an offset after a series of failures, so the component should rely on
 	 * the `errorHandler` to capture failures.
-	 *
 	 * @param autoCommitOnError false if offsets should be committed only for successful messages
 	 * @since 1.3
 	 */
@@ -359,7 +348,8 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	}
 
 	private static Partition[] getPartitionsForTopics(final ConnectionFactory connectionFactory, String[] topics) {
-		MutableList<Partition> partitionList = flatCollect(topics, new GetPartitionsForTopic(connectionFactory));
+		MutableList<Partition> partitionList =
+				ArrayIterate.flatCollect(topics, new GetPartitionsForTopic(connectionFactory));
 		return partitionList.toArray(new Partition[partitionList.size()]);
 	}
 
@@ -370,9 +360,16 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 		private final BrokerAddress brokerAddress;
 
-		private final MutableSet<Partition> listenedPartitions = Sets.mutable.of();
+		private final MutableSet<Partition> listenedPartitions = Sets.mutable.<Partition>of().asSynchronized();
 
 		private volatile boolean active;
+
+		private final PartitionToFetchRequestFunction partitionToFetchRequestFunction =
+				new PartitionToFetchRequestFunction();
+
+		private final IsLeaderErrorPredicate isLeaderPredicate = new IsLeaderErrorPredicate();
+
+		private final IsOffsetOutOfRangePredicate offsetOutOfRangePredicate = new IsOffsetOutOfRangePredicate();
 
 		public FetchTask(BrokerAddress brokerAddress, RichIterable<Partition> initialPartitions) {
 			this.brokerAddress = brokerAddress;
@@ -396,50 +393,15 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 		@Override
 		public void run() {
-			boolean wasInterrupted = false;
 			try {
 				while (active && isRunning()) {
 					synchronized (listenedPartitions) {
 						try {
 							if (!listenedPartitions.isEmpty()) {
-								MutableCollection<FetchRequest> fetchRequests = listenedPartitions
-										.collect(new PartitionToFetchRequestFunction());
-								Result<KafkaMessageBatch> result = kafkaTemplate.receive(fetchRequests);
-								// process successful messages first
-								Iterable<KafkaMessageBatch> batches = result.getResults().values();
-								for (KafkaMessageBatch batch : batches) {
-									if (!batch.getMessages().isEmpty()) {
-										long highestFetchedOffset = 0;
-										for (KafkaMessage kafkaMessage : batch.getMessages()) {
-											// fetch operations may return entire blocks of compressed messages,
-											// which may have lower offsets than the ones requested
-											// thus a batch may contain messages that have been processed already
-											if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets
-													.get(batch.getPartition())) {
-												messageDispatcher.dispatch(kafkaMessage);
-											}
-											highestFetchedOffset = Math.max(highestFetchedOffset,
-													kafkaMessage.getMetadata().getNextOffset());
-										}
-										fetchOffsets.replace(batch.getPartition(), highestFetchedOffset);
-									}
-								}
-								// handle errors
+								Result<KafkaMessageBatch> result = fetchAvailableData();
+								handleSuccessful(result);
 								if (result.getErrors().size() > 0) {
-									// find partitions with leader errors and
-									PartitionIterable<Map.Entry<Partition, Short>> partitionByLeaderErrors = partition(
-											result.getErrors().entrySet(), new IsLeaderErrorPredicate());
-									RichIterable<Partition> partitionsWithLeaderErrors = partitionByLeaderErrors
-											.getSelected().collect(keyFunction);
-									resetLeaders(partitionsWithLeaderErrors);
-
-									PartitionIterable<Map.Entry<Partition, Short>> partitionsWithOffsetsOutOfRange = partitionByLeaderErrors
-											.getRejected().partition(new IsOffsetOutOfRangePredicate());
-									resetOffsets(
-											partitionsWithOffsetsOutOfRange.getSelected().collect(keyFunction).toSet());
-									// it's not a leader issue
-									listenedPartitions.removeAllIterable(
-											partitionsWithOffsetsOutOfRange.getRejected().collect(keyFunction));
+									handleErrors(result);
 								}
 							}
 							else {
@@ -463,9 +425,47 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					}
 				}
 			}
-			if (wasInterrupted) {
-				Thread.currentThread().interrupt();
+		}
+
+		private Result<KafkaMessageBatch> fetchAvailableData() {
+			return kafkaTemplate.receive(listenedPartitions.collect(partitionToFetchRequestFunction));
+		}
+
+		private void handleSuccessful(Result<KafkaMessageBatch> result) {
+			Iterable<KafkaMessageBatch> batches = result.getResults().values();
+			for (KafkaMessageBatch batch : batches) {
+				if (!batch.getMessages().isEmpty()) {
+					long highestFetchedOffset = 0;
+					for (KafkaMessage kafkaMessage : batch.getMessages()) {
+						// fetch operations may return entire blocks of compressed messages,
+						// which may have lower offsets than the ones requested
+						// thus a batch may contain messages that have been processed already
+						if (kafkaMessage.getMetadata().getOffset() >= fetchOffsets.get(batch.getPartition())) {
+							messageDispatcher.dispatch(kafkaMessage);
+						}
+						highestFetchedOffset = Math.max(highestFetchedOffset, kafkaMessage.getMetadata().getNextOffset());
+					}
+					fetchOffsets.replace(batch.getPartition(), highestFetchedOffset);
+				}
 			}
+		}
+
+		private void handleErrors(Result<KafkaMessageBatch> result) {
+			Map<Partition, Short> errors = result.getErrors();
+			PartitionIterable<Map.Entry<Partition, Short>> splitByLeaderError =
+					Iterate.partition(errors.entrySet(), isLeaderPredicate);
+			RichIterable<Partition> partitionsWithLeaderErrors = splitByLeaderError.getSelected()
+					.collect(Functions.<Partition>getKeyFunction());
+			resetLeaders(partitionsWithLeaderErrors);
+			PartitionIterable<Map.Entry<Partition, Short>> splitByOffsetError =
+					splitByLeaderError.getRejected().partition(offsetOutOfRangePredicate);
+			RichIterable<Partition> partitionsWithWrongOffsets =
+					splitByOffsetError.getSelected().collect(Functions.<Partition>getKeyFunction());
+			resetOffsets(partitionsWithWrongOffsets.toSet());
+			// it's not a leader issue, remove everything else
+			RichIterable<Partition> remainingPartitionsWithErrors
+					= splitByOffsetError.getRejected().collect(Functions.<Partition>getKeyFunction());
+			listenedPartitions.removeAllIterable(remainingPartitionsWithErrors);
 		}
 
 		private void resetLeaders(final Iterable<Partition> partitionsToReset) {
@@ -615,16 +615,6 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		}
 
 	}
-
-	// @SuppressWarnings("serial")
-	// private class LaunchFetchTaskProcedure implements Procedure<BrokerAddress> {
-	//
-	// @Override
-	// public void value(BrokerAddress brokerAddress) {
-	// fetchTaskExecutor.execute(new FetchTask(brokerAddress));
-	// }
-	//
-	// }
 
 	@SuppressWarnings("serial")
 	private class PartitionToFetchRequestFunction implements Function<Partition, FetchRequest> {

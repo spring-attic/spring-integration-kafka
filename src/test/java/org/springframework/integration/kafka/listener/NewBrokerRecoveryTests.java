@@ -23,22 +23,23 @@ import static org.junit.Assert.assertThat;
 import static org.springframework.integration.kafka.util.MessageUtils.decodeKey;
 import static org.springframework.integration.kafka.util.MessageUtils.decodePayload;
 
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import com.gs.collections.api.multimap.list.MutableListMultimap;
 import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
 import kafka.serializer.StringDecoder;
 import kafka.utils.VerifiableProperties;
 import org.junit.Rule;
 import org.junit.Test;
+
 import org.springframework.integration.kafka.core.BrokerAddressListConfiguration;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.integration.kafka.rule.KafkaEmbedded;
-
-import java.util.ArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marius Bogoevici
@@ -62,10 +63,7 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		createTopic(TEST_TOPIC, partitionCount, 2, 2);
 
 		// stop one Kafka instance - the partition is now underreplicated and only one
-		kafkaEmbeddedBrokerRule.bounce(0, false);
-
-		// sleep to let things settle
-		Thread.sleep(SETTLEMENT_TIME_IN_MILLIS);
+		kafkaEmbeddedBrokerRule.bounce(0);
 
 		// connect to the live broker only
 		ConnectionFactory connectionFactory =
@@ -107,10 +105,9 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		// start the other Kafka instance
 		kafkaEmbeddedBrokerRule.restart(0);
 		// sleep to let the brokers sync up
-		Thread.sleep(SETTLEMENT_TIME_IN_MILLIS);
+		kafkaEmbeddedBrokerRule.waitUntilSynced(TEST_TOPIC,0);
 		// bounce the other server
-		kafkaEmbeddedBrokerRule.bounce(1, false);
-		Thread.sleep(SETTLEMENT_TIME_IN_MILLIS);
+		kafkaEmbeddedBrokerRule.bounce(1);
 
 		// now start sending messages again
 		createMessageSender("none").send(createMessagesInRange(100, 149, TEST_TOPIC,partitionCount));
@@ -118,10 +115,10 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 		// stop the other Kafka instance
 		kafkaEmbeddedBrokerRule.restart(1);
 		// sleep to let the brokers sync up
-		Thread.sleep(SETTLEMENT_TIME_IN_MILLIS);
+		kafkaEmbeddedBrokerRule.waitUntilSynced(TEST_TOPIC,1);
+
 		// bounce the other server
-		kafkaEmbeddedBrokerRule.bounce(0, false);
-		Thread.sleep(SETTLEMENT_TIME_IN_MILLIS);
+		kafkaEmbeddedBrokerRule.bounce(0);
 
 		// now start sending messages again
 		createMessageSender("none").send(createMessagesInRange(149, 199, TEST_TOPIC,partitionCount));
@@ -132,7 +129,6 @@ public class NewBrokerRecoveryTests extends AbstractMessageListenerContainerTest
 
 		assertThat(receivedData.valuesView().toList(), hasSize(expectedMessageCount));
 		assertThat(latch.getCount(), equalTo(0L));
-		System.out.println("All messages received ... checking ");
 
 		validateMessageReceipt(receivedData, 1, partitionCount, expectedMessageCount, 1);
 

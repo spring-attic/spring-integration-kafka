@@ -16,21 +16,21 @@
 
 package org.springframework.integration.kafka.listener;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Executor;
+
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.block.procedure.Procedure2;
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.factory.Maps;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.integration.kafka.core.KafkaMessage;
 import org.springframework.integration.kafka.core.Partition;
 import org.springframework.util.Assert;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Dispatches {@link KafkaMessage}s to a {@link MessageListener}. Messages may be
@@ -63,8 +63,6 @@ class ConcurrentMessageListenerDispatcher {
 	private final int queueSize;
 
 	private final Executor taskExecutor;
-
-	private final AtomicInteger partitionAssignmentCounter = new AtomicInteger();
 
 	private volatile boolean running;
 
@@ -128,9 +126,10 @@ class ConcurrentMessageListenerDispatcher {
 		}
 
 		// evenly distribute partitions across delegates
+		int i = 0;
 		delegates = Maps.mutable.of();
 		for (Partition partition : partitions) {
-			delegates.put(partition, delegateList.get((partitionAssignmentCounter.incrementAndGet()) % consumers));
+			delegates.put(partition, delegateList.get((i++) % consumers));
 		}
 
 		// start dispatchers

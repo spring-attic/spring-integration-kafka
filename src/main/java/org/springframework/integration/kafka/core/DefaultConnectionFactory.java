@@ -16,6 +16,14 @@
 
 package org.springframework.integration.kafka.core;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.block.predicate.Predicate;
 import com.gs.collections.api.partition.PartitionIterable;
@@ -29,18 +37,11 @@ import kafka.javaapi.TopicMetadata;
 import kafka.javaapi.TopicMetadataResponse;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import scala.collection.JavaConversions;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
-import scala.collection.JavaConversions;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Default implementation of {@link ConnectionFactory}

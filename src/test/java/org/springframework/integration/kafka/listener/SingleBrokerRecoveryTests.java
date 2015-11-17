@@ -100,6 +100,7 @@ public class SingleBrokerRecoveryTests extends AbstractMessageListenerContainerT
 
 		// restart Kafka
 		kafkaEmbeddedBrokerRule.restart(0);
+		kafkaEmbeddedBrokerRule.waitUntilSynced(TEST_TOPIC,0);
 
 		// now start sending messages again
 		createMessageSender("none").send(createMessages(90, TEST_TOPIC,partitionCount));
@@ -109,7 +110,6 @@ public class SingleBrokerRecoveryTests extends AbstractMessageListenerContainerT
 
 		assertThat(receivedData.valuesView().toList(), hasSize(expectedMessageCount));
 		assertThat(latch.getCount(), equalTo(0L));
-		System.out.println("All messages received ... checking ");
 
 		validateMessageReceipt(receivedData, 1, partitionCount, expectedMessageCount, 1);
 
