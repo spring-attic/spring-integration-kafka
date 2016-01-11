@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,21 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,15 +38,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import com.gs.collections.api.multimap.MutableMultimap;
-import com.gs.collections.impl.factory.Multimaps;
-import kafka.admin.AdminUtils;
-import kafka.api.OffsetRequest;
-import kafka.common.TopicExistsException;
-import kafka.serializer.Decoder;
-import kafka.serializer.Encoder;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -61,16 +71,18 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
 import org.springframework.integration.kafka.util.EncoderAdaptingSerializer;
 import org.springframework.integration.kafka.util.MessageUtils;
 import org.springframework.integration.kafka.util.TopicUtils;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.endsWith;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
+import com.gs.collections.api.multimap.MutableMultimap;
+import com.gs.collections.impl.factory.Multimaps;
+
+import kafka.admin.AdminUtils;
+import kafka.api.OffsetRequest;
+import kafka.common.TopicExistsException;
+import kafka.serializer.Decoder;
+import kafka.serializer.Encoder;
 
 /**
  * @author Gary Russell
@@ -419,6 +431,24 @@ public class OutboundTests {
 		assertThat(payloadsByTopic.toMap().get(TOPIC).toList(), hasSize(1));
 		assertThat(payloadsByTopic.toMap().get(TOPIC), contains("fooTopic1" + suffix));
 		kafkaMessageListenerContainer.stop();
+	}
+
+	@Test
+	public void testExceptionOnSend() throws Exception {
+		KafkaProducerContext kafkaProducerContext = mock(KafkaProducerContext.class);
+		KafkaProducerMessageHandler handler = new KafkaProducerMessageHandler(kafkaProducerContext);
+		@SuppressWarnings("unchecked")
+		Future<RecordMetadata> future = mock(Future.class);
+		doThrow(new ExecutionException(new RuntimeException("foo"))).when(future).get();
+		when(kafkaProducerContext.send(anyString(), anyInt(), anyObject(), anyObject())).thenReturn(future);
+		try {
+			handler.handleMessage(new GenericMessage<String>("foo"));
+		}
+		catch (MessagingException e) {
+			assertThat(e.getCause(), instanceOf(ExecutionException.class));
+			assertThat(e.getCause().getCause(), instanceOf(RuntimeException.class));
+			assertThat(e.getCause().getCause().getMessage(), equalTo("foo"));
+		}
 	}
 
 	private KafkaMessageListenerContainer createMessageListenerContainer(String... topics) throws Exception {
