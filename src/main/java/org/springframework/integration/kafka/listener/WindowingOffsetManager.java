@@ -18,8 +18,9 @@ package org.springframework.integration.kafka.listener;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -31,7 +32,6 @@ import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.stream.GroupedStream;
@@ -41,7 +41,8 @@ import reactor.rx.stream.GroupedStream;
  * do the actual operations. Its purpose is to reduce the performance impact of writing operations
  * wherever this is desirable.
  * <p>
- * Either a time window or a number of writes can be specified, but not both.
+ * A time window or a number of writes can be specified, or both.
+ * Defaults to 10 seconds window with {@link Integer#MAX_VALUE} buffer.
  * @author Marius Bogoevici
  * @author Artem Bilan
  * @since 1.3.1
@@ -57,16 +58,6 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 		@Override
 		public Long apply(Long aLong, Long bLong) {
 			return Math.max(aLong, bLong);
-		}
-
-	};
-
-	private static final Function<Tuple2<Partition, Long>, PartitionAndOffset> partitionAndOffsetFunction
-			= new Function<Tuple2<Partition, Long>, PartitionAndOffset>() {
-
-		@Override
-		public PartitionAndOffset apply(Tuple2<Partition, Long> partition) {
-			return new PartitionAndOffset(partition.getT1(), partition.getT2());
 		}
 
 	};
@@ -94,7 +85,7 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 
 	};
 
-	private final FindHighestOffsetsByPartitionFunction findHighestOffsetsByPartition
+	private static final FindHighestOffsetsByPartitionFunction findHighestOffsetsByPartition
 			= new FindHighestOffsetsByPartitionFunction();
 
 	private final Consumer<PartitionAndOffset> delegateUpdateOffset = new Consumer<PartitionAndOffset>() {
@@ -110,13 +101,12 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 
 		@Override
 		public void accept(Void aVoid) {
-			if (shutdownLatch != null) {
-				shutdownLatch.countDown();
-			}
+			createOffsetsStream();
 		}
 
 	};
 
+	private final ReadWriteLock offsetsLock = new ReentrantReadWriteLock();
 
 	private final OffsetManager delegate;
 
@@ -124,11 +114,11 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 
 	private int count = Integer.MAX_VALUE;
 
-	private RingBufferProcessor<PartitionAndOffset> offsets;
-
 	private int shutdownTimeout = 2000;
 
-	private CountDownLatch shutdownLatch;
+	private volatile RingBufferProcessor<PartitionAndOffset> offsets;
+
+	private volatile boolean closed;
 
 	public WindowingOffsetManager(OffsetManager offsetManager) {
 		this.delegate = offsetManager;
@@ -166,12 +156,24 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		if (this.count != 1) {
-			this.offsets = RingBufferProcessor.share("spring-integration-kafka-offset", 1024);
+			createOffsetsStream();
+		}
+	}
 
+	private void createOffsetsStream() {
+		if (!this.closed) {
+			this.offsetsLock.writeLock().lock();
+			try {
+				this.offsets = RingBufferProcessor.share("spring-integration-kafka-offset", 1024);
+			}
+			finally {
+				this.offsetsLock.writeLock().unlock();
+			}
 			Streams.wrap(this.offsets)
 					.window(this.count, timespan, TimeUnit.MILLISECONDS)
-					.flatMap(this.findHighestOffsetsByPartition)
+					.flatMap(findHighestOffsetsByPartition)
 					.consume(this.delegateUpdateOffset, null, this.offsetComplete);
+
 		}
 	}
 
@@ -187,7 +189,13 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 	@Override
 	public void updateOffset(Partition partition, long offset) {
 		if (this.offsets != null) {
-			this.offsets.onNext(new PartitionAndOffset(partition, offset));
+			this.offsetsLock.readLock().lock();
+			try {
+				this.offsets.onNext(new PartitionAndOffset(partition, offset));
+			}
+			finally {
+				this.offsetsLock.readLock().unlock();
+			}
 		}
 		else {
 			this.delegate.updateOffset(partition, offset);
@@ -196,38 +204,45 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 
 	@Override
 	public long getOffset(Partition partition) {
+		doFlush();
 		return this.delegate.getOffset(partition);
 	}
 
 	@Override
 	public void deleteOffset(Partition partition) {
+		doFlush();
 		this.delegate.deleteOffset(partition);
 	}
 
 	@Override
 	public void resetOffsets(Collection<Partition> partition) {
+		doFlush();
 		this.delegate.resetOffsets(partition);
 	}
 
 	@Override
 	public void close() throws IOException {
-		if (this.offsets != null) {
-			this.shutdownLatch = new CountDownLatch(1);
-			this.offsets.onComplete();
-			try {
-				this.shutdownLatch.await(this.shutdownTimeout, TimeUnit.MILLISECONDS);
-			}
-			catch (InterruptedException e) {
-				// ignore
-			}
-		}
+		this.closed = true;
 		this.delegate.close();
 	}
 
 	@Override
 	public void flush() throws IOException {
+		if (this.offsets != null) {
+			this.offsets.awaitAndShutdown(this.shutdownTimeout, TimeUnit.MILLISECONDS);
+		}
 		this.delegate.flush();
 	}
+
+	private void doFlush() {
+		try {
+			flush();
+		}
+		catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
 
 	private static class PartitionAndOffset {
 
@@ -263,7 +278,7 @@ public class WindowingOffsetManager implements OffsetManager, InitializingBean, 
 			implements Function<GroupedStream<Partition, PartitionAndOffset>, Stream<PartitionAndOffset>> {
 
 		@Override
-		public Stream<PartitionAndOffset> apply(GroupedStream<Partition, PartitionAndOffset> group) {
+		public Stream<PartitionAndOffset> apply(final GroupedStream<Partition, PartitionAndOffset> group) {
 			return group
 					.map(offsetFunction)
 					.reduce(maxFunction)
