@@ -39,13 +39,13 @@ public abstract class AbstractMessageListenerContainer implements BeanNameAware 
 
 	/**
 	 * Set the message listener; must be a {@link MessageListener} or
-	 * {@link ConsumerAwareMessageListener}.
+	 * {@link AcknowledgingMessageListener}.
 	 * @param messageListener the listener.
 	 */
 	public void setMessageListener(Object messageListener) {
 		Assert.isTrue(
-				messageListener instanceof MessageListener || messageListener instanceof ConsumerAwareMessageListener,
-				"Either a " + MessageListener.class.getName() + " or a " + ConsumerAwareMessageListener.class.getName()
+				messageListener instanceof MessageListener || messageListener instanceof AcknowledgingMessageListener,
+				"Either a " + MessageListener.class.getName() + " or a " + AcknowledgingMessageListener.class.getName()
 						+ " must be provided");
 		this.messageListener = messageListener;
 	}

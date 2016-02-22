@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-
 package org.springframework.kafka.listener;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
- * Listener for handling incoming Kafka messages with visibility to the
- * consumer for manual acking.
+ * Listener for handling incoming Kafka messages, propagating an acknowledgment handle that recipients
+ * can invoke when the message has been processed.
  *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @since 1.0.1
  */
-public interface ConsumerAwareMessageListener<K, V> {
+public interface AcknowledgingMessageListener<K, V> {
 
 	/**
-	 * Executes when a {@link ConsumerRecord} is received.
-	 * @param record the ConsumerRecord to be processed.
-	 * @param consumer the consumer.
+	 * Executes when a Kafka message is received
+	 *
+	 * @param record the Kafka message to be processed
+	 * @param acknowledgment a handle for acknowledging the message processing
 	 */
-	void onMessage(ConsumerRecord<K, V> record, Consumer<K, V> consumer);
+	void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment);
 
 }

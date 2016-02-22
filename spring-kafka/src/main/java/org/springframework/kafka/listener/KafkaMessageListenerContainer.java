@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -198,7 +199,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * (should be greater than {@link #setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Ack after at least this number of records have been received</li>
 	 * <li>MANUAL: Listener is responsible for acking - use a
-	 * {@link ConsumerAwareMessageListener}.
+	 * {@link AcknowledgingMessageListener}.
 	 * </ul>
 	 * @param ackMode the {@link AckMode}; default BATCH.
 	 */
@@ -324,19 +325,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Collection<ConsumerRecords<K, V>> unAcked = new ArrayList<>();
 
+		private final Collection<ConsumerRecord<K, V>> manualAcks = new LinkedList<>();
+
 		private final CountDownLatch assignmentLatch = new CountDownLatch(1);
 
 		private MessageListener<K, V> listener;
 
-		private ConsumerAwareMessageListener<K, V> consumerAwareMessageListener;
+		private AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
 		private volatile Collection<TopicPartition> topicPartitions;
 
 		@SuppressWarnings("unchecked")
 		public FetchTask() {
 			Object messageListener = getMessageListener();
-			if (messageListener instanceof ConsumerAwareMessageListener) {
-				this.consumerAwareMessageListener = (ConsumerAwareMessageListener<K, V>) messageListener;
+			if (messageListener instanceof AcknowledgingMessageListener) {
+				this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) messageListener;
 			}
 			else if (messageListener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) messageListener;
@@ -436,9 +439,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 						Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 						while (iterator.hasNext()) {
-							ConsumerRecord<K, V> record = iterator.next();
-							if (this.consumerAwareMessageListener != null) {
-								this.consumerAwareMessageListener.onMessage(record, consumer);
+							final ConsumerRecord<K, V> record = iterator.next();
+							if (this.acknowledgingMessageListener != null) {
+								this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() {
+
+									@Override
+									public void acknowledge() {
+										manualAcks.add(record);
+									}
+
+								});
 							}
 							else {
 								this.listener.onMessage(record);
@@ -467,6 +477,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								this.unAcked.add(records);
 							}
 						}
+						// TODO: manual acks
 					}
 					else {
 						if (logger.isDebugEnabled()) {
