@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,25 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.springframework.kafka.core;
 
-package org.springframework.integration.kafka.config.xml;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.springframework.integration.config.xml.AbstractIntegrationNamespaceHandler;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 
 /**
- * The namespace handler for the Kafka namespace
- *
- * @author Soby Chacko
  * @author Gary Russell
- * @since 0.5
  *
  */
-public class KafkaNamespaceHandler extends AbstractIntegrationNamespaceHandler {
+public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V> {
+
+	private final Map<String, Object> configs;
+
+	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
+		this.configs = new HashMap<>(configs);
+	}
 
 	@Override
-	public void init() {
-		registerBeanDefinitionParser("outbound-channel-adapter", new KafkaOutboundChannelAdapterParser());
-		registerBeanDefinitionParser("message-driven-channel-adapter", new KafkaMessageDrivenChannelAdapterParser());
+	public Producer<K, V> createProducer() {
+		return new KafkaProducer<>(this.configs);
 	}
 
 }

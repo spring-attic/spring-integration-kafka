@@ -1,61 +1,22 @@
+description = "Spring Kafka"
+
+apply plugin: 'base'
+apply plugin: 'project-report'
+apply plugin: 'idea'
+
 buildscript {
 	repositories {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
 		classpath 'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE'
+		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.0'
 	}
 }
 
-description = 'Spring Kafka Support'
-
-apply plugin: 'java'
-apply from: "${rootProject.projectDir}/publish-maven.gradle"
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'jacoco'
-
-if (project.hasProperty('platformVersion')) {
-	apply plugin: 'spring-io'
-
-	dependencyManagement {
-		springIoTestRuntime {
-			imports {
-				mavenBom "io.spring.platform:platform-bom:${platformVersion}"
-			}
-		}
-	}
-}
-
-group = 'org.springframework.kafka'
-
-repositories {
-	maven {
-		url 'https://repository.apache.org/content/groups/public'
-	}
-	maven { url 'http://repo.spring.io/libs-milestone' }
-	if (project.hasProperty('platformVersion')) {
-		maven { url 'https://repo.spring.io/snapshot' }
-	}
-}
-
-sourceCompatibility = targetCompatibility = 1.7
+def docsDir = 'src/reference/asciidoc' // Will be default with newer asciidoctor plugin
 
 ext {
-	avroVersion = '1.7.6'
-	gsCollectionsVersion = '5.0.0'
-	hamcrestVersion = '1.3'
-	junitVersion = '4.11'
-	kafkaVersion = '0.9.0.1'
-	log4jVersion = '1.2.17'
-//	metricsVersion = '2.2.0'
-	scalaVersion = '2.11'
-	reactor2Version = '2.0.6.RELEASE'
-	springRetryVersion = '1.1.2.RELEASE'
-	springVersion = '4.2.4.RELEASE'
-
-	idPrefix = 'kafka'
-
 	linkHomepage = 'https://github.com/spring-projects/spring-kafka'
 	linkCi = 'https://build.spring.io/browse/KAFKA'
 	linkIssue = 'https://github.com/spring-projects/spring-integration-kafka/issues'
@@ -65,82 +26,150 @@ ext {
 
 }
 
-eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
+allprojects {
+	group = 'org.springframework.kafka'
 
-jacoco {
-	toolVersion = "0.7.2.201409121644"
-}
-
-sourceSets {
-	test {
-		resources {
-			srcDirs = ['src/test/resources', 'src/test/java']
+	repositories {
+		maven { url 'https://repo.spring.io/libs-release' }
+		maven { url 'https://repo.spring.io/libs-milestone' }
+		if (project.hasProperty('platformVersion')) {
+			maven { url 'https://repo.spring.io/snapshot' }
 		}
 	}
+
 }
 
-dependencies {
-	compile "org.springframework:spring-context:$springVersion"
-	compile ("org.apache.avro:avro:$avroVersion", optional)
-	compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
-	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-	compile "io.projectreactor:reactor-core:$reactor2Version"
+subprojects { subproject ->
 
-	compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+	apply plugin: 'java'
+	apply from: "${rootProject.projectDir}/publish-maven.gradle"
+	apply plugin: 'eclipse'
+	apply plugin: 'idea'
+	apply plugin: 'jacoco'
 
-//	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
-//	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
+	if (project.hasProperty('platformVersion')) {
+		apply plugin: 'spring-io'
 
-	testCompile "org.springframework:spring-test:$springVersion"
-	testCompile "org.springframework.retry:spring-retry:$springRetryVersion"
-	testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
-	testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
-
-	testCompile ("junit:junit:$junitVersion") {
-		exclude group: 'org.hamcrest'
+		dependencyManagement {
+			springIoTestRuntime {
+				imports {
+					mavenBom "io.spring.platform:platform-bom:${platformVersion}"
+				}
+			}
+		}
 	}
-	testCompile "log4j:log4j:$log4jVersion"
-	testCompile "org.hamcrest:hamcrest-all:$hamcrestVersion"
 
-}
+	sourceCompatibility = 1.7
+	targetCompatibility = 1.7
 
-// enable all compiler warnings; individual projects may customize further
-[compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options']
+	ext {
+		avroVersion = '1.7.6'
+		gsCollectionsVersion = '5.0.0'
+		hamcrestVersion = '1.3'
+		junitVersion = '4.11'
+		kafkaVersion = '0.9.0.1'
+		log4jVersion = '1.2.17'
+	//	metricsVersion = '2.2.0'
+		scalaVersion = '2.11'
+		reactor2Version = '2.0.6.RELEASE'
+		springRetryVersion = '1.1.2.RELEASE'
+		springVersion = '4.2.4.RELEASE'
 
-test {
-	// suppress all console output during testing unless running `gradle -i`
-	logging.captureStandardOutput(LogLevel.INFO)
-	maxHeapSize = "1024m"
+		idPrefix = 'kafka'
+
+	}
+
+	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
+
 	jacoco {
-		append = false
-		destinationFile = file("$buildDir/jacoco.exec")
+		toolVersion = "0.7.2.201409121644"
+	}
+
+	// enable all compiler warnings; individual projects may customize further
+	[compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options']
+
+	test {
+		// suppress all console output during testing unless running `gradle -i`
+		logging.captureStandardOutput(LogLevel.INFO)
+		maxHeapSize = "1024m"
+		jacoco {
+			append = false
+			destinationFile = file("$buildDir/jacoco.exec")
+		}
+	}
+
+	jacocoTestReport {
+		reports {
+			xml.enabled false
+			csv.enabled false
+			html.destination "${buildDir}/reports/jacoco/html"
+		}
+	}
+
+	build.dependsOn jacocoTestReport
+
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from sourceSets.main.allJava
+	}
+
+	task javadocJar(type: Jar) {
+		classifier = 'javadoc'
+		from javadoc
+	}
+
+	artifacts {
+		archives sourcesJar
+		archives javadocJar
+	}
+
+}
+
+project ('spring-kafka') {
+	description = 'Spring Kafka Support'
+
+	dependencies {
+		compile "org.springframework:spring-context:$springVersion"
+		compile ("org.apache.avro:avro:$avroVersion", optional)
+		compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+		compile "io.projectreactor:reactor-core:$reactor2Version"
+
+		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+
+		testCompile project (":spring-kafka-test")
 	}
 }
 
-jacocoTestReport {
-	reports {
-		xml.enabled false
-		csv.enabled false
-		html.destination "${buildDir}/reports/jacoco/html"
+project ('spring-kafka-test') {
+	description = 'Spring Kafka Test Support'
+
+	dependencies {
+		// compile "org.springframework:spring-context:$springVersion"
+		// compile ("org.apache.avro:avro:$avroVersion", optional)
+		// compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+		// compile "io.projectreactor:reactor-core:$reactor2Version"
+		//
+		// compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+
+	//	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
+	//	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
+
+		compile "org.springframework:spring-test:$springVersion"
+		compile "org.springframework.retry:spring-retry:$springRetryVersion"
+		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
+		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
+
+		compile ("junit:junit:$junitVersion") {
+			exclude group: 'org.hamcrest'
+		}
+		compile "log4j:log4j:$log4jVersion"
+		compile "org.hamcrest:hamcrest-all:$hamcrestVersion"
+
 	}
 }
 
-build.dependsOn jacocoTestReport
-
-task sourcesJar(type: Jar) {
-	classifier = 'sources'
-	from sourceSets.main.allJava
-}
-
-task javadocJar(type: Jar) {
-	classifier = 'javadoc'
-	from javadoc
-}
-
-artifacts {
-	archives sourcesJar
-	archives javadocJar
-}
 
 apply plugin: 'sonar-runner'
 
@@ -158,15 +187,20 @@ sonarRunner {
 
 task api(type: Javadoc) {
 	group = 'Documentation'
-	description = 'Generates the Javadoc API documentation.'
+	description = 'Generates aggregated Javadoc API documentation.'
 	title = "${rootProject.description} ${version} API"
 	options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
 	options.author = true
 	options.header = rootProject.description
 	options.overview = 'src/api/overview.html'
 
-	source = sourceSets.main.allJava
-	classpath = project.sourceSets.main.compileClasspath
+	source subprojects.collect { project ->
+		project.sourceSets.main.allJava
+	}
+
+	classpath = files(subprojects.collect { project ->
+		project.sourceSets.main.compileClasspath
+	})
 	destinationDir = new File(buildDir, "api")
 }
 
@@ -237,10 +271,12 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 	}
 */
 
-	into("${baseDir}/libs") {
-		from project.jar
-		from project.sourcesJar
-		from project.javadocJar
+	subprojects.each { subproject ->
+		into ("${baseDir}/libs") {
+			from subproject.jar
+			from subproject.sourcesJar
+			from subproject.javadocJar
+		}
 	}
 }
 

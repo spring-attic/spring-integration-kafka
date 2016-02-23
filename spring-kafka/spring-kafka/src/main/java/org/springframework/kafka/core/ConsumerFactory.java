@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2015 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,26 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.springframework.kafka.core;
 
-package org.springframework.integration.kafka.support;
+import org.apache.kafka.clients.consumer.Consumer;
 
 /**
- * @author Artem Bilan
- * @author Marius Bogoevici
- * @since 1.0
+ * @author Gary Russell
+ *
  */
-public abstract class KafkaHeaders {
+public interface ConsumerFactory<K, V> {
 
-	private static final String PREFIX = "kafka_";
+	Consumer<K, V> createConsumer();
 
-	public static final String TOPIC = PREFIX + "topic";
-
-	public static final String MESSAGE_KEY = PREFIX + "messageKey";
-
-	public static final String PARTITION_ID = PREFIX + "partitionId";
-
-	public static final String OFFSET = PREFIX + "offset";
-
-	public static final String ACKNOWLEDGMENT = PREFIX + "acknowledgment";
+	boolean isAutoCommit();
 
 }
