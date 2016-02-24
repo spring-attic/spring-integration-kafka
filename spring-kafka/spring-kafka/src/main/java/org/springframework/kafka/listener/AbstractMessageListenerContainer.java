@@ -15,6 +15,12 @@
  */
 package org.springframework.kafka.listener;
 
+import java.util.concurrent.Executor;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
+
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.util.Assert;
@@ -25,25 +31,76 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractMessageListenerContainer<K, V> implements BeanNameAware, SmartLifecycle {
 
+	protected final Log logger = LogFactory.getLog(this.getClass());
+
 	public enum AckMode {
-		RECORD, BATCH, TIME, COUNT, MANUAL
+		/**
+		 * Call {@link Consumer#commitAsync()} after each record is passed to the listener.
+		 */
+		RECORD,
+
+		/**
+		 * Call {@link Consumer#commitAsync()} after the results of each poll have been
+		 * passed to the listener.
+		 */
+		BATCH,
+
+		/**
+		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * {@link AbstractMessageListenerContainer#setAckTime(long) ackTime} has elapsed.
+		 */
+		TIME,
+
+		/**
+		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
+		 * exceeded.
+		 */
+		COUNT,
+
+		/**
+		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
+		 * exceeded or after {@link AbstractMessageListenerContainer#setAckTime(long)
+		 * ackTime} has elapsed.
+		 */
+		COUNT_TIME,
+
+		/**
+		 * Same as {@link #COUNT_TIME} except for pending manual acks.
+		 */
+		MANUAL,
+
+		/**
+		 * Call {@link Consumer#commitAsync()} immediately for pending acks.
+		 */
+		MANUAL_IMMEDIATE
+
 	}
 
 	private final Object lifecycleMonitor = new Object();
 
 	private String beanName;
 
-	protected AckMode ackMode = AckMode.BATCH;
+	private AckMode ackMode = AckMode.BATCH;
+
+	private int ackCount;
+
+	private long ackTime;
 
 	private Object messageListener;
 
-	protected volatile long pollTimeout = 1000;
+	private volatile long pollTimeout = 1000;
 
 	private boolean autoStartup = true;
 
 	private int phase = 0;
 
 	private volatile boolean running = false;
+
+	private Executor taskExecutor;
+
+	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
 
 	@Override
@@ -115,9 +172,44 @@ public abstract class AbstractMessageListenerContainer<K, V> implements BeanName
 		return pollTimeout;
 	}
 
+	/**
+	 * Set the number of outstanding record count after which offsets should be committed
+	 * when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being used.
+	 * @param count the count
+	 */
+	public void setAckCount(int count) {
+		this.ackCount = count;
+	}
+
+	/**
+	 * @return the count.
+	 * @see #setAckCount(int)
+	 */
+	public int getAckCount() {
+		return this.ackCount;
+	}
+
+	/**
+	 * Set the time (ms) after which outstanding offsets should be committed
+	 * when {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should
+	 * be larger than
+	 * @param millis the time
+	 */
+	public void setAckTime(long millis) {
+		this.ackTime = millis;
+	}
+
+	/**
+	 * @return the time.
+	 * @see AbstractMessageListenerContainer#setAckTime(long)
+	 */
+	public long getAckTime() {
+		return this.ackTime;
+	}
+
 	@Override
 	public boolean isAutoStartup() {
-		return autoStartup;
+		return this.autoStartup;
 	}
 
 	public void setAutoStartup(boolean autoStartup) {
@@ -126,7 +218,7 @@ public abstract class AbstractMessageListenerContainer<K, V> implements BeanName
 
 	@Override
 	public final void start() {
-		synchronized (lifecycleMonitor) {
+		synchronized (this.lifecycleMonitor) {
 			doStart();
 		}
 	}
@@ -140,7 +232,7 @@ public abstract class AbstractMessageListenerContainer<K, V> implements BeanName
 
 	@Override
 	public void stop(Runnable callback) {
-		synchronized (lifecycleMonitor) {
+		synchronized (this.lifecycleMonitor) {
 			doStop();
 		}
 		if (callback != null) {
@@ -166,6 +258,22 @@ public abstract class AbstractMessageListenerContainer<K, V> implements BeanName
 	@Override
 	public int getPhase() {
 		return this.phase;
+	}
+
+	public ErrorHandler getErrorHandler() {
+		return this.errorHandler;
+	}
+
+	public void setErrorHandler(ErrorHandler errorHandler) {
+		this.errorHandler = errorHandler;
+	}
+
+	public Executor getTaskExecutor() {
+		return this.taskExecutor;
+	}
+
+	public void setTaskExecutor(Executor fetchTaskExecutor) {
+		this.taskExecutor = fetchTaskExecutor;
 	}
 
 }

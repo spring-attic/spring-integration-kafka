@@ -45,4 +45,6 @@ public interface KafkaRule extends TestRule {
 	boolean isEmbedded();
 
 	List<KafkaServer> getKafkaServers();
+
+	int getPartitionsPerTopic();
 }

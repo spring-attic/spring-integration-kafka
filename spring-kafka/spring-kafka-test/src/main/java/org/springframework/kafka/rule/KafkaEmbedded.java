@@ -216,6 +216,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 				.toArray(new BrokerAddress[this.kafkaServers.size()]);
 	}
 
+	@Override
+	public int getPartitionsPerTopic() {
+		return this.partitionsPerTopic;
+	}
+
 	public void bounce(BrokerAddress brokerAddress) {
 		for (KafkaServer kafkaServer : getKafkaServers()) {
 			if (brokerAddress.equals(new BrokerAddress(kafkaServer.config().hostName(), kafkaServer.config().port()))) {

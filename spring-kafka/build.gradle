@@ -69,6 +69,7 @@ subprojects { subproject ->
 		junitVersion = '4.11'
 		kafkaVersion = '0.9.0.1'
 		log4jVersion = '1.2.17'
+		mockitoVersion = '1.9.5'
 	//	metricsVersion = '2.2.0'
 		scalaVersion = '2.11'
 		reactor2Version = '2.0.6.RELEASE'
@@ -165,6 +166,9 @@ project ('spring-kafka-test') {
 			exclude group: 'org.hamcrest'
 		}
 		compile "log4j:log4j:$log4jVersion"
+		compile ("org.mockito:mockito-core:$mockitoVersion") {
+			exclude group: 'org.hamcrest'
+		}
 		compile "org.hamcrest:hamcrest-all:$hamcrestVersion"
 
 	}
