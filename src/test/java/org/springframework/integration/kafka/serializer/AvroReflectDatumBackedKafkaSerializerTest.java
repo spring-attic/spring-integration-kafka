@@ -15,44 +15,38 @@
  */
 package org.springframework.integration.kafka.serializer;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaDecoder;
-import org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaEncoder;
-import org.springframework.integration.kafka.test.utils.TestObject;
-
 /**
  * @author Soby Chacko
  * @since 0.5
  */
 public class AvroReflectDatumBackedKafkaSerializerTest {
 
-	@Test
-	public void testDecodePlainSchema() {
-		final AvroReflectDatumBackedKafkaEncoder<TestObject> avroBackedKafkaEncoder = new AvroReflectDatumBackedKafkaEncoder<TestObject>(TestObject.class);
-
-		final TestObject testObject = new TestObject();
-		testObject.setTestData1("\"Test Data1\"");
-		testObject.setTestData2(1);
-
-		final byte[] data = avroBackedKafkaEncoder.toBytes(testObject);
-
-		final AvroReflectDatumBackedKafkaDecoder<TestObject> avroReflectDatumBackedKafkaDecoder = new AvroReflectDatumBackedKafkaDecoder<TestObject>(TestObject.class);
-		final TestObject decodedFbu = avroReflectDatumBackedKafkaDecoder.fromBytes(data);
-
-		Assert.assertEquals(testObject.getTestData1(), decodedFbu.getTestData1());
-		Assert.assertEquals(testObject.getTestData2(), decodedFbu.getTestData2());
-	}
-
-	@Test
-	public void anotherTest() {
-		final AvroReflectDatumBackedKafkaEncoder<String> avroBackedKafkaEncoder = new AvroReflectDatumBackedKafkaEncoder<String>(java.lang.String.class);
-		final String testString = "Testing Avro";
-		final byte[] data = avroBackedKafkaEncoder.toBytes(testString);
-
-		final AvroReflectDatumBackedKafkaDecoder<String> avroReflectDatumBackedKafkaDecoder = new AvroReflectDatumBackedKafkaDecoder<String>(java.lang.String.class);
-		final String decodedS = avroReflectDatumBackedKafkaDecoder.fromBytes(data);
-
-		Assert.assertEquals(testString, decodedS);
-	}
+//	@Test
+//	public void testDecodePlainSchema() {
+//		final AvroReflectDatumBackedKafkaEncoder<TestObject> avroBackedKafkaEncoder = new AvroReflectDatumBackedKafkaEncoder<TestObject>(TestObject.class);
+//
+//		final TestObject testObject = new TestObject();
+//		testObject.setTestData1("\"Test Data1\"");
+//		testObject.setTestData2(1);
+//
+//		final byte[] data = avroBackedKafkaEncoder.toBytes(testObject);
+//
+//		final AvroReflectDatumBackedKafkaDecoder<TestObject> avroReflectDatumBackedKafkaDecoder = new AvroReflectDatumBackedKafkaDecoder<TestObject>(TestObject.class);
+//		final TestObject decodedFbu = avroReflectDatumBackedKafkaDecoder.fromBytes(data);
+//
+//		Assert.assertEquals(testObject.getTestData1(), decodedFbu.getTestData1());
+//		Assert.assertEquals(testObject.getTestData2(), decodedFbu.getTestData2());
+//	}
+//
+//	@Test
+//	public void anotherTest() {
+//		final AvroReflectDatumBackedKafkaEncoder<String> avroBackedKafkaEncoder = new AvroReflectDatumBackedKafkaEncoder<String>(java.lang.String.class);
+//		final String testString = "Testing Avro";
+//		final byte[] data = avroBackedKafkaEncoder.toBytes(testString);
+//
+//		final AvroReflectDatumBackedKafkaDecoder<String> avroReflectDatumBackedKafkaDecoder = new AvroReflectDatumBackedKafkaDecoder<String>(java.lang.String.class);
+//		final String decodedS = avroReflectDatumBackedKafkaDecoder.fromBytes(data);
+//
+//		Assert.assertEquals(testString, decodedS);
+//	}
 }

@@ -20,8 +20,8 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.handler.AbstractMessageHandler;
-import org.springframework.integration.kafka.support.KafkaHeaders;
-import org.springframework.integration.kafka.support.KafkaProducerContext;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 
 /**
@@ -31,9 +31,9 @@ import org.springframework.messaging.Message;
  * @author Marius Bogoevici
  * @since 0.5
  */
-public class KafkaProducerMessageHandler extends AbstractMessageHandler {
+public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
-	private final KafkaProducerContext kafkaProducerContext;
+	private final KafkaTemplate<K, V> kafkaTemplate;
 
 	private EvaluationContext evaluationContext;
 
@@ -45,8 +45,10 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 
 	private volatile Expression partitionIdExpression;
 
-	public KafkaProducerMessageHandler(final KafkaProducerContext kafkaProducerContext) {
-		this.kafkaProducerContext = kafkaProducerContext;
+	private Object messageKey;
+
+	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
+		this.kafkaTemplate = kafkaTemplate;
 	}
 
 	/**
@@ -83,8 +85,8 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 		this.partitionIdExpression = partitionIdExpression;
 	}
 
-	public KafkaProducerContext getKafkaProducerContext() {
-		return this.kafkaProducerContext;
+	public KafkaTemplate<?, ?> getKafkaTemplate() {
+		return this.kafkaTemplate;
 	}
 
 	@Override
@@ -93,6 +95,7 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 		this.evaluationContext = ExpressionUtils.createStandardEvaluationContext(getBeanFactory());
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void handleMessageInternal(final Message<?> message) throws Exception {
 		String topic = this.topicExpression != null ?
@@ -104,11 +107,11 @@ public class KafkaProducerMessageHandler extends AbstractMessageHandler {
 				this.partitionIdExpression.getValue(this.evaluationContext, message, Integer.class)
 				: (this.enableHeaderRouting ? message.getHeaders().get(KafkaHeaders.PARTITION_ID, Integer.class) : null);
 
-		Object messageKey = this.messageKeyExpression != null
+		messageKey = this.messageKeyExpression != null
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 
-		this.kafkaProducerContext.send(topic, partitionId, messageKey, message.getPayload());
+		this.kafkaTemplate.convertAndSend(topic, partitionId, (K) messageKey, ((V) message.getPayload()));
 	}
 
 	@Override
