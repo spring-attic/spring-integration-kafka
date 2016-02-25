@@ -72,8 +72,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic5 = "testTopic5";
 
+	private static String topic6 = "testTopic6";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
+			topic6);
 
 	@Test
 	public void testAutoCommit() throws Exception {
@@ -321,6 +324,42 @@ public class ConcurrentMessageListenerContainerTests {
 					.getPropertyValue("partitions")).length);
 		}
 		container.stop();
+	}
+
+	@Test
+	public void testListenerException() throws Exception {
+		logger.info("Start exception");
+		Map<String, Object> props = consumerProps("test1", "true");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, topic6);
+		final CountDownLatch latch = new CountDownLatch(4);
+		container.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto: " + message);
+				latch.countDown();
+				throw new RuntimeException("intended");
+			}
+		});
+		container.setConcurrency(2);
+		container.setBeanName("testException");
+		container.start();
+		waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = senderProps();
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic6);
+		template.convertAndSend(0, "foo");
+		template.convertAndSend(2, "bar");
+		template.convertAndSend(0, "baz");
+		template.convertAndSend(2, "qux");
+		template.flush();
+		assertTrue(latch.await(60, TimeUnit.SECONDS));
+		container.stop();
+		logger.info("Stop exception");
+
 	}
 
 	private Map<String, Object> consumerProps(String group, String autoCommit) {

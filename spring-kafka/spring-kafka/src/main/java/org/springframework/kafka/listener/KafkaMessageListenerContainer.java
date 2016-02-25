@@ -326,28 +326,38 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	private void invokeListener(final ConsumerRecord<K, V> record) {
-		if (this.acknowledgingMessageListener != null) {
-			this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() {
+		try {
+			if (this.acknowledgingMessageListener != null) {
+				this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() {
 
-				@Override
-				public void acknowledge() {
-					if (getAckMode().equals(AckMode.MANUAL)) {
-						updateManualOffset(record);
+					@Override
+					public void acknowledge() {
+						if (getAckMode().equals(AckMode.MANUAL)) {
+							updateManualOffset(record);
+						}
+						else if (getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
+							updateManualOffset(record);
+							consumer.wakeup();
+						}
+						else {
+							throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
+									+ "for manual acks");
+						}
 					}
-					else if (getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
-						updateManualOffset(record);
-						consumer.wakeup();
-					}
-					else {
-						throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
-								+ "for manual acks");
-					}
-				}
 
-			});
+				});
+			}
+			else {
+				this.listener.onMessage(record);
+			}
 		}
-		else {
-			this.listener.onMessage(record);
+		catch (Exception e) {
+			if (getErrorHandler() != null) {
+				getErrorHandler().handle(e, record);
+			}
+			else {
+				logger.error("Listener threw an exception and no error handler for " + record, e);
+			}
 		}
 	}
 
