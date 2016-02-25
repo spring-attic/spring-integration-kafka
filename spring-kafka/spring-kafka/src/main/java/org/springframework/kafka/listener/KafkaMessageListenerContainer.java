@@ -89,7 +89,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
 	 * topics/partitions - when using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} can be used.
+	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} can be used.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
@@ -100,7 +100,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	/**
 	 * Construct an instance with the supplied configuration properties and topics.
 	 * When using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
 	 */
@@ -111,7 +111,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	/**
 	 * Construct an instance with the supplied configuration properties and topic
 	 * pattern. When using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPattern the topic pattern.
 	 */
@@ -121,8 +121,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	/**
 	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. When using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * pattern. Note: package protected - used by the ConcurrentMessageListenerContainer.
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
 	 * @param topicPattern the topic pattern.
@@ -149,7 +148,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 *
 	 * @param resetStrategy the {@link ContainerOffsetResetStrategy}
 	 */
-	public void setResetStrategy(ConcurrentMessageListenerContainer.ContainerOffsetResetStrategy resetStrategy) {
+	public void setResetStrategy(ContainerOffsetResetStrategy resetStrategy) {
 		this.resetStrategy = resetStrategy;
 	}
 

@@ -25,10 +25,10 @@ import java.lang.annotation.Target;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 
 /**
- * Annotation that marks a method to be the target of a Rabbit message
- * listener within a class that is annotated with {@link RabbitListener}.
+ * Annotation that marks a method to be the target of a Kafka message
+ * listener within a class that is annotated with {@link KafkaListener}.
  *
- * <p>See the {@link RabbitListener} for information about permitted method signatures
+ * <p>See the {@link KafkaListener} for information about permitted method signatures
  * and available parameters.
  * <p><b>It is important to understand that when a message arrives, the method selection
  * depends on the payload type. The type is matched with a single non-annotated parameter,
@@ -37,9 +37,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
  * must be able to select exactly one method based on the payload type.</b>
  *
  * @author Gary Russell
- * @since 1.5
  * @see EnableKafka
- * @see RabbitListener
+ * @see KafkaListener
  * @see KafkaListenerAnnotationBeanPostProcessor
  */
 @Target({ ElementType.METHOD, ElementType.ANNOTATION_TYPE })

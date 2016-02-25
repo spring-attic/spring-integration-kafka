@@ -22,9 +22,9 @@ import java.util.regex.Pattern;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * Model for a Rabbit listener endpoint. Can be used against a
- * {@link org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer
- * RabbitListenerConfigurer} to register endpoints programmatically.
+ * Model for a Kafka listener endpoint. Can be used against a
+ * {@link org.springframework.kafka.annotation.KafkaListenerConfigurer
+ * KafkaListenerConfigurer} to register endpoints programmatically.
  *
  * @author Stephane Nicoll
  * @author Gary Russell

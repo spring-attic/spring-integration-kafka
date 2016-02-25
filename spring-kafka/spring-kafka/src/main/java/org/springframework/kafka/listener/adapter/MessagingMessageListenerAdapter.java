@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,16 +27,13 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 
 /**
- * A {@link org.springframework.amqp.core.MessageListener MessageListener}
+ * A {@link org.springframework.kafka.listener.MessageListener MessageListener}
  * adapter that invokes a configurable {@link HandlerAdapter}.
  *
- * <p>Wraps the incoming {@link org.springframework.amqp.core.Message
- * AMQP Message} to Spring's {@link Message} abstraction, copying the
- * standard headers using a configurable
- * {@link org.springframework.amqp.support.AmqpHeaderMapper AmqpHeaderMapper}.
+ * <p>Wraps the incoming Kafka Message to Spring's {@link Message} abstraction.
  *
- * <p>The original {@link org.springframework.amqp.core.Message Message} and
- * the {@link Channel} are provided as additional arguments so that these can
+ * <p>The original {@link ConsumerRecord} and
+ * the {@link Acknowledgment} are provided as additional arguments so that these can
  * be injected as method arguments if necessary.
  *
  * @author Stephane Nicoll
@@ -48,11 +45,11 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 
 	private HandlerAdapter handlerMethod;
 
-	private MessageConverter<K, V> messagingConverter = new MessagingMessageConverter<>();
+	private MessageConverter<K, V> messageConverter = new MessagingMessageConverter<>();
 
 	/**
 	 * Set the {@link HandlerAdapter} to use to invoke the method
-	 * processing an incoming {@link org.springframework.amqp.core.Message}.
+	 * processing an incoming {@link ConsumerRecord}.
 	 * @param handlerMethod {@link HandlerAdapter} instance.
 	 */
 	public void setHandlerMethod(HandlerAdapter handlerMethod) {
@@ -60,11 +57,11 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	}
 
 	/**
-	 * Set the MesagingMessageConverter
-	 * @param messagingMessageConverter the converter.
+	 * Set the MessageConverter
+	 * @param messageConverter the converter.
 	 */
-	public void setMessageConverter(MessagingMessageConverter<K, V> messagingMessageConverter) {
-		this.messagingConverter = messagingMessageConverter;
+	public void setMessageConverter(MessageConverter<K, V> messageConverter) {
+		this.messageConverter = messageConverter;
 	}
 
 	/**
@@ -72,7 +69,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
 	protected final MessageConverter<K, V> getMessageConverter() {
-		return this.messagingConverter;
+		return this.messageConverter;
 	}
 
 

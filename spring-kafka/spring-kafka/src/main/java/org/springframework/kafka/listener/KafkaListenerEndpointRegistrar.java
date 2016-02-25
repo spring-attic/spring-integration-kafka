@@ -34,12 +34,12 @@ import org.springframework.util.Assert;
  * @author Juergen Hoeller
  * @author Artem Bilan
  * @since 1.4
- * @see org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer
+ * @see org.springframework.kafka.annotation.KafkaListenerConfigurer
  */
 public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, InitializingBean {
 
-	private final List<AmqpListenerEndpointDescriptor> endpointDescriptors =
-			new ArrayList<AmqpListenerEndpointDescriptor>();
+	private final List<KafkaListenerEndpointDescriptor> endpointDescriptors =
+			new ArrayList<KafkaListenerEndpointDescriptor>();
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -76,10 +76,10 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * can be configured further to support additional method arguments
 	 * or to customize conversion and validation support. See
 	 * {@link DefaultMessageHandlerMethodFactory} javadoc for more details.
-	 * @param rabbitHandlerMethodFactory the {@link MessageHandlerMethodFactory} instance.
+	 * @param kafkaHandlerMethodFactory the {@link MessageHandlerMethodFactory} instance.
 	 */
-	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory rabbitHandlerMethodFactory) {
-		this.messageHandlerMethodFactory = rabbitHandlerMethodFactory;
+	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory kafkaHandlerMethodFactory) {
+		this.messageHandlerMethodFactory = kafkaHandlerMethodFactory;
 	}
 
 	/**
@@ -130,7 +130,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	protected void registerAllEndpoints() {
 		synchronized (this.endpointDescriptors) {
-			for (AmqpListenerEndpointDescriptor descriptor : this.endpointDescriptors) {
+			for (KafkaListenerEndpointDescriptor descriptor : this.endpointDescriptors) {
 				this.endpointRegistry.registerListenerContainer(
 						descriptor.endpoint, resolveContainerFactory(descriptor));
 			}
@@ -138,7 +138,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		}
 	}
 
-	private KafkaListenerContainerFactory<?> resolveContainerFactory(AmqpListenerEndpointDescriptor descriptor) {
+	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListenerEndpointDescriptor descriptor) {
 		if (descriptor.containerFactory != null) {
 			return descriptor.containerFactory;
 		}
@@ -170,7 +170,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		Assert.notNull(endpoint, "Endpoint must be set");
 		Assert.hasText(endpoint.getId(), "Endpoint id must be set");
 		// Factory may be null, we defer the resolution right before actually creating the container
-		AmqpListenerEndpointDescriptor descriptor = new AmqpListenerEndpointDescriptor(endpoint, factory);
+		KafkaListenerEndpointDescriptor descriptor = new KafkaListenerEndpointDescriptor(endpoint, factory);
 		synchronized (this.endpointDescriptors) {
 			if (this.startImmediately) { // Register and start immediately
 				this.endpointRegistry.registerListenerContainer(descriptor.endpoint,
@@ -194,13 +194,13 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 
-	private static class AmqpListenerEndpointDescriptor {
+	private static class KafkaListenerEndpointDescriptor {
 
 		private final KafkaListenerEndpoint endpoint;
 
 		private final KafkaListenerContainerFactory<?> containerFactory;
 
-		private AmqpListenerEndpointDescriptor(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> containerFactory) {
+		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> containerFactory) {
 			this.endpoint = endpoint;
 			this.containerFactory = containerFactory;
 		}

@@ -34,13 +34,12 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.util.Assert;
 
 /**
- * Base model for a Rabbit listener endpoint
+ * Base model for a Kafka listener endpoint
  *
  * @author Stephane Nicoll
  * @author Gary Russell
- * @since 1.4
- * @see MethodRabbitListenerEndpoint
- * @see SimpleRabbitListenerEndpoint
+ * @see MethodKafkaListenerEndpoint
+ * @see org.springframework.kafka.config.SimpleKafkaListenerEndpoint
  */
 public abstract class AbstractKafkaListenerEndpoint<K, V>
 		implements KafkaListenerEndpoint, BeanFactoryAware, InitializingBean {
@@ -97,7 +96,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * or 'topicPartitions'
 	 * should be provided, but not a mixture.
 	 * @param topics to set.
-	 * @see #setQueueNames
+	 * @see #setTopicPartitions(TopicPartition...)
+	 * @see #setTopicPattern(Pattern)
 	 */
 	public void setTopics(String... topics) {
 		Assert.notNull(topics, "'topics' must not be null");
@@ -108,6 +108,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * @return the topics for this endpoint.
 	 */
+	@Override
 	public Collection<String> getTopics() {
 		return Collections.unmodifiableCollection(this.topics);
 	}
@@ -116,8 +117,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set the topics to use. Either these or 'topicPattern'
 	 * or 'topicPartitions'
 	 * should be provided, but not a mixture.
-	 * @param topics to set.
-	 * @see #setQueueNames
+	 * @param topicPartitions to set.
+	 * @see #setTopics(String...)
+	 * @see #setTopicPattern(Pattern)
 	 */
 	public void setTopicPartitions(TopicPartition... topicPartitions) {
 		Assert.notNull(topicPartitions, "'topics' must not be null");
@@ -128,19 +130,28 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * @return the topicPartitions for this endpoint.
 	 */
+	@Override
 	public Collection<TopicPartition> getTopicPartitions() {
 		return Collections.unmodifiableCollection(this.topicPartitions);
 	}
 
 	/**
-	 * @return the topicPattern for this endpoint.
+	 * Set the topic pattern to use. Cannot be used with
+	 * topics or topicPartitions.
+	 * @param topicPattern the pattern
+	 * @see #setTopicPartitions(TopicPartition...)
+	 * @see #setTopics(String...)
 	 */
-	public Pattern getTopicPattern() {
-		return this.topicPattern;
-	}
-
 	public void setTopicPattern(Pattern topicPattern) {
 		this.topicPattern = topicPattern;
+	}
+
+	/**
+	 * @return the topicPattern for this endpoint.
+	 */
+	@Override
+	public Pattern getTopicPattern() {
+		return this.topicPattern;
 	}
 
 	@Override

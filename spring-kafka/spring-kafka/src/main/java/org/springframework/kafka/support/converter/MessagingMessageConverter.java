@@ -37,14 +37,9 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 	private boolean generateTimestamp = false;
 
 	/**
-	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false}
-	 * , will try to use a default value. By default set to {@code false}. Note that this
-	 * option is only guaranteed to work when {@link #setUseMessageBuilderFactory(boolean)
-	 * useMessageBuilderFactory} is false (default). If the latter is set to {@code true},
-	 * then some {@link MessageBuilderFactory} implementations such as
-	 * {@link DefaultMessageBuilderFactory} may ignore it.
+	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false},
+	 * will try to use a default value. By default set to {@code false}.
 	 * @param generateMessageId true if a message id should be generated
-	 * @since 1.1
 	 */
 	public void setGenerateMessageId(boolean generateMessageId) {
 		this.generateMessageId = generateMessageId;
@@ -52,11 +47,7 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 
 	/**
 	 * Generate {@code timestamp} for produced messages. If set to {@code false}, -1 is
-	 * used instead. By default set to {@code false}. Note that this option is only
-	 * guaranteed to work when {@link #setUseMessageBuilderFactory(boolean)
-	 * useMessageBuilderFactory} is false (default). If the latter is set to {@code true},
-	 * then some {@link MessageBuilderFactory} implementations such as
-	 * {@link DefaultMessageBuilderFactory} may ignore it.
+	 * used instead. By default set to {@code false}.
 	 * @param generateTimestamp true if a timestamp should be generated
 	 * @since 1.1
 	 */

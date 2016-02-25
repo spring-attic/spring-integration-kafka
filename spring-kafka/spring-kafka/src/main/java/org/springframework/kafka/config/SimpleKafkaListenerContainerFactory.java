@@ -41,8 +41,8 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	private Integer concurrency;
 
 	/**
-	 * @param concurrency the minimum number of consumers to create.
-	 * @see SimpleMessageListenerContainer#setConcurrentConsumers
+	 * @param concurrency the number of consumers to create.
+	 * @see ConcurrentMessageListenerContainer#setConcurrency(int)
 	 */
 	public void setConcurrency(Integer concurrency) {
 		this.concurrency = concurrency;

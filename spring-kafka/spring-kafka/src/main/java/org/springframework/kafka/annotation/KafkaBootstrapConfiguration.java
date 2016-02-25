@@ -25,14 +25,14 @@ import org.springframework.kafka.listener.KafkaListenerEndpointRegistry;
 
 /**
  * {@code @Configuration} class that registers a {@link KafkaListenerAnnotationBeanPostProcessor}
- * bean capable of processing Spring's @{@link RabbitListener} annotation. Also register
+ * bean capable of processing Spring's @{@link KafkaListener} annotation. Also register
  * a default {@link KafkaListenerEndpointRegistry}.
  *
  * <p>This configuration class is automatically imported when using the @{@link EnableKafka}
  * annotation.  See {@link EnableKafka} Javadoc for complete usage.
  *
  * @author Stephane Nicoll
- * @since 1.4
+ * @author Gary Russell
  * @see KafkaListenerAnnotationBeanPostProcessor
  * @see KafkaListenerEndpointRegistry
  * @see EnableKafka
@@ -40,6 +40,7 @@ import org.springframework.kafka.listener.KafkaListenerEndpointRegistry;
 @Configuration
 public class KafkaBootstrapConfiguration {
 
+	@SuppressWarnings("rawtypes")
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public KafkaListenerAnnotationBeanPostProcessor kafkaListenerAnnotationProcessor() {

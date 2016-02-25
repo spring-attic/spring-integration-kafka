@@ -25,13 +25,12 @@ import org.springframework.kafka.listener.MessageListener;
 
 /**
  * An abstract {@link MessageListener} adapter providing the necessary infrastructure
- * to extract the payload of a {@link Message}
+ * to extract the payload of a {@link org.springframework.messaging.Message}.
  *
  * @author Stephane Nicoll
  * @author Gary Russell
- * @since 1.4
  * @see MessageListener
- * @see ChannelAwareMessageListener
+ * @see AcknowledgingMessageListener
  */
 public abstract class AbstractAdaptableMessageListener<K, V> implements MessageListener<K, V>,
 			AcknowledgingMessageListener<K, V> {
@@ -41,17 +40,14 @@ public abstract class AbstractAdaptableMessageListener<K, V> implements MessageL
 
 
 	/**
-	 * Rabbit {@link MessageListener} entry point.
+	 * Kafka {@link MessageListener} entry point.
 	 * <p>
 	 * Delegates the message to the target listener method, with appropriate conversion of the message argument. In case
 	 * of an exception, the {@link #handleListenerException(Throwable)} method will be invoked.
 	 * <p>
-	 * <b>Note:</b> Does not support sending response messages based on result objects returned from listener methods.
-	 * Use the {@link ChannelAwareMessageListener} entry point (typically through a Spring message listener container)
-	 * for handling result objects as well.
-	 * @param message the incoming Rabbit message
+	 * @param record the incoming Kafka {@link ConsumerRecord}.
 	 * @see #handleListenerException
-	 * @see #onMessage(Message, com.rabbitmq.client.Channel)
+	 * @see #onMessage(ConsumerRecord, org.springframework.kafka.listener.Acknowledgment)
 	 */
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record) {
@@ -67,11 +63,11 @@ public abstract class AbstractAdaptableMessageListener<K, V> implements MessageL
 	 * Handle the given exception that arose during listener execution.
 	 * The default implementation logs the exception at error level.
 	 * <p>
-	 * This method only applies when using a Rabbit {@link MessageListener}. With
-	 * {@link ChannelAwareMessageListener}, exceptions get handled by the
+	 * This method only applies when using a Kafka {@link MessageListener}. With
+	 * {@link AcknowledgingMessageListener}, exceptions get handled by the
 	 * caller instead.
 	 * @param ex the exception to handle
-	 * @see #onMessage(Message)
+	 * @see #onMessage(ConsumerRecord)
 	 */
 	protected void handleListenerException(Throwable ex) {
 		logger.error("Listener execution failed", ex);
@@ -79,7 +75,7 @@ public abstract class AbstractAdaptableMessageListener<K, V> implements MessageL
 
 	/**
 	 * Extract the message body from the given Kafka message.
-	 * @param record the Rabbit <code>Message</code>
+	 * @param record the Kafka <code>Message</code>
 	 * @return the content of the message, to be passed into the listener method as argument
 	 */
 	protected Object extractMessage(ConsumerRecord<K, V> record) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,21 @@ package org.springframework.kafka.config;
  * Configuration constants for internal sharing across subpackages.
  *
  * @author Juergen Hoeller
+ * @author Gary Russell
  * @since 1.4
  */
 public abstract class KafkaListenerConfigUtils {
 
 	/**
-	 * The bean name of the internally managed Rabbit listener annotation processor.
+	 * The bean name of the internally managed Kafka listener annotation processor.
 	 */
 	public static final String KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME =
-			"org.springframework.amqp.rabbit.config.internalRabbitListenerAnnotationProcessor";
+			"org.springframework.kafka.config.internalKafkaListenerAnnotationProcessor";
 
 	/**
-	 * The bean name of the internally managed Rabbit listener endpoint registry.
+	 * The bean name of the internally managed Kafka listener endpoint registry.
 	 */
 	public static final String KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME =
-			"org.springframework.amqp.rabbit.config.internalRabbitListenerEndpointRegistry";
+			"org.springframework.kafka.config.internalKafkaListenerEndpointRegistry";
 
 }

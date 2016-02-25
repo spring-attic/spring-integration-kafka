@@ -33,7 +33,6 @@ import org.springframework.kafka.listener.KafkaListenerEndpoint;
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
  *
  * @author Stephane Nicoll
- * @since 1.4
  * @see AbstractMessageListenerContainer
  */
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
@@ -54,8 +53,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Executor taskExecutor;
 
 	/**
-	 * @param consumerFactory The connection factory.
-	 * @see AbstractMessageListenerContainer#setConsumerFactory(ConnectionFactory)
+	 * @param consumerFactory The consumer factory.
 	 */
 	public void setConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
 		this.consumerFactory = consumerFactory;
@@ -67,10 +65,18 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * @param errorHandler The error handler.
-	 * @see AbstractMessageListenerContainer#setErrorHandler(org.springframework.util.ErrorHandler)
+	 * @see AbstractMessageListenerContainer#setErrorHandler(ErrorHandler)
 	 */
 	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
+	}
+
+	/**
+	 * @param taskExecutor the {@link Executor} to use.
+	 * @see AbstractKafkaListenerContainerFactory#setTaskExecutor
+	 */
+	public void setTaskExecutor(Executor taskExecutor) {
+		this.taskExecutor = taskExecutor;
 	}
 
 	/**
@@ -116,7 +122,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Create an empty container instance.
-	 * @param endpoint
+	 * @param endpoint the endpoint.
 	 * @return the new container instance.
 	 */
 	protected abstract C createContainerInstance(KafkaListenerEndpoint endpoint);
@@ -128,14 +134,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the containe instance to configure.
 	 */
 	protected void initializeContainer(C instance) {
-	}
-
-	/**
-	 * @param taskExecutor the {@link Executor} to use.
-	 * @see SimpleMessageListenerContainer#setTaskExecutor
-	 */
-	public void setTaskExecutor(Executor taskExecutor) {
-		this.taskExecutor = taskExecutor;
 	}
 
 }

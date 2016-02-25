@@ -21,28 +21,28 @@ import org.springframework.kafka.listener.KafkaListenerEndpointRegistrar;
 
 /**
  * Optional interface to be implemented by Spring managed bean willing
- * to customize how Rabbit listener endpoints are configured. Typically
+ * to customize how Kafka listener endpoints are configured. Typically
  * used to defined the default
- * {@link org.springframework.amqp.rabbit.listener.KafkaListenerContainerFactory
- * RabbitListenerContainerFactory} to use or for registering Rabbit endpoints
+ * {@link org.springframework.kafka.listener.KafkaListenerContainerFactory
+ * KafkaListenerContainerFactory} to use or for registering Kafka endpoints
  * in a <em>programmatic</em> fashion as opposed to the <em>declarative</em>
- * approach of using the @{@link RabbitListener} annotation.
+ * approach of using the @{@link KafkaListener} annotation.
  *
  * <p>See @{@link EnableKafka} for detailed usage examples.
  *
  * @author Stephane Nicoll
  * @since 1.4
  * @see EnableKafka
- * @see org.springframework.KafkaListenerEndpointRegistrar.rabbit.listener.RabbitListenerEndpointRegistrar
+ * @see org.springframework.kafka.listener.KafkaListenerEndpointRegistrar
  */
 public interface KafkaListenerConfigurer {
 
 	/**
-	 * Callback allowing a {@link org.springframework.KafkaListenerEndpointRegistry.rabbit.listener.RabbitListenerEndpointRegistry
-	 * RabbitListenerEndpointRegistry} and specific {@link org.springframework.KafkaListenerEndpoint.rabbit.listener.RabbitListenerEndpoint
-	 * RabbitListenerEndpoint} instances to be registered against the given
+	 * Callback allowing a {@link org.springframework.kafka.listener.KafkaListenerEndpointRegistry
+	 * KafkaListenerEndpointRegistry} and specific {@link org.springframework.kafka.listener.KafkaListenerEndpoint
+	 * KafkaListenerEndpoint} instances to be registered against the given
 	 * {@link KafkaListenerEndpointRegistrar}. The default
-	 * {@link org.springframework.amqp.rabbit.listener.KafkaListenerContainerFactory RabbitListenerContainerFactory}
+	 * {@link org.springframework.kafka.listener.KafkaListenerContainerFactory KafkaListenerContainerFactory}
 	 * can also be customized.
 	 * @param registrar the registrar to be configured
 	 */

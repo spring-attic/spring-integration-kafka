@@ -59,14 +59,13 @@ import org.springframework.util.StringUtils;
 
 /**
  * Bean post-processor that registers methods annotated with {@link KafkaListener}
- * to be invoked by a AMQP message listener container created under the cover
- * by a {@link org.springframework.amqp.Kafka.listener.KafkaListenerContainerFactory}
+ * to be invoked by a Kafka message listener container created under the covers
+ * by a {@link org.springframework.kafka.listener.KafkaListenerContainerFactory}
  * according to the parameters of the annotation.
  *
  * <p>Annotated methods can use flexible arguments as defined by {@link KafkaListener}.
  *
- * <p>This post-processor is automatically registered by Spring's
- * {@code <Kafka:annotation-driven>} XML element, and also by the {@link EnableKafka}
+ * <p>This post-processor is automatically registered by Spring's {@link EnableKafka}
  * annotation.
  *
  * <p>Auto-detect any {@link KafkaListenerConfigurer} instances in the container,
@@ -83,14 +82,14 @@ import org.springframework.util.StringUtils;
  * @see KafkaListenerConfigurer
  * @see KafkaListenerEndpointRegistrar
  * @see KafkaListenerEndpointRegistry
- * @see org.springframework.KafkaListenerEndpoint.Kafka.listener.KafkaListenerEndpoint
+ * @see org.springframework.kafka.listener.KafkaListenerEndpoint
  * @see MethodKafkaListenerEndpoint
  */
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
 
 	/**
-	 * The bean name of the default {@link org.springframework.amqp.Kafka.listener.KafkaListenerContainerFactory}.
+	 * The bean name of the default {@link org.springframework.kafka.listener.KafkaListenerContainerFactory}.
 	 */
 	static final String DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "kafkaListenerContainerFactory";
 
@@ -111,8 +110,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private BeanExpressionResolver resolver = new StandardBeanExpressionResolver();
 
 	private BeanExpressionContext expressionContext;
-
-	private int increment;
 
 	@Override
 	public int getOrder() {
@@ -220,7 +217,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			@Override
 			public void doWith(Method method) throws IllegalArgumentException, IllegalAccessException {
 				for (KafkaListener KafkaListener : findListenerAnnotations(method)) {
-					processAmqpListener(KafkaListener, method, bean, beanName);
+					processKafkaListener(KafkaListener, method, bean, beanName);
 				}
 				if (hasClassLevelListeners) {
 					KafkaHandler KafkaHandler = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
@@ -282,7 +279,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	protected void processAmqpListener(KafkaListener KafkaListener, Method method, Object bean, String beanName) {
+	protected void processKafkaListener(KafkaListener KafkaListener, Method method, Object bean, String beanName) {
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<K, V>();
 		endpoint.setMethod(methodToUse);
@@ -359,7 +356,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return resolve(KafkaListener.id());
 		}
 		else {
-			return "org.springframework.amqp.Kafka.KafkaListenerEndpointContainer#" + counter.getAndIncrement();
+			return "org.springframework.kafka.KafkaListenerEndpointContainer#" + counter.getAndIncrement();
 		}
 	}
 
@@ -429,7 +426,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else {
 			throw new IllegalArgumentException(String.format(
-					"@RabbitListener can't resolve '%s' as either a String or a Queue",
+					"@KafKaListener can't resolve '%s' as either a String",
 					resolvedValue));
 		}
 	}
