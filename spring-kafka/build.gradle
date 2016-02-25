@@ -74,7 +74,7 @@ subprojects { subproject ->
 		scalaVersion = '2.11'
 		reactor2Version = '2.0.6.RELEASE'
 		springRetryVersion = '1.1.2.RELEASE'
-		springVersion = '4.2.4.RELEASE'
+		springVersion = '4.2.5.RELEASE'
 
 		idPrefix = 'kafka'
 
@@ -130,7 +130,7 @@ project ('spring-kafka') {
 	description = 'Spring Kafka Support'
 
 	dependencies {
-		compile "org.springframework:spring-context:$springVersion"
+		compile "org.springframework:spring-messaging:$springVersion"
 		compile ("org.apache.avro:avro:$avroVersion", optional)
 		compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"

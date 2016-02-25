@@ -29,7 +29,8 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  */
-public abstract class AbstractMessageListenerContainer<K, V> implements BeanNameAware, SmartLifecycle {
+public abstract class AbstractMessageListenerContainer<K, V>
+		implements MessageListenerContainer, BeanNameAware, SmartLifecycle {
 
 	protected final Log logger = LogFactory.getLog(this.getClass());
 
@@ -127,6 +128,11 @@ public abstract class AbstractMessageListenerContainer<K, V> implements BeanName
 
 	public Object getMessageListener() {
 		return messageListener;
+	}
+
+	@Override
+	public void setupMessageListener(Object messageListener) {
+		setMessageListener(messageListener);
 	}
 
 	/**

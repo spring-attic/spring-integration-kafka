@@ -39,6 +39,8 @@ import org.springframework.util.Assert;
 /**
  * @author Marius Bogoevici
  * @author Gary Russell
+ *
+ * TODO: Use the MessagingMessageConverter from spring-kafka
  */
 public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSupport implements OrderlyShutdownCapable {
 
@@ -58,11 +60,11 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * Generate {@link Message} {@code ids} for produced messages.
-	 * If set to {@code false}, will try to use a default value. By default set to {@code false}.
-	 * Note that this option is only guaranteed to work when
-	 * {@link #setUseMessageBuilderFactory(boolean) useMessageBuilderFactory} is false (default).
-	 * If the latter is set to {@code true}, then some {@link MessageBuilderFactory} implementations such as
+	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false}
+	 * , will try to use a default value. By default set to {@code false}. Note that this
+	 * option is only guaranteed to work when {@link #setUseMessageBuilderFactory(boolean)
+	 * useMessageBuilderFactory} is false (default). If the latter is set to {@code true},
+	 * then some {@link MessageBuilderFactory} implementations such as
 	 * {@link DefaultMessageBuilderFactory} may ignore it.
 	 * @param generateMessageId true if a message id should be generated
 	 * @since 1.1
@@ -72,11 +74,11 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * Generate {@code timestamp} for produced messages. If set to {@code false}, -1 is used instead.
-	 * By default set to {@code false}.
-	 * Note that this option is only guaranteed to work when
-	 * {@link #setUseMessageBuilderFactory(boolean) useMessageBuilderFactory} is false (default).
-	 * If the latter is set to {@code true}, then some {@link MessageBuilderFactory} implementations such as
+	 * Generate {@code timestamp} for produced messages. If set to {@code false}, -1 is
+	 * used instead. By default set to {@code false}. Note that this option is only
+	 * guaranteed to work when {@link #setUseMessageBuilderFactory(boolean)
+	 * useMessageBuilderFactory} is false (default). If the latter is set to {@code true},
+	 * then some {@link MessageBuilderFactory} implementations such as
 	 * {@link DefaultMessageBuilderFactory} may ignore it.
 	 * @param generateTimestamp true if a timestamp should be generated
 	 * @since 1.1
@@ -86,9 +88,10 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * Use the {@link MessageBuilderFactory} returned by {@link #getMessageBuilderFactory()} to create messages.
-	 * @param useMessageBuilderFactory true if the {@link MessageBuilderFactory} returned by
-	 * {@link #getMessageBuilderFactory()} should be used.
+	 * Use the {@link MessageBuilderFactory} returned by
+	 * {@link #getMessageBuilderFactory()} to create messages.
+	 * @param useMessageBuilderFactory true if the {@link MessageBuilderFactory} returned
+	 * by {@link #getMessageBuilderFactory()} should be used.
 	 * @since 1.1
 	 */
 	public void setUseMessageBuilderFactory(boolean useMessageBuilderFactory) {
