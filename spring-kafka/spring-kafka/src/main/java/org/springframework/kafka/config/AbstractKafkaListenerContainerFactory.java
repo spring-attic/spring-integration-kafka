@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.KafkaListenerContainerFactory;
 import org.springframework.kafka.listener.KafkaListenerEndpoint;
@@ -51,6 +52,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	protected final AtomicInteger counter = new AtomicInteger();
 
 	private Executor taskExecutor;
+
+	private Integer ackCount;
+
+	private AckMode ackMode;
+
+	private Long pollTimeout;
 
 	/**
 	 * @param consumerFactory The consumer factory.
@@ -95,6 +102,29 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.phase = phase;
 	}
 
+	/**
+	 * @param ackCount the ack count.
+	 * @see AbstractMessageListenerContainer#setAckCount(int)
+	 */
+	public void setAckCount(Integer ackCount) {
+		this.ackCount = ackCount;
+	}
+
+	/**
+	 * @param ackMode the ack mode.
+	 * @see AbstractMessageListenerContainer#setAckMode(AckMode)
+	 */
+	public void setAckMode(AckMode ackMode) {
+		this.ackMode = ackMode;
+	}
+
+	/**
+	 * @param pollTimeout the poll timeout
+	 * @see AbstractMessageListenerContainer#setPollTimeout(long)
+	 */
+	public void setPollTimeout(Long pollTimeout) {
+		this.pollTimeout = pollTimeout;
+	}
 
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
@@ -112,7 +142,18 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.phase != null) {
 			instance.setPhase(this.phase);
 		}
-//		instance.setListenerId(endpoint.getId());
+		if (this.ackCount != null) {
+			instance.setAckCount(this.ackCount);
+		}
+		if (this.ackMode != null) {
+			instance.setAckMode(this.ackMode);
+		}
+		if (endpoint.getId() != null) {
+			instance.setBeanName(endpoint.getId());
+		}
+		if (this.pollTimeout != null) {
+			instance.setPollTimeout(this.pollTimeout);
+		}
 
 		endpoint.setupListenerContainer(instance);
 		initializeContainer(instance);

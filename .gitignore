@@ -10,3 +10,4 @@ target
 /*.ipr
 /*.iws
 /bin/
+**/build/

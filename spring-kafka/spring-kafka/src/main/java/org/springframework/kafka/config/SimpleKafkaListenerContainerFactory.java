@@ -21,6 +21,7 @@ import java.util.Collection;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer.ContainerOffsetResetStrategy;
 import org.springframework.kafka.listener.KafkaListenerContainerFactory;
 import org.springframework.kafka.listener.KafkaListenerEndpoint;
 
@@ -40,12 +41,32 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 
 	private Integer concurrency;
 
+	private Long receentOffset;
+
+	private ContainerOffsetResetStrategy resetStrategy;
+
 	/**
 	 * @param concurrency the number of consumers to create.
 	 * @see ConcurrentMessageListenerContainer#setConcurrency(int)
 	 */
 	public void setConcurrency(Integer concurrency) {
 		this.concurrency = concurrency;
+	}
+
+	/**
+	 * @param receentOffset the recent offset.
+	 * @see ConcurrentMessageListenerContainer#setRecentOffset(long)
+	 */
+	public void setReceentOffset(Long receentOffset) {
+		this.receentOffset = receentOffset;
+	}
+
+	/**
+	 * @param resetStrategy the reset strategy
+	 * @see ConcurrentMessageListenerContainer#setResetStrategy(ContainerOffsetResetStrategy)
+	 */
+	public void setResetStrategy(ContainerOffsetResetStrategy resetStrategy) {
+		this.resetStrategy = resetStrategy;
 	}
 
 	@Override
@@ -73,6 +94,12 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 
 		if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
+		}
+		if (this.receentOffset != null) {
+			instance.setRecentOffset(this.receentOffset);
+		}
+		if (this.resetStrategy != null) {
+			instance.setResetStrategy(this.resetStrategy);
 		}
 	}
 
