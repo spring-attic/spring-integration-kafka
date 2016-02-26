@@ -318,6 +318,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (this.offsets.size() > 0) {
 			commitIfNecessary();
 		}
+		try {
+			this.consumer.unsubscribe();
+		}
+		catch (WakeupException e) {
+			;
+		}
 		this.consumer.close();
 		if (logger.isInfoEnabled()) {
 			logger.info("Consumer stopped");

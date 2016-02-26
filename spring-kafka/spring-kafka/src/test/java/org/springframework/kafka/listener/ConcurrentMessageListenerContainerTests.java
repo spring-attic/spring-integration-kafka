@@ -179,7 +179,7 @@ public class ConcurrentMessageListenerContainerTests {
 				latch2.countDown();
 			}
 		});
-		container1.setBeanName("b2");
+		container2.setBeanName("b2");
 		container2.start();
 		Thread.sleep(1000);
 		Map<String, Object> senderProps = senderProps();
@@ -196,8 +196,8 @@ public class ConcurrentMessageListenerContainerTests {
 		container2.stop();
 
 		// reset earliest
-		ConcurrentMessageListenerContainer<Integer, String> resettingContainer = new ConcurrentMessageListenerContainer<>(cf,
-				topic1Partition0, topic1Partition1);
+		ConcurrentMessageListenerContainer<Integer, String> resettingContainer =
+				new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
 		resettingContainer.setBeanName("b3");
 		final CountDownLatch latch3 = new CountDownLatch(4);
 		resettingContainer.setMessageListener(new MessageListener<Integer, String>() {

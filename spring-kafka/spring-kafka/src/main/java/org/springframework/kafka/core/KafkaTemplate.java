@@ -41,14 +41,28 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private volatile String defaultTopic;
 
+	/**
+	 * Create an instance using the supplied producer factory.
+	 * @param producerFactory the producer factory.
+	 */
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory) {
 		this.producerFactory = producerFactory;
 	}
 
+	/**
+	 * The default topic for send methods where a topic is not
+	 * providing.
+	 * @return the topic.
+	 */
 	public String getDefaultTopic() {
 		return defaultTopic;
 	}
 
+	/**
+	 * Set the default topic for send methods where a topic is not
+	 * providing.
+	 * @param defaultTopic the topic.
+	 */
 	public void setDefaultTopic(String defaultTopic) {
 		this.defaultTopic = defaultTopic;
 	}
@@ -86,6 +100,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return doSend(producerRecord);
 	}
 
+	/**
+	 * Send the producer record.
+	 * @param producerRecord the producer record.
+	 * @return a Future for the {@link RecordMetadata}.
+	 */
 	protected Future<RecordMetadata> doSend(ProducerRecord<K, V> producerRecord) {
 		if (this.producer == null) {
 			synchronized (this) {
