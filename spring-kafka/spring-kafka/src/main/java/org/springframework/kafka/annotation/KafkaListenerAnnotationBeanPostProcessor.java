@@ -426,8 +426,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else {
 			throw new IllegalArgumentException(String.format(
-					"@KafKaListener can't resolve '%s' as either a String",
-					resolvedValue));
+					"@KafKaListener can't resolve '%s' as a String", resolvedValue));
 		}
 	}
 
