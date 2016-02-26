@@ -10,6 +10,7 @@ buildscript {
 	}
 	dependencies {
 		classpath 'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE'
+		classpath 'io.spring.gradle:docbook-reference-plugin:0.3.1'
 		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.0'
 	}
 }
@@ -174,6 +175,44 @@ project ('spring-kafka-test') {
 	}
 }
 
+apply plugin: org.asciidoctor.gradle.AsciidoctorPlugin
+
+asciidoctor {
+	sourceDir file("$docsDir")
+	sourceDocumentNames = files("$docsDir/index.adoc") // Change in >= 1.5.1
+	outputDir file("$buildDir/html")
+	backends = ['html5', 'docbook']
+	logDocuments = true
+	options = [
+		doctype: 'book',
+		attributes: [
+			docinfo: '',
+			toc2: '',
+			'compat-mode': '',
+			imagesdir: '',
+			stylesdir: "stylesheets/",
+			stylesheet: 'golo.css',
+			'spring-kafka-version': "$version",
+			'source-highlighter': 'highlightjs'
+		]
+	]
+}
+
+
+apply plugin: DocbookReferencePlugin
+
+reference {
+	sourceFileName = 'index.xml'
+	sourceDir = file("$buildDir/html")
+	pdfFilename = 'spring-kafka-reference.pdf'
+	expandPlaceholders = ''
+}
+
+reference.dependsOn asciidoctor
+
+[asciidoctor, reference, referenceEpub, referenceHtmlMulti, referenceHtmlSingle, referencePdf].each {
+	it.onlyIf { "$System.env.NO_REFERENCE_TASK" != 'true' || project.hasProperty('ignoreEnvToStopReference') }
+}
 
 apply plugin: 'sonar-runner'
 

@@ -1,0 +1,205 @@
+[[quick-tour]]
+=== Quick Tour for the impatient
+
+==== Introduction
+
+This is the 5 minute tour to get started with Spring AMQP.
+
+Prerequisites: install and run Apache Kafka
+Then grab the spring-kafka JAR and all of its dependencies - the easiest way to do that is to declare a dependency in
+your build tool, e.g. for Maven:
+
+[source,xml,subs="+attributes"]
+----
+<dependency>
+  <groupId>org.springframework.kafka</groupId>
+  <artifactId>spring-kafka</artifactId>
+  <version>{spring-kafka-version}</version>
+</dependency>
+----
+
+And for gradle:
+
+[source,groovy,subs="+attributes"]
+----
+compile 'org.springframework.kafka:spring-kafka:{spring-kafka-version}'
+----
+
+[[compatibility]]
+===== Compatibility
+
+- Apache Kafka 0.9.0.1
+- Tested with Spring Framework version dependency is 4.2.5 but it is expected that the framework will work with earlier
+versions of Spring.
+- Annotation-based listeners require Spring Framework 4.1 or higher, however.
+- Minimum Java version: 7.
+
+===== Very, Very Quick
+
+Using plain, imperative Java to send and receive a message:
+
+[source,java]
+----
+@Test
+public void testAutoCommit() throws Exception {
+    logger.info("Start auto");
+    KafkaMessageListenerContainer<Integer, String> container = createContainer();
+    final CountDownLatch latch = new CountDownLatch(4);
+    container.setMessageListener(new MessageListener<Integer, String>() {
+
+        @Override
+        public void onMessage(ConsumerRecord<Integer, String> message) {
+            logger.info("auto: " + message);
+            latch.countDown();
+        }
+    });
+    container.setBeanName("testAuto");
+    container.start();
+    Thread.sleep(1000); // wait a bit for the container to start
+    KafkaTemplate<Integer, String> template = createTemplate();
+    template.setDefaultTopic(topic1);
+    template.convertAndSend(0, "foo");
+    template.convertAndSend(2, "bar");
+    template.convertAndSend(0, "baz");
+    template.convertAndSend(2, "qux");
+    template.flush();
+    assertTrue(latch.await(60, TimeUnit.SECONDS));
+    container.stop();
+    logger.info("Stop auto");
+
+}
+
+private KafkaMessageListenerContainer<Integer, String> createContainer() {
+    Map<String, Object> props = consumerProps();
+    DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+    KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf, topic1);
+    return container;
+}
+
+private KafkaTemplate<Integer, String> createTemplate() {
+    Map<String, Object> senderProps = senderProps();
+    ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+    KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+    return template;
+}
+
+private Map<String, Object> consumerProps() {
+    Map<String, Object> props = new HashMap<>();
+    props.put("bootstrap.servers", "localhost:9092");
+    props.put("group.id", "myGroup");
+    props.put("enable.auto.commit", "true");
+    props.put("auto.commit.interval.ms", "100");
+    props.put("session.timeout.ms", "15000");
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.IntegerDeserializer");
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    return props;
+}
+
+private Map<String, Object> senderProps() {
+    Map<String, Object> props = new HashMap<>();
+    props.put("bootstrap.servers", "localhost:9092");
+    props.put("retries", 0);
+    props.put("batch.size", 16384);
+    props.put("linger.ms", 1);
+    props.put("buffer.memory", 33554432);
+    props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
+    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    return props;
+}
+----
+
+===== With Java Configuration
+
+A similar example but with Spring configuration in Java:
+
+[source,java]
+----
+@Autowired
+public Listener listener;
+
+@Autowired
+public KafkaTemplate<Integer, String> template;
+
+@Autowired
+public KafkaListenerEndpointRegistry registry;
+
+@Test
+public void testSimple() throws Exception {
+    waitListening("foo");
+    template.convertAndSend("annotated1", 0, "foo");
+    assertTrue(this.listener.latch1.await(10, TimeUnit.SECONDS));
+}
+
+@Configuration
+@EnableKafka
+public class Config {
+
+    @Bean
+    public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+                        kafkaListenerContainerFactory() {
+        SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<Integer, String> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    }
+
+    @Bean
+    public Map<String, Object> consumerConfigs() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
+        props.put("bootstrap.servers", "localhost:9092");
+        props.put("group.id", "myGroup");
+        props.put("enable.auto.commit", true);
+        props.put("auto.commit.interval.ms", "100");
+        props.put("session.timeout.ms", "15000");
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.IntegerDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        return props;
+    }
+
+    @Bean
+    public Listener listener() {
+        return new Listener();
+    }
+
+    @Bean
+    public ProducerFactory<Integer, String> producerFactory() {
+        return new DefaultKafkaProducerFactory<>(producerConfigs());
+    }
+
+    @Bean
+    public Map<String, Object> producerConfigs() {
+        Map<String, Object> props = new HashMap<>();
+        props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
+        props.put("bootstrap.servers", "localhost:9092");
+        props.put("retries", 0);
+        props.put("batch.size", 16384);
+        props.put("linger.ms", 1);
+        props.put("buffer.memory", 33554432);
+        props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        return props;
+    }
+
+    @Bean
+    public KafkaTemplate<Integer, String> kafkaTemplate() {
+        return new KafkaTemplate<Integer, String>(producerFactory());
+    }
+
+}
+
+public class Listener {
+
+    private final CountDownLatch latch1 = new CountDownLatch(1);
+
+    @KafkaListener(id="foo", topics = "annotated1")
+    public void listen1(String foo) {
+        this.latch1.countDown();
+    }
+
+}
+----
