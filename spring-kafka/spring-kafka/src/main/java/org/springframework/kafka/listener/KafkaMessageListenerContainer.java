@@ -314,6 +314,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			catch (WakeupException e) {
 				;
 			}
+			catch (Exception e) {
+				if (getErrorHandler() != null) {
+					getErrorHandler().handle(e, null);
+				}
+				else {
+					logger.error("Container exception", e);
+				}
+			}
 		}
 		if (this.offsets.size() > 0) {
 			commitIfNecessary();

@@ -369,8 +369,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				Assert.state(topic instanceof String, "topic in @TopicPartition must resolve to a String, not"
 							+ topic.getClass());
 				Object partition = resolveExpression(partitions[i].partition());
-				Assert.state(partition instanceof Integer, "partition in @TopicPartition must resolve to a String, not"
-							+ partition.getClass());
+				Assert.state(partition instanceof Integer || partition instanceof String,
+						"partition in @TopicPartition must resolve to an Integer or String, not a "
+								+ partition.getClass());
+				if (partition instanceof String) {
+					partition = Integer.valueOf((String) partition);
+				}
 				result.add(new org.apache.kafka.common.TopicPartition((String) topic, (Integer) partition));
 			}
 		}

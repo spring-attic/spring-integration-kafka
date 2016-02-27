@@ -210,13 +210,13 @@ public class EnableKafkaIntegrationTests {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id="bar", topics = "annotated2")
+		@KafkaListener(id="bar", topicPattern = "annotated2")
 		public void listen2(@Payload String foo, @Header(KafkaHeaders.PARTITION_ID) int partitionHeader) {
 			this.partition = partitionHeader;
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id="baz", topics = "annotated3")
+		@KafkaListener(id="baz", topicPartitions = @TopicPartition(topic = "annotated3", partition="0"))
 		public void listen3(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch3.countDown();
