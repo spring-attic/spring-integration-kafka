@@ -15,12 +15,6 @@
  */
 package org.springframework.integration.kafka.serializer.common;
 
-import java.util.Properties;
-
-import kafka.serializer.Decoder;
-import kafka.utils.VerifiableProperties;
-
-
 /**
  * String Decoder for Kafka message key/value decoding.
  * The Default decoder returns the same byte array it takes in.
@@ -28,23 +22,23 @@ import kafka.utils.VerifiableProperties;
  * @author Soby Chacko
  * @author Ilayaperumal Gopinathan
  */
-public class StringDecoder implements Decoder<String> {
+public class StringDecoder { //implements Decoder<String> {
 
-	private final kafka.serializer.StringDecoder stringDecoder;
-
-	public StringDecoder() {
-		this("UTF8");
-	}
-
-	public StringDecoder(final String encoding) {
-		final Properties props = new Properties();
-		props.put("serializer.encoding", encoding);
-		this.stringDecoder = new kafka.serializer.StringDecoder(new VerifiableProperties(props));
-	}
-
-	@Override
-	public String fromBytes(byte[] bytes) {
-		return this.stringDecoder.fromBytes(bytes);
-	}
+//	private final kafka.serializer.StringDecoder stringDecoder;
+//
+//	public StringDecoder() {
+//		this("UTF8");
+//	}
+//
+//	public StringDecoder(final String encoding) {
+//		final Properties props = new Properties();
+//		props.put("serializer.encoding", encoding);
+//		this.stringDecoder = new kafka.serializer.StringDecoder(new VerifiableProperties(props));
+//	}
+//
+//	@Override
+//	public String fromBytes(byte[] bytes) {
+//		return this.stringDecoder.fromBytes(bytes);
+//	}
 
 }

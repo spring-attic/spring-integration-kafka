@@ -15,25 +15,20 @@
  */
 package org.springframework.integration.kafka.serializer.avro;
 
-import kafka.serializer.Encoder;
-
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.reflect.ReflectDatumWriter;
-
 /**
  * @author Soby Chacko
  * @since 0.5
  */
-public class AvroReflectDatumBackedKafkaEncoder<T> extends AvroDatumSupport<T> implements Encoder<T> {
+public class AvroReflectDatumBackedKafkaEncoder<T> { //extends AvroDatumSupport<T> implements Encoder<T> {
 
-	private final DatumWriter<T> writer;
-
-	public AvroReflectDatumBackedKafkaEncoder(final Class<T> clazz) {
-		this.writer = new ReflectDatumWriter<T>(clazz);
-	}
-
-	@Override
-	public byte[] toBytes(final T source) {
-		return toBytes(source, writer);
-	}
+//	private final DatumWriter<T> writer;
+//
+//	public AvroReflectDatumBackedKafkaEncoder(final Class<T> clazz) {
+//		this.writer = new ReflectDatumWriter<T>(clazz);
+//	}
+//
+//	@Override
+//	public byte[] toBytes(final T source) {
+//		return toBytes(source, writer);
+//	}
 }

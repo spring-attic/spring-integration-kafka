@@ -4,8 +4,8 @@ target
 .classpath
 .project
 /.idea
-/.gradle
-/build
+**/.gradle
+**/build
 /*.iml
 /*.ipr
 /*.iws

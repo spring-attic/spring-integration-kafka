@@ -15,25 +15,20 @@
  */
 package org.springframework.integration.kafka.serializer.avro;
 
-import kafka.serializer.Decoder;
-
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.reflect.ReflectDatumReader;
-
 /**
  * @author Soby Chacko
  * @since 0.5
  */
-public class AvroReflectDatumBackedKafkaDecoder<T> extends AvroDatumSupport<T> implements Decoder<T> {
+public class AvroReflectDatumBackedKafkaDecoder<T> { // extends AvroDatumSupport<T> implements Decoder<T> {
 
-	private final DatumReader<T> reader;
-
-	public AvroReflectDatumBackedKafkaDecoder(final Class<T> clazz) {
-		this.reader = new ReflectDatumReader<T>(clazz);
-	}
-
-	@Override
-	public T fromBytes(final byte[] bytes) {
-		return fromBytes(bytes, reader);
-	}
+//	private final DatumReader<T> reader;
+//
+//	public AvroReflectDatumBackedKafkaDecoder(final Class<T> clazz) {
+//		this.reader = new ReflectDatumReader<T>(clazz);
+//	}
+//
+//	@Override
+//	public T fromBytes(final byte[] bytes) {
+//		return fromBytes(bytes, reader);
+//	}
 }
