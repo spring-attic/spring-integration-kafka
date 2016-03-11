@@ -76,19 +76,9 @@ dependencies {
 		exclude group: 'org.projectreactor', module: 'reactor-core'
 	}
 	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
-	compile ("org.apache.avro:avro:$avroVersion", optional)
-	compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
-	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-	compile "io.projectreactor:reactor-core:$reactor2Version"
-
-	compile ("io.projectreactor:reactor-stream:$reactor2Version", optional)
-
-	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
-	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
-	testCompile "org.springframework.integration:spring-integration-stream:$springIntegrationVersion"
 }
 
 // enable all compiler warnings; individual projects may customize further

@@ -23,6 +23,7 @@ import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * @author Soby Chacko
@@ -46,6 +47,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	private volatile Expression partitionIdExpression;
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
+		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
 		this.kafkaTemplate = kafkaTemplate;
 	}
 
@@ -109,7 +111,13 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 
-		this.kafkaTemplate.convertAndSend(topic, partitionId, (K) messageKey, ((V) message.getPayload()));
+		// TODO: Add KafkaTemplate method with topic, partition, data only (no key)
+		if (partitionId == null) {
+			this.kafkaTemplate.convertAndSend(topic, (K) messageKey, ((V) message.getPayload()));
+		}
+		else {
+			this.kafkaTemplate.convertAndSend(topic, partitionId, (K) messageKey, ((V) message.getPayload()));
+		}
 	}
 
 	@Override
