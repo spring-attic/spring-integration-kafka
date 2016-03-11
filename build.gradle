@@ -30,9 +30,6 @@ if (project.hasProperty('platformVersion')) {
 group = 'org.springframework.integration'
 
 repositories {
-	maven {
-		url 'https://repository.apache.org/content/groups/public'
-	}
 	maven { url 'http://repo.spring.io/libs-milestone' }
 	if (project.hasProperty('platformVersion')) {
 		maven { url 'https://repo.spring.io/snapshot' }
@@ -79,7 +76,6 @@ dependencies {
 		exclude group: 'org.projectreactor', module: 'reactor-core'
 	}
 	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
-	compile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	compile ("org.apache.avro:avro:$avroVersion", optional)
 	compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
 	compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"

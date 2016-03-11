@@ -42,7 +42,7 @@ public class KafkaMessageDrivenChannelAdapterParser extends AbstractChannelAdapt
 			builder.addConstructorArgReference(container);
 		}
 		else {
-			parserContext.getReaderContext().error("The 'listener-continer' attribute is required.", element);
+			parserContext.getReaderContext().error("The 'listener-container' attribute is required.", element);
 		}
 
 		builder.addPropertyReference("outputChannel", channelName);

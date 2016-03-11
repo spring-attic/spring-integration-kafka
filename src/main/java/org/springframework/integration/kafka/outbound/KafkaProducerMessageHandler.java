@@ -45,8 +45,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
 	private volatile Expression partitionIdExpression;
 
-	private Object messageKey;
-
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		this.kafkaTemplate = kafkaTemplate;
 	}
@@ -107,7 +105,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				this.partitionIdExpression.getValue(this.evaluationContext, message, Integer.class)
 				: (this.enableHeaderRouting ? message.getHeaders().get(KafkaHeaders.PARTITION_ID, Integer.class) : null);
 
-		messageKey = this.messageKeyExpression != null
+		Object messageKey = this.messageKeyExpression != null
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 

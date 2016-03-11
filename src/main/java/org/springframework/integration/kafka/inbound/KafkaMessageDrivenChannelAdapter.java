@@ -193,4 +193,5 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		}
 
 	}
+
 }

@@ -47,8 +47,7 @@ public class KafkaOutboundAdapterParserTests {
 	@Test
 	public void testOutboundAdapterConfiguration() {
 		KafkaProducerMessageHandler<?, ?> messageHandler
-				= this.appContext.getBean("org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler#0",
-				KafkaProducerMessageHandler.class);
+			= this.appContext.getBean("kafkaOutboundChannelAdapter.handler", KafkaProducerMessageHandler.class);
 		assertNotNull(messageHandler);
 		assertEquals(messageHandler.getOrder(), 3);
 		assertEquals("foo", TestUtils.getPropertyValue(messageHandler, "topicExpression.literalValue"));

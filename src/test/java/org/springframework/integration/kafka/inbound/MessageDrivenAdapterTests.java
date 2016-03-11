@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.integration.kafka.inbound;
 
 import static org.junit.Assert.assertNotNull;
 
-import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -30,11 +31,13 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 
 /**
  * @author Gary Russell
- * @since 4.3
+ * @author Artem Bilan
+ * @since 2.0
  *
  */
 public class MessageDrivenAdapterTests {
@@ -48,7 +51,8 @@ public class MessageDrivenAdapterTests {
 
 	@Test
 	public void testInbound() throws Exception {
-		Map<String, Object> props = consumerProps("test1", "true");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, topic1);
@@ -57,9 +61,8 @@ public class MessageDrivenAdapterTests {
 		adapter.setOutputChannel(out);
 		adapter.afterPropertiesSet();
 		adapter.start();
-		Thread.sleep(1000);
 
-		Map<String, Object> senderProps = senderProps();
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic("testTopic1");
@@ -67,32 +70,6 @@ public class MessageDrivenAdapterTests {
 		Message<?> received = out.receive(10000);
 		assertNotNull(received);
 		adapter.stop();
-	}
-
-	private Map<String, Object> consumerProps(String group, String autoCommit) {
-		Map<String, Object> props = new HashMap<>();
-		props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-//		props.put("bootstrap.servers", "localhost:9092");
-		props.put("group.id", group);
-		props.put("enable.auto.commit", autoCommit);
-		props.put("auto.commit.interval.ms", "100");
-		props.put("session.timeout.ms", "30000");
-		props.put("key.deserializer", "org.apache.kafka.common.serialization.IntegerDeserializer");
-		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-		return props;
-	}
-
-	private Map<String, Object> senderProps() {
-		Map<String, Object> props = new HashMap<>();
-		props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-//		props.put("bootstrap.servers", "localhost:9092");
-		props.put("retries", 0);
-		props.put("batch.size", 16384);
-		props.put("linger.ms", 1);
-		props.put("buffer.memory", 33554432);
-		props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
-		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		return props;
 	}
 
 }

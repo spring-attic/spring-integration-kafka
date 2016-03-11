@@ -21,8 +21,8 @@
 	<xsd:element name="outbound-channel-adapter">
 		<xsd:annotation>
 			<xsd:documentation>
-				Defines kafka outbound channel adapter that writes the contents of the
-				Message to kafka broker.
+				Defines the Consumer Endpoint for the KafkaProducerMessageHandler
+				that writes the contents of the Message to kafka broker.
 			</xsd:documentation>
 		</xsd:annotation>
 
@@ -121,8 +121,7 @@
 	<xsd:element name="message-driven-channel-adapter">
 		<xsd:annotation>
 			<xsd:documentation>
-				The definition for the Spring Integration Kafka
-				KafkaMessageDrivenChannelAdapter.
+				Defines the Message Producing Endpoint for the KafkaMessageDrivenChannelAdapter.
 			</xsd:documentation>
 		</xsd:annotation>
 		<xsd:complexType>
