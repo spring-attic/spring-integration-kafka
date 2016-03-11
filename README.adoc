@@ -16,7 +16,9 @@ http://docs.spring.io/spring-kafka/docs/1.0.0.M1/reference/htmlsingle/[documenta
 == Quick Start
 
 
-See the [Spring Integration kafka Sample](https://github.com/spring-projects/spring-integration-samples/tree/master/basic/kafka) for a simple Spring Boot application that sends and receives messages.
+See the 
+https://github.com/spring-projects/spring-integration-samples/tree/master/basic/kafka[Spring Integration kafka Sample]
+for a simple Spring Boot application that sends and receives messages.
 
 == Checking out and building
 
