@@ -7,6 +7,10 @@ buildscript {
 	}
 }
 
+plugins {
+	id "org.sonarqube" version "1.2"
+}
+
 description = 'Spring Integration Kafka Support'
 
 apply plugin: 'java'
@@ -125,10 +129,8 @@ artifacts {
 	archives javadocJar
 }
 
-apply plugin: 'sonar-runner'
-
-sonarRunner {
-	sonarProperties {
+sonarqube {
+	properties {
 		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
 		property "sonar.links.homepage", linkHomepage
 		property "sonar.links.ci", linkCi
@@ -261,10 +263,4 @@ artifacts {
 task dist(dependsOn: assemble) {
 	group = 'Distribution'
 	description = 'Builds -dist, -docs and -schema distribution archives.'
-}
-
-task wrapper(type: Wrapper) {
-	description = 'Generates gradlew[.bat] scripts'
-	gradleVersion = '2.11'
-	distributionUrl = "http://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }

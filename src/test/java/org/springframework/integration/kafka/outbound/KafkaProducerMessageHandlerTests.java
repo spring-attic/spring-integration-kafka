@@ -64,13 +64,12 @@ public class KafkaProducerMessageHandlerTests {
 
 	private static Consumer<Integer, String> consumer;
 
-	private static CountDownLatch consumerLatch = new CountDownLatch(1);
-
 	@BeforeClass
 	public static void setUp() throws Exception {
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(
 				KafkaTestUtils.consumerProps("testOut", "true", embeddedKafka));
 		consumer = cf.createConsumer();
+		final CountDownLatch consumerLatch = new CountDownLatch(1);
 		consumer.subscribe(Arrays.asList(topic1, topic2), new ConsumerRebalanceListener() {
 
 			@Override
@@ -130,8 +129,7 @@ public class KafkaProducerMessageHandlerTests {
 	private ConsumerRecord<Integer, String> getSingleRecord() {
 		ConsumerRecords<Integer, String> received = getRecords();
 		assertThat(received.count()).isEqualTo(1);
-		ConsumerRecord<Integer, String> record = received.records(topic1).iterator().next();
-		return record;
+		return received.records(topic1).iterator().next();
 	}
 
 	private ConsumerRecords<Integer, String> getRecords() {
