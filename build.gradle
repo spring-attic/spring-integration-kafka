@@ -7,6 +7,10 @@ buildscript {
 	}
 }
 
+plugins {
+	id "org.sonarqube" version "1.2"
+}
+
 description = 'Spring Integration Kafka Support'
 
 apply plugin: 'java'
@@ -14,6 +18,8 @@ apply from: "${rootProject.projectDir}/publish-maven.gradle"
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'jacoco'
+apply plugin: 'checkstyle'
+
 
 if (project.hasProperty('platformVersion')) {
 	apply plugin: 'spring-io'
@@ -30,7 +36,7 @@ if (project.hasProperty('platformVersion')) {
 group = 'org.springframework.integration'
 
 repositories {
-	maven { url 'http://repo.spring.io/libs-milestone' }
+	maven { url 'http://repo.spring.io/libs-snapshot' }
 	if (project.hasProperty('platformVersion')) {
 		maven { url 'https://repo.spring.io/snapshot' }
 	}
@@ -39,12 +45,10 @@ repositories {
 sourceCompatibility = targetCompatibility = 1.7
 
 ext {
-	avroVersion = '1.7.6'
-	gsCollectionsVersion = '5.0.0'
-	metricsVersion = '2.2.0'
+	assertjVersion = '3.3.0'
 	reactor2Version = '2.0.7.RELEASE'
 	springIntegrationVersion = '4.2.5.RELEASE'
-	springKafkaVersion = '1.0.0.M1'
+	springKafkaVersion = '1.0.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
@@ -79,6 +83,7 @@ dependencies {
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
+	testCompile "org.assertj:assertj-core:$assertjVersion"
 }
 
 // enable all compiler warnings; individual projects may customize further
@@ -92,6 +97,11 @@ test {
 		append = false
 		destinationFile = file("$buildDir/jacoco.exec")
 	}
+}
+
+checkstyle {
+	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
+	toolVersion = "6.16.1"
 }
 
 jacocoTestReport {
@@ -119,10 +129,8 @@ artifacts {
 	archives javadocJar
 }
 
-apply plugin: 'sonar-runner'
-
-sonarRunner {
-	sonarProperties {
+sonarqube {
+	properties {
 		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
 		property "sonar.links.homepage", linkHomepage
 		property "sonar.links.ci", linkCi
@@ -255,10 +263,4 @@ artifacts {
 task dist(dependsOn: assemble) {
 	group = 'Distribution'
 	description = 'Builds -dist, -docs and -schema distribution archives.'
-}
-
-task wrapper(type: Wrapper) {
-	description = 'Generates gradlew[.bat] scripts'
-	gradleVersion = '2.5'
-	distributionUrl = "http://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
