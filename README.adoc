@@ -72,14 +72,20 @@ pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expre
 respectively as static values on the adapter, or to dynamically evaluate their values at runtime against
 the request message.
 
-**Important. The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with
+IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with
 headers.
 The `messageKey` and `topic` default headers now require a `kafka_` prefix.
 When migrating from an earlier version that used the old headers, you need to specify
 `message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the
 `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
 the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`.
-Or, of course, configure them on the adapter if you are using constant values.**
+Or, of course, configure them on the adapter using `topic` and `message-key` if you are using constant values.
+
+NOTE : If the adapter is configured with a topic or message key (either with a constant or expression), those are used
+and the corresponding header is ignored.
+If you wish the header to override the configuration, you need to configure it in an expression, such as:
+
+`topic-expression="headers.topic != null ? headers.topic : 'myTopic'"`.
 
 The adapter requires a `KafkaTemplate`.
 
