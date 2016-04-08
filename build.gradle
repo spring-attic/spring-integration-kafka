@@ -48,7 +48,7 @@ ext {
 	assertjVersion = '3.3.0'
 	reactor2Version = '2.0.7.RELEASE'
 	springIntegrationVersion = '4.2.5.RELEASE'
-	springKafkaVersion = '1.0.0.BUILD-SNAPSHOT'
+	springKafkaVersion = '1.0.0.M2'
 
 	idPrefix = 'kafka'
 
