@@ -25,6 +25,24 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.integration.kafka.core.BrokerAddress;
+import org.springframework.integration.kafka.core.ConnectionFactory;
+import org.springframework.integration.kafka.core.ConsumerException;
+import org.springframework.integration.kafka.core.FetchRequest;
+import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
+import org.springframework.integration.kafka.core.KafkaMessage;
+import org.springframework.integration.kafka.core.KafkaMessageBatch;
+import org.springframework.integration.kafka.core.KafkaTemplate;
+import org.springframework.integration.kafka.core.Partition;
+import org.springframework.integration.kafka.core.Result;
+import org.springframework.scheduling.SchedulingAwareRunnable;
+import org.springframework.util.Assert;
+
 import com.gs.collections.api.RichIterable;
 import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.block.predicate.Predicate;
@@ -44,23 +62,6 @@ import com.gs.collections.impl.map.mutable.UnifiedMap;
 import com.gs.collections.impl.utility.ArrayIterate;
 import com.gs.collections.impl.utility.Iterate;
 import kafka.common.ErrorMapping;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.context.SmartLifecycle;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.integration.kafka.core.BrokerAddress;
-import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.ConsumerException;
-import org.springframework.integration.kafka.core.FetchRequest;
-import org.springframework.integration.kafka.core.KafkaConsumerDefaults;
-import org.springframework.integration.kafka.core.KafkaMessage;
-import org.springframework.integration.kafka.core.KafkaMessageBatch;
-import org.springframework.integration.kafka.core.KafkaTemplate;
-import org.springframework.integration.kafka.core.Partition;
-import org.springframework.integration.kafka.core.Result;
-import org.springframework.scheduling.SchedulingAwareRunnable;
-import org.springframework.util.Assert;
 
 /**
  * @author Marius Bogoevici
@@ -104,6 +105,8 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 	private int queueSize = 1024;
 
 	private int stopTimeout = DEFAULT_STOP_TIMEOUT;
+
+	private int reconnectInterval = DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY;
 
 	private Object messageListener;
 
@@ -277,6 +280,19 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.autoStartup = autoStartup;
 	}
 
+	public int getReconnectInterval() {
+		return this.reconnectInterval;
+	}
+
+	/**
+	 * Specify the interval to control the frequency of the consumer's attempts to reconnect after connection is lost.
+	 * @param reconnectInterval the time interval (in milliseconds) after which the client will try to reconnect.
+	 * @since 1.3.1
+	 */
+	public void setReconnectInterval(int reconnectInterval) {
+		this.reconnectInterval = reconnectInterval;
+	}
+
 	@Override
 	public void stop(Runnable callback) {
 		synchronized (lifecycleMonitor) {
@@ -309,7 +325,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				}
 				// initialize the fetch offset table - defer to OffsetManager for retrieving them
 				ImmutableList<Partition> partitionsAsList = Lists.immutable.with(partitions);
-				this.fetchOffsets = new ConcurrentHashMap<Partition, Long>(partitionsAsList.toMap(passThru, getOffset));
+				this.fetchOffsets = new ConcurrentHashMap<>(partitionsAsList.toMap(passThru, getOffset));
 				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, errorHandler,
 						Arrays.asList(partitions), offsetManager, concurrency, queueSize, dispatcherTaskExecutor,
 						autoCommitOnError);
@@ -523,7 +539,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					catch (Exception e) {
 						if (isRunning()) {
 							try {
-								Thread.sleep(DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY);
+								Thread.sleep(KafkaMessageListenerContainer.this.reconnectInterval);
 							}
 							catch (InterruptedException e1) {
 								Thread.currentThread().interrupt();
