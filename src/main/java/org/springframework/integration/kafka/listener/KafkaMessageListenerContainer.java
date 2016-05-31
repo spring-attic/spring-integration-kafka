@@ -106,7 +106,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private int stopTimeout = DEFAULT_STOP_TIMEOUT;
 
-	private int reconnectInterval = DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY;
+	private int recoveryInterval = DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY;
 
 	private Object messageListener;
 
@@ -280,17 +280,17 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.autoStartup = autoStartup;
 	}
 
-	public int getReconnectInterval() {
-		return this.reconnectInterval;
+	public int getRecoveryInterval() {
+		return this.recoveryInterval;
 	}
 
 	/**
 	 * Specify the interval to control the frequency of the consumer's attempts to reconnect after connection is lost.
-	 * @param reconnectInterval the time interval (in milliseconds) after which the client will try to reconnect.
+	 * @param recoveryInterval the time interval (in milliseconds) after which the client will try to reconnect.
 	 * @since 1.3.1
 	 */
-	public void setReconnectInterval(int reconnectInterval) {
-		this.reconnectInterval = reconnectInterval;
+	public void setRecoveryInterval(int recoveryInterval) {
+		this.recoveryInterval = recoveryInterval;
 	}
 
 	@Override
@@ -539,7 +539,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					catch (Exception e) {
 						if (isRunning()) {
 							try {
-								Thread.sleep(KafkaMessageListenerContainer.this.reconnectInterval);
+								Thread.sleep(KafkaMessageListenerContainer.this.recoveryInterval);
 							}
 							catch (InterruptedException e1) {
 								Thread.currentThread().interrupt();
