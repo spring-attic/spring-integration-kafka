@@ -105,6 +105,8 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 
 	private int stopTimeout = DEFAULT_STOP_TIMEOUT;
 
+	private int reconnectInterval = DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY;
+
 	private Object messageListener;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
@@ -277,6 +279,18 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 		this.autoStartup = autoStartup;
 	}
 
+	public int getReconnectInterval() {
+		return this.reconnectInterval;
+	}
+
+	/**
+	 * Controls the frequency of the consumer's attempts to reconnect after connection is lost.
+	 * @param reconnectInterval the time interval (in milliseconds) after which the client will try to reconnect.
+	 */
+	public void setReconnectInterval(int reconnectInterval) {
+		this.reconnectInterval = reconnectInterval;
+	}
+
 	@Override
 	public void stop(Runnable callback) {
 		synchronized (lifecycleMonitor) {
@@ -309,7 +323,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 				}
 				// initialize the fetch offset table - defer to OffsetManager for retrieving them
 				ImmutableList<Partition> partitionsAsList = Lists.immutable.with(partitions);
-				this.fetchOffsets = new ConcurrentHashMap<Partition, Long>(partitionsAsList.toMap(passThru, getOffset));
+				this.fetchOffsets = new ConcurrentHashMap<>(partitionsAsList.toMap(passThru, getOffset));
 				this.messageDispatcher = new ConcurrentMessageListenerDispatcher(messageListener, errorHandler,
 						Arrays.asList(partitions), offsetManager, concurrency, queueSize, dispatcherTaskExecutor,
 						autoCommitOnError);
@@ -523,7 +537,7 @@ public class KafkaMessageListenerContainer implements SmartLifecycle {
 					catch (Exception e) {
 						if (isRunning()) {
 							try {
-								Thread.sleep(DEFAULT_WAIT_FOR_LEADER_REFRESH_RETRY);
+								Thread.sleep(KafkaMessageListenerContainer.this.reconnectInterval);
 							}
 							catch (InterruptedException e1) {
 								Thread.currentThread().interrupt();
