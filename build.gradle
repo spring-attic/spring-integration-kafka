@@ -40,6 +40,7 @@ repositories {
 	if (project.hasProperty('platformVersion')) {
 		maven { url 'https://repo.spring.io/snapshot' }
 	}
+//	maven { url 'http://repo.spring.io/libs-staging-local' }
 }
 
 sourceCompatibility = targetCompatibility = 1.7
@@ -47,7 +48,7 @@ sourceCompatibility = targetCompatibility = 1.7
 ext {
 	assertjVersion = '3.4.1'
 	springIntegrationVersion = '4.2.6.RELEASE'
-	springKafkaVersion = '1.0.0.BUILD-SNAPSHOT'
+	springKafkaVersion = '1.0.0.RC1'
 
 	idPrefix = 'kafka'
 

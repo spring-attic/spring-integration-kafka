@@ -12,8 +12,8 @@ This 2.0 version is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java `Producer` and
 `Consumer` clients provided by Kafka 0.9.x.x.
 
-That project is currently at milestone 1 and its
-http://docs.spring.io/spring-kafka/docs/1.0.0.M1/reference/htmlsingle/[documentation is here].
+That project is currently at Release Candidate 1 and its
+http://docs.spring.io/spring-kafka/docs/1.0.0.RC1/reference/htmlsingle/[documentation is here].
 
 == Quick Start
 
