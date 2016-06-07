@@ -45,9 +45,8 @@ repositories {
 sourceCompatibility = targetCompatibility = 1.7
 
 ext {
-	assertjVersion = '3.3.0'
-	reactor2Version = '2.0.7.RELEASE'
-	springIntegrationVersion = '4.2.5.RELEASE'
+	assertjVersion = '3.4.1'
+	springIntegrationVersion = '4.2.6.RELEASE'
 	springKafkaVersion = '1.0.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
@@ -101,7 +100,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = "6.16.1"
+	toolVersion = "6.19"
 }
 
 jacocoTestReport {
