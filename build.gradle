@@ -3,7 +3,7 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
-		classpath 'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE'
+		classpath 'io.spring.gradle:spring-io-plugin:0.0.5.RELEASE'
 	}
 }
 
@@ -47,8 +47,8 @@ sourceCompatibility = targetCompatibility = 1.7
 
 ext {
 	assertjVersion = '3.4.1'
-	springIntegrationVersion = '4.2.6.RELEASE'
-	springKafkaVersion = '1.0.0.RC1'
+	springIntegrationVersion = '4.2.8.RELEASE'
+	springKafkaVersion = '1.0.0.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -76,9 +76,7 @@ sourceSets {
 }
 
 dependencies {
-	compile ("org.springframework.integration:spring-integration-core:$springIntegrationVersion") {
-		exclude group: 'org.projectreactor', module: 'reactor-core'
-	}
+	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
 	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
