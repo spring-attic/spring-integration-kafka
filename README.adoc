@@ -150,3 +150,8 @@ An example of xml configuration variant is shown here:
 ----
 
 See the sample mentioned above for Java `@Configuration`.
+
+## Contributing
+
+http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details. 
+
