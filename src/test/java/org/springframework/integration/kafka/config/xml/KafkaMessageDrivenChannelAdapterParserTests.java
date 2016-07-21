@@ -84,6 +84,8 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 		adapter.setRecordFilterStrategy(mock(RecordFilterStrategy.class));
 		adapter.afterPropertiesSet();
 
+		containerProps = TestUtils.getPropertyValue(container, "containerProperties", ContainerProperties.class);
+
 		Object messageListener = containerProps.getMessageListener();
 		assertThat(messageListener).isInstanceOf(FilteringAcknowledgingMessageListenerAdapter.class);
 
