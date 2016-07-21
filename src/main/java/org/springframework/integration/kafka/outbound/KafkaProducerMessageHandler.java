@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.expression.ExpressionUtils;
@@ -25,6 +27,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * Kafka Message Handler.
@@ -40,6 +43,8 @@ import org.springframework.util.StringUtils;
  */
 public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
+	private static final long DEFAULT_SEND_TIMEOUT = 10000;
+
 	private final KafkaTemplate<K, V> kafkaTemplate;
 
 	private EvaluationContext evaluationContext;
@@ -49,6 +54,10 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	private volatile Expression messageKeyExpression;
 
 	private volatile Expression partitionIdExpression;
+
+	private boolean sync;
+
+	private long sendTimeout = DEFAULT_SEND_TIMEOUT;
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
@@ -69,6 +78,26 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
 	public KafkaTemplate<?, ?> getKafkaTemplate() {
 		return this.kafkaTemplate;
+	}
+
+	/**
+	 * The {@code boolean} indicated if {@link KafkaProducerMessageHandler}
+	 * should wait for send operation results or not. Defaults to {@code false}.
+	 * In {@code sync} mode a downstream send operation exception will be re-thrown.
+	 * @param sync the send mode; async by default.
+	 * @since 2.0.1
+	 */
+	public void setSync(boolean sync) {
+		this.sync = sync;
+	}
+
+	/**
+	 * Specify a timeout in milliseconds how long {@link KafkaProducerMessageHandler}
+	 * should wait wait for send operation results. Defaults to 10 seconds.
+	 * @param sendTimeout the timeout to wait for result fo send operation.
+	 */
+	public void setSendTimeout(long sendTimeout) {
+		this.sendTimeout = sendTimeout;
 	}
 
 	@Override
@@ -94,20 +123,30 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 
+		ListenableFuture<?> future;
+
 		if (partitionId == null) {
 			if (messageKey == null) {
-				this.kafkaTemplate.send(topic, (V) message.getPayload());
+				future = this.kafkaTemplate.send(topic, (V) message.getPayload());
 			}
 			else {
-				this.kafkaTemplate.send(topic, (K) messageKey, (V) message.getPayload());
+				future = this.kafkaTemplate.send(topic, (K) messageKey, (V) message.getPayload());
 			}
 		}
 		else {
 			if (messageKey == null) {
-				this.kafkaTemplate.send(topic, partitionId, (V) message.getPayload());
+				future = this.kafkaTemplate.send(topic, partitionId, (V) message.getPayload());
 			}
 			else {
-				this.kafkaTemplate.send(topic, partitionId, (K) messageKey, (V) message.getPayload());
+				future = this.kafkaTemplate.send(topic, partitionId, (K) messageKey, (V) message.getPayload());
+			}
+		}
+		if (this.sync) {
+			if (this.sendTimeout < 0) {
+				future.get();
+			}
+			else {
+				future.get(this.sendTimeout, TimeUnit.MILLISECONDS);
 			}
 		}
 	}
