@@ -152,7 +152,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 					future.get(this.sendTimeout, TimeUnit.MILLISECONDS);
 				}
 				catch (TimeoutException te) {
-					throw new MessageTimeoutException(message,"Timeout waiting for response from KafkaProducer", te);
+					throw new MessageTimeoutException(message, "Timeout waiting for response from KafkaProducer", te);
 				}
 			}
 		}
