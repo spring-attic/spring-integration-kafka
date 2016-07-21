@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.expression.common.LiteralExpression;
+import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -94,6 +96,13 @@ public class KafkaOutboundAdapterParserTests {
 				.withMessageContaining("Async Producer Mock exception")
 				.withCauseExactlyInstanceOf(ExecutionException.class)
 				.withRootCauseExactlyInstanceOf(RuntimeException.class);
+
+		handler.setSendTimeout(1);
+
+		assertThatExceptionOfType(MessageTimeoutException.class)
+				.isThrownBy(() -> handler.handleMessage(new GenericMessage<>("foo")))
+				.withMessageContaining("Timeout waiting for response from KafkaProducer")
+				.withCauseExactlyInstanceOf(TimeoutException.class);
 	}
 
 }

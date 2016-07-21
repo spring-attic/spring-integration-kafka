@@ -17,9 +17,11 @@
 package org.springframework.integration.kafka.outbound;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
+import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -146,7 +148,12 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				future.get();
 			}
 			else {
-				future.get(this.sendTimeout, TimeUnit.MILLISECONDS);
+				try {
+					future.get(this.sendTimeout, TimeUnit.MILLISECONDS);
+				}
+				catch (TimeoutException te) {
+					throw new MessageTimeoutException(message,"Timeout waiting for response from KafkaProducer", te);
+				}
 			}
 		}
 	}
