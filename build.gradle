@@ -43,12 +43,20 @@ repositories {
 //	maven { url 'http://repo.spring.io/libs-staging-local' }
 }
 
-sourceCompatibility = targetCompatibility = 1.7
+compileJava {
+	sourceCompatibility = 1.7
+	targetCompatibility = 1.7
+}
+
+compileTestJava {
+	sourceCompatibility = 1.8
+	targetCompatibility = 1.8
+}
 
 ext {
 	assertjVersion = '3.4.1'
 	springIntegrationVersion = '4.2.8.RELEASE'
-	springKafkaVersion = '1.0.0.RELEASE'
+	springKafkaVersion = '1.0.2.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -64,7 +72,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.2.201409121644"
+	toolVersion = "0.7.7.201606060606"
 }
 
 sourceSets {
