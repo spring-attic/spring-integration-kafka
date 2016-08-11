@@ -116,6 +116,9 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
 </bean>
 ----
 
+NOTE: When using Kafka log compaction, a deleted key is represented by a `null` value.
+Since messages can't have `null` payloads, when you wish to send a null value to kafka, send a message with a payload of type `KafkaNull`.
+
 == Message Driven Channel Adapter:
 
 The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses a `spring-kafka`
@@ -151,7 +154,9 @@ An example of xml configuration variant is shown here:
 
 See the sample mentioned above for Java `@Configuration`.
 
+NOTE: When using Kafka log compaction, a deleted key is represented by a `null` value.
+Since messages can't have `null` payloads, when such a value is received, it is represented by a payload of type `KafkaNull`.
+
 ## Contributing
 
-http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details. 
-
+http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
