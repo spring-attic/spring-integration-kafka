@@ -18,7 +18,7 @@
 										order="3"
 										topic="foo"
 										message-key-expression="'bar'"
-										partition-id-expression="2">
+										partition-id-expression="'2'">
 		<int-kafka:request-handler-advice-chain>
 			<bean class="org.springframework.integration.handler.advice.RequestHandlerCircuitBreakerAdvice" />
 		</int-kafka:request-handler-advice-chain>
