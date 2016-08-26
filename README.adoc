@@ -85,7 +85,7 @@ NOTE : If the adapter is configured with a topic or message key (either with a c
 and the corresponding header is ignored.
 If you wish the header to override the configuration, you need to configure it in an expression, such as:
 
-`topic-expression="headers.topic != null ? headers.topic : 'myTopic'"`.
+`topic-expression="headers['topic'] != null ? headers['topic'] : 'myTopic'"`.
 
 The adapter requires a `KafkaTemplate`.
 
