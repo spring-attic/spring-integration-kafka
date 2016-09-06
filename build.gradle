@@ -55,8 +55,8 @@ compileTestJava {
 
 ext {
 	assertjVersion = '3.4.1'
-	springIntegrationVersion = '4.2.8.RELEASE'
-	springKafkaVersion = '1.0.3.RELEASE'
+	springIntegrationVersion = '4.3.1.RELEASE'
+	springKafkaVersion = '1.1.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
