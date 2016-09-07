@@ -162,6 +162,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	 * @since 2.0.1
 	 */
 	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		Assert.isTrue(retryTemplate == null || this.mode.equals(ListenerMode.record),
+				"Retry is not supported with mode=batch");
 		this.retryTemplate = retryTemplate;
 	}
 
@@ -201,14 +203,10 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			boolean filterInRetry = this.filterInRetry && this.retryTemplate != null && this.recordFilterStrategy != null;
 
 			if (filterInRetry) {
-				if (this.recordFilterStrategy != null) {
-					listener = new FilteringAcknowledgingMessageListenerAdapter<>(listener, this.recordFilterStrategy,
+				listener = new FilteringAcknowledgingMessageListenerAdapter<>(listener, this.recordFilterStrategy,
 						this.ackDiscarded);
-				}
-				if (this.retryTemplate != null) {
-					listener = new RetryingAcknowledgingMessageListenerAdapter<>(listener, this.retryTemplate,
+				listener = new RetryingAcknowledgingMessageListenerAdapter<>(listener, this.retryTemplate,
 							this.recoveryCallback);
-				}
 			}
 			else {
 				if (this.retryTemplate != null) {
@@ -225,7 +223,6 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		else {
 			BatchAcknowledgingMessageListener<K, V> listener = this.batchListener;
 
-			Assert.state(this.retryTemplate == null, "Retry is not supported with mode=batch");
 			if (this.recordFilterStrategy != null) {
 				listener = new FilteringBatchAcknowledgingMessageListenerAdapter<>(listener, this.recordFilterStrategy,
 						this.ackDiscarded);
