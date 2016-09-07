@@ -260,8 +260,23 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		return getPhase();
 	}
 
+	/**
+	 * The listener mode for the container, record or batch.
+	 * @since 1.2
+	 *
+	 */
 	public enum ListenerMode {
-		record, batch
+
+		/**
+		 * Each {@link Message} will be converted from a single {@code ConsumerRecord}.
+		 */
+		record,
+
+		/**
+		 * Each {@link Message} will be converted from the {@code ConsumerRecords}
+		 * returned by a poll.
+		 */
+		batch
 	}
 
 	private class IntegrationRecordMessageListener extends RecordMessagingMessageListenerAdapter<K, V> {
