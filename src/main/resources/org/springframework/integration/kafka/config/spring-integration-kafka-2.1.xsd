@@ -155,12 +155,22 @@
 				<xsd:annotation>
 					<xsd:documentation>
 						An 'org.springframework.kafka.support.converter.MessageConverter' bean reference.
+						if mode = 'record' must be a 'RecordMessageConverter'; if mode = 'batch' must be
+						a `BatchMessageConverter`. Defaults to the default implementation for each mode.
 					</xsd:documentation>
 					<xsd:appinfo>
 						<tool:annotation kind="ref">
 							<tool:expected-type type="org.springframework.kafka.support.converter.MessageConverter"/>
 						</tool:annotation>
 					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="mode" type="xsd:string" default="record">
+				<xsd:annotation>
+					<xsd:documentation>
+						'record' or 'batch' - default 'record' - one converted ConsumerRecord per message, when
+						'batch' then the payload is a collection of converted ConsumerRecords.
+					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
 		</xsd:complexType>
