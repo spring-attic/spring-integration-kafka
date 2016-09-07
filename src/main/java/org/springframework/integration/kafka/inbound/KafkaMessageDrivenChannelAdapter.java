@@ -71,7 +71,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	/**
 	 * Set the message converter; must be a {@link RecordMessageConverter}.
-	 * @param messageConverter the converter
+	 * @param messageConverter the converter.
 	 * @deprecated in favor of {@link #setRecordMessageConverter(RecordMessageConverter)}.
 	 */
 	@Deprecated
@@ -80,6 +80,11 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		this.listener.setMessageConverter((RecordMessageConverter) messageConverter);
 	}
 
+	/**
+	 * Set the message converter to use with a record-based consumer.
+	 * @param messageConverter the converter.
+	 * @since 2.1
+	 */
 	public void setRecordMessageConverter(RecordMessageConverter messageConverter) {
 		this.listener.setMessageConverter(messageConverter);
 	}
