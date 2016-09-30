@@ -55,8 +55,10 @@ compileTestJava {
 
 ext {
 	assertjVersion = '3.4.1'
+	jacksonVersion = '2.6.7'
+	log4jVersion = '2.6.2'
 	springIntegrationVersion = '4.3.2.RELEASE'
-	springKafkaVersion = '1.1.0.RELEASE'
+	springKafkaVersion = '1.1.2.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
@@ -90,6 +92,11 @@ dependencies {
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
 	testCompile "org.assertj:assertj-core:$assertjVersion"
+	testCompile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+	testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+	testCompile "org.apache.logging.log4j:log4j-core:$log4jVersion"
+
+	testRuntime "org.apache.logging.log4j:log4j-jcl:$log4jVersion"
 }
 
 // enable all compiler warnings; individual projects may customize further
