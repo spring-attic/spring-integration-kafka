@@ -41,6 +41,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -59,8 +60,10 @@ public class MessageDrivenAdapterTests {
 
 	private static String topic2 = "testTopic2";
 
+	private static String topic3 = "testTopic3";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3);
 
 	@Test
 	public void testInboundRecord() throws Exception {
@@ -120,7 +123,7 @@ public class MessageDrivenAdapterTests {
 
 	@Test
 	public void testInboundBatch() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test2", "true", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
@@ -165,6 +168,107 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
 
 		adapter.stop();
+	}
+
+	@Test
+	public void testInboundJson() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test3", "true", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic3);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container);
+		adapter.setRecordMessageConverter(new StringJsonMessageConverter());
+		QueueChannel out = new QueueChannel();
+		adapter.setOutputChannel(out);
+		adapter.afterPropertiesSet();
+		adapter.start();
+		ContainerTestUtils.waitForAssignment(container, 2);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic3);
+		template.sendDefault(1, "{\"bar\":\"baz\"}");
+
+		Message<?> received = out.receive(10000);
+		assertThat(received).isNotNull();
+
+		MessageHeaders headers = received.getHeaders();
+		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic3);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
+		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(0L);
+		assertThat(received.getPayload()).isInstanceOf(Map.class);
+
+		adapter.setPayloadType(Foo.class);
+		template.sendDefault(1, "{\"bar\":\"baz\"}");
+
+		received = out.receive(10000);
+		assertThat(received).isNotNull();
+
+		headers = received.getHeaders();
+		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic3);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
+		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(1L);
+		assertThat(received.getPayload()).isInstanceOf(Foo.class);
+		assertThat(received.getPayload()).isEqualTo(new Foo("baz"));
+
+		adapter.stop();
+	}
+
+	public static class Foo {
+
+		private String bar;
+
+		public Foo() {
+		}
+
+		public Foo(String bar) {
+			this.bar = bar;
+		}
+
+		protected String getBar() {
+			return this.bar;
+		}
+
+		protected void setBar(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((this.bar == null) ? 0 : this.bar.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			Foo other = (Foo) obj;
+			if (this.bar == null) {
+				if (other.bar != null) {
+					return false;
+				}
+			}
+			else if (!this.bar.equals(other.bar)) {
+				return false;
+			}
+			return true;
+		}
+
 	}
 
 }

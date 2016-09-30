@@ -193,6 +193,16 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		this.filterInRetry = filterInRetry;
 	}
 
+	/**
+	 * When using a type-aware message converter (such as {@code StringJsonMessageConverter},
+	 * set the payload type the converter should create. Defaults to {@link Object}.
+	 * @param payloadType the type.
+	 */
+	public void setPayloadType(Class<?> payloadType) {
+		this.recordListener.setFallbackType(payloadType);
+		this.batchListener.setFallbackType(payloadType);
+	}
+
 	@Override
 	protected void onInit() {
 		super.onInit();
@@ -200,7 +210,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		if (this.mode.equals(ListenerMode.record)) {
 			AcknowledgingMessageListener<K, V> listener = this.recordListener;
 
-			boolean filterInRetry = this.filterInRetry && this.retryTemplate != null && this.recordFilterStrategy != null;
+			boolean filterInRetry = this.filterInRetry && this.retryTemplate != null
+					&& this.recordFilterStrategy != null;
 
 			if (filterInRetry) {
 				listener = new FilteringAcknowledgingMessageListenerAdapter<>(listener, this.recordFilterStrategy,
