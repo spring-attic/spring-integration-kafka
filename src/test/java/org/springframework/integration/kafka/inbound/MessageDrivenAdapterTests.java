@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -39,14 +40,18 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
+import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.PollableChannel;
 
 /**
  * @author Gary Russell
@@ -118,6 +123,27 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(1L);
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
 
+		adapter.setMessageConverter(new RecordMessageConverter() {
+
+			@Override
+			public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Type payloadType) {
+				throw new RuntimeException("testError");
+			}
+
+			@Override
+			public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
+				return null;
+			}
+		});
+		PollableChannel errors = new QueueChannel();
+		adapter.setErrorChannel(errors);
+		template.sendDefault(1, "bar");
+		Message<?> error = errors.receive(10000);
+		assertThat(error).isNotNull();
+		assertThat(error.getPayload()).isInstanceOf(ConversionException.class);
+		assertThat(((ConversionException) error.getPayload()).getMessage())
+				.contains("Failed to convert to message for: ConsumerRecord(topic = testTopic1");
+
 		adapter.stop();
 	}
 
@@ -166,6 +192,29 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID).toString()).contains("0");
 		assertThat(headers.get(KafkaHeaders.OFFSET).toString()).contains("[0");
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
+
+		adapter.setMessageConverter(new BatchMessageConverter() {
+
+			@Override
+			public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
+					Type payloadType) {
+				throw new RuntimeException("testError");
+			}
+
+			@Override
+			public List<ProducerRecord<?, ?>> fromMessage(Message<?> message, String defaultTopic) {
+				return null;
+			}
+
+		});
+		PollableChannel errors = new QueueChannel();
+		adapter.setErrorChannel(errors);
+		template.sendDefault(1, "bar");
+		Message<?> error = errors.receive(10000);
+		assertThat(error).isNotNull();
+		assertThat(error.getPayload()).isInstanceOf(ConversionException.class);
+		assertThat(((ConversionException) error.getPayload()).getMessage())
+				.contains("Failed to convert to message for: [ConsumerRecord(topic = testTopic2");
 
 		adapter.stop();
 	}
