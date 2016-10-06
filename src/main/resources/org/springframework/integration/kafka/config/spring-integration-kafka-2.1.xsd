@@ -105,8 +105,30 @@
 					]]></xsd:documentation>
 				</xsd:annotation>
 				<xsd:simpleType>
-					<xsd:union memberTypes="xsd:int xsd:boolean"/>
+					<xsd:union memberTypes="xsd:boolean xsd:string"/>
 				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="send-timeout">
+				<xsd:annotation>
+					<xsd:documentation>
+						Specify a timeout in milliseconds how long 'KafkaProducerMessageHandler'
+						should wait wait for send operation results. Defaults to 10 seconds.
+						The timeout is applied only in 'sync' mode.
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:union memberTypes="xsd:int xsd:string"/>
+				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="send-timeout-expression">
+				<xsd:annotation>
+					<xsd:documentation>
+						Specifies the expression to determine a timeout in milliseconds
+						how long 'KafkaProducerMessageHandler'
+						should wait wait for send operation results. Defaults to 10 seconds.
+						The timeout is applied only in 'sync' mode.
+					</xsd:documentation>
+				</xsd:annotation>
 			</xsd:attribute>
 			<xsd:attribute name="order">
 				<xsd:annotation>
