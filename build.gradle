@@ -54,7 +54,7 @@ compileTestJava {
 }
 
 ext {
-	assertjVersion = '3.4.1'
+	assertjVersion = '2.5.0'
 	jacksonVersion = '2.6.7'
 	log4jVersion = '2.6.2'
 	springIntegrationVersion = '4.3.2.RELEASE'
