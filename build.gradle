@@ -3,23 +3,23 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
+		classpath 'io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE'
 		classpath 'io.spring.gradle:spring-io-plugin:0.0.5.RELEASE'
 	}
 }
 
 plugins {
-	id "org.sonarqube" version "1.2"
+	id 'java'
+	id 'eclipse'
+	id 'idea'
+	id 'jacoco'
+	id 'org.sonarqube' version '2.1'
+	id 'checkstyle'
 }
 
 description = 'Spring Integration Kafka Support'
 
-apply plugin: 'java'
 apply from: "${rootProject.projectDir}/publish-maven.gradle"
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'jacoco'
-apply plugin: 'checkstyle'
-
 
 if (project.hasProperty('platformVersion')) {
 	apply plugin: 'spring-io'
@@ -44,20 +44,15 @@ repositories {
 }
 
 compileJava {
-	sourceCompatibility = 1.7
-	targetCompatibility = 1.7
-}
-
-compileTestJava {
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
 }
 
 ext {
-	assertjVersion = '2.5.0'
-	jacksonVersion = '2.6.7'
-	log4jVersion = '2.6.2'
-	springIntegrationVersion = '4.3.2.RELEASE'
+	assertjVersion = '3.5.2'
+	jacksonVersion = '2.8.4'
+	log4jVersion = '2.7'
+	springIntegrationVersion = '5.0.0.BUILD-SNAPSHOT'
 	springKafkaVersion = '1.1.2.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
@@ -114,7 +109,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = "6.19"
+	toolVersion = '6.19'
 }
 
 jacocoTestReport {

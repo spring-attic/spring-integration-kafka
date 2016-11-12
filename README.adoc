@@ -3,24 +3,20 @@
 image::https://build.spring.io/plugins/servlet/buildStatusImage/INTEXT-KAFKA[]
 
 The *Spring Integration Kafka* extension project provides inbound and outbound channel adapters for Apache Kafka.
-Apache Kafka is a distributed publish-subscribe messaging system
-that is designed for high throughput (terabytes of data) and low latency (milliseconds). For more information on Kafka
-and its design goals, see the
-http://kafka.apache.org/[Kafka main page].
+Apache Kafka is a distributed publish-subscribe messaging system that is designed for high throughput (terabytes of data) and low latency (milliseconds).
+For more information on Kafka and its design goals, see the http://kafka.apache.org/[Kafka main page].
 
-This 2.0 version is a complete rewrite based on the new
+Starting from _version 2.0_ version this project is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java `Producer` and
-`Consumer` clients provided by Kafka 0.9.x.x.
+`Consumer` clients provided by Kafka 0.9.x.x and 0.10.x.x..
 
-That project is currently at Release Candidate 1 and its
-http://docs.spring.io/spring-kafka/docs/1.0.0.RC1/reference/htmlsingle/[documentation is here].
+That project is currently at _version 1.1.1` and its http://docs.spring.io/spring-kafka/docs/1.1.1.RELEASE/reference/htmlsingle/[documentation is here].
 
 == Quick Start
 
 
 See the
-https://github.com/spring-projects/spring-integration-samples/tree/master/basic/kafka[Spring Integration kafka Sample]
-for a simple Spring Boot application that sends and receives messages.
+https://github.com/spring-projects/spring-integration-samples/tree/master/basic/kafka[Spring Integration kafka Sample] for a simple Spring Boot application that sends and receives messages.
 
 == Checking out and building
 
@@ -33,8 +29,7 @@ In order to install this into your local maven cache:
     ./gradlew install
 
 Spring Integration Kafka project currently supports the following components.
-Please keep in mind that this is very early stage in development and do not yet fully make use of all the features
-that Kafka provides.
+Please keep in mind that this is very early stage in development and do not yet fully make use of all the features that Kafka provides.
 
 * Outbound Channel Adapter
 * Message Driven Channel Adapter
@@ -43,13 +38,10 @@ that Kafka provides.
 
 The Outbound channel adapter is used to publish messages from a Spring Integration channel to Kafka.
 The channel is defined in the application context and then wired in the application that sends messages to Kafka.
-After that, sender applications can publish to Kafka via Spring Integration messages, which are internally converted
-to Kafka messages by the outbound channel adapter, as follows: the payload of the Spring Integration message will be
-used to populate the payload of the Kafka message, and (by default) the `kafka_messageKey` header of the Spring
-Integration message will be used to populate the key of the Kafka message
+After that, sender applications can publish to Kafka via Spring Integration messages, which are internally converted to Kafka messages by the outbound channel adapter, as follows: the payload of the Spring Integration message will be used to populate the payload of the Kafka message, and (by default) the `kafka_messageKey` header of the Spring
+Integration message will be used to populate the key of the Kafka message.
 
-The target topic and partition for publishing the message can be customized through the `kafka_topic`
-and `kafka_partitionId` headers, respectively.
+The target topic and partition for publishing the message can be customized through the `kafka_topic` and `kafka_partitionId` headers, respectively.
 
 Here's an example for sending a message with an arbitrary payload and the String `"key"` as value on the `test` topic.
 
@@ -65,24 +57,14 @@ Here's an example for sending a message with an arbitrary payload and the String
             );
 ----
 
-In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and
-target partition by applying SpEL expressions on the outbound message. To that end, it supports the mutually exclusive
-pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and
-`partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id`
-respectively as static values on the adapter, or to dynamically evaluate their values at runtime against
-the request message.
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and target partition by applying SpEL expressions on the outbound message. To that end, it supports the mutually exclusive pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against the request message.
 
-IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with
-headers.
+IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with headers.
 The `messageKey` and `topic` default headers now require a `kafka_` prefix.
-When migrating from an earlier version that used the old headers, you need to specify
-`message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the
-`<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to
-the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`.
+When migrating from an earlier version that used the old headers, you need to specify `message-key-expression="headers.messageKey"` and `topic-expression="headers.topic"` on the `<int-kafka:outbound-channel-adapter>`, or simply change the headers upstream to the new headers from `KafkaHeaders` using a `<header-enricher>` or `MessageBuilder`.
 Or, of course, configure them on the adapter using `topic` and `message-key` if you are using constant values.
 
-NOTE : If the adapter is configured with a topic or message key (either with a constant or expression), those are used
-and the corresponding header is ignored.
+NOTE : If the adapter is configured with a topic or message key (either with a constant or expression), those are used and the corresponding header is ignored.
 If you wish the header to override the configuration, you need to configure it in an expression, such as:
 
 `topic-expression="headers['topic'] != null ? headers['topic'] : 'myTopic'"`.
@@ -119,10 +101,43 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
 NOTE: When using Kafka log compaction, a deleted key is represented by a `null` value.
 Since messages can't have `null` payloads, when you wish to send a null value to kafka, send a message with a payload of type `KafkaNull`.
 
+The Java DSL configuration sample is like:
+
+[source, java]
+----
+@Bean
+public ProducerFactory<Integer, String> producerFactory() {
+    return new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(embeddedKafka));
+}
+
+@Bean
+public IntegrationFlow sendToKafkaFlow() {
+    return f -> f
+        .<String>split(p -> Stream.generate(() -> p).limit(101).iterator(), null)
+        .publishSubscribeChannel(c -> c
+            .subscribe(sf -> sf.handle(kafkaMessageHandler(producerFactory(), TEST_TOPIC),
+                    e -> e.id("kafkaProducer")))
+            .subscribe(sf -> sf.handle(kafkaMessageHandler(producerFactory(), TEST_TOPIC3),
+                    e -> e.id("kafkaProducer3")))
+        );
+}
+
+private KafkaProducerMessageHandlerSpec<Integer, String>
+kafkaMessageHandler(ProducerFactory<Integer, String> producerFactory, String topic) {
+    return Kafka
+        .outboundChannelAdapter(producerFactory)
+        .messageKey(m -> m
+                .getHeaders()
+                .get(IntegrationMessageHeaderAccessor.SEQUENCE_NUMBER))
+        .partitionId(m -> 10)
+        .topicExpression("headers[kafka_topic] ?: '" + topic + "'");
+}
+
+----
+
 == Message Driven Channel Adapter:
 
-The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses a `spring-kafka`
-`KafkaMessageListenerContainer` or `ConcurrentListenerContainer`.
+The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses a `spring-kafka` `KafkaMessageListenerContainer` or `ConcurrentListenerContainer`.
 
 An example of xml configuration variant is shown here:
 
@@ -150,6 +165,36 @@ An example of xml configuration variant is shown here:
     </constructor-arg>
     <constructor-arg name="topics" value="foo" />
 </bean>
+----
+
+The Java DSL configuration sample is like:
+
+[source, java]
+----
+@Bean
+public ConsumerFactory<Integer, String> consumerFactory() {
+    Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "false", embeddedKafka);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    return new DefaultKafkaConsumerFactory<>(props);
+}
+
+@Bean
+public IntegrationFlow listeningFromKafkaFlow() {
+    return IntegrationFlows
+            .from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
+                    KafkaMessageDrivenChannelAdapter.ListenerMode.record, TEST_TOPIC)
+                    .configureListenerContainer(c ->
+                            c.ackMode(AbstractMessageListenerContainer.AckMode.MANUAL))
+                    .errorChannel("errorChannel")
+                    .retryTemplate(new RetryTemplate())
+                    .filterInRetry(true))
+            .filter(Message.class, m ->
+                           m.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, Integer.class) < 101,
+                   f -> f.throwExceptionOnRejection(true))
+            .<String, String>transform(String::toUpperCase)
+            .channel(c -> c.queue("listeningFromKafkaResults"))
+            .get();
+}
 ----
 
 See the sample mentioned above for Java `@Configuration`.
