@@ -3,12 +3,13 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
-		classpath 'io.spring.gradle:spring-io-plugin:0.0.5.RELEASE'
+		classpath 'io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE'
+		classpath 'io.spring.gradle:spring-io-plugin:0.0.6.RELEASE'
 	}
 }
 
 plugins {
-	id "org.sonarqube" version "1.2"
+	id "org.sonarqube" version "2.1"
 }
 
 description = 'Spring Integration Kafka Support'
@@ -54,11 +55,11 @@ compileTestJava {
 }
 
 ext {
-	assertjVersion = '2.5.0'
-	jacksonVersion = '2.6.7'
-	log4jVersion = '2.6.2'
-	springIntegrationVersion = '4.3.2.RELEASE'
-	springKafkaVersion = '1.1.2.BUILD-SNAPSHOT'
+	assertjVersion = '2.6.0'
+	jacksonVersion = '2.8.5'
+	log4jVersion = '2.7'
+	springIntegrationVersion = '4.3.6.RELEASE'
+	springKafkaVersion = '1.1.2.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -74,7 +75,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.7.201606060606"
+	toolVersion = "0.7.8"
 }
 
 sourceSets {
@@ -113,8 +114,8 @@ test {
 }
 
 checkstyle {
-	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = "6.19"
+	configFile = file("${rootDir}/src/checkstyle/checkstyle.xml")
+	toolVersion = "6.16.1"
 }
 
 jacocoTestReport {
