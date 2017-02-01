@@ -4,7 +4,7 @@ buildscript {
 	}
 	dependencies {
 		classpath 'io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE'
-		classpath 'io.spring.gradle:spring-io-plugin:0.0.5.RELEASE'
+		classpath 'io.spring.gradle:spring-io-plugin:0.0.6.RELEASE'
 	}
 }
 
@@ -49,12 +49,12 @@ compileJava {
 }
 
 ext {
-	assertjVersion = '3.5.2'
-	jacksonVersion = '2.8.4'
+	assertjVersion = '2.6.0'
+	jacksonVersion = '2.8.6'
 	log4jVersion = '2.7'
-	slf4jVersion = '1.7.21'
+	slf4jVersion = '1.7.22'
 	springIntegrationVersion = '5.0.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '1.1.2.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.0.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
