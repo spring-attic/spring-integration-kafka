@@ -49,7 +49,7 @@ compileJava {
 }
 
 ext {
-	assertjVersion = '2.6.0'
+	assertjVersion = '3.6.2'
 	jacksonVersion = '2.8.6'
 	log4jVersion = '2.7'
 	slf4jVersion = '1.7.22'
