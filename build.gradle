@@ -21,6 +21,14 @@ description = 'Spring Integration Kafka Support'
 
 apply from: "${rootProject.projectDir}/publish-maven.gradle"
 
+sourceSets {
+	test {
+		resources {
+			srcDirs = ['src/test/resources', 'src/test/java']
+		}
+	}
+}
+
 if (project.hasProperty('platformVersion')) {
 	apply plugin: 'spring-io'
 
@@ -70,15 +78,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.7.201606060606"
-}
-
-sourceSets {
-	test {
-		resources {
-			srcDirs = ['src/test/resources', 'src/test/java']
-		}
-	}
+	toolVersion = "0.7.8"
 }
 
 dependencies {
