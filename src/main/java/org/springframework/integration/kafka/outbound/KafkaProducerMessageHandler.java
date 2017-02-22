@@ -158,7 +158,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 		}
 		else {
 			if (messageKey == null) {
-				future = this.kafkaTemplate.send(topic, partitionId, payload);
+				future = this.kafkaTemplate.send(topic, partitionId, null, payload);
 			}
 			else {
 				future = this.kafkaTemplate.send(topic, partitionId, (K) messageKey, payload);
