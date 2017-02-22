@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.integration.kafka.inbound;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -60,8 +61,11 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
 /**
+ *
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Biju Kunjummen
+ *
  * @since 2.0
  *
  */
@@ -105,10 +109,10 @@ public class MessageDrivenAdapterTests {
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
-		template.sendDefault(1, "foo");
+		template.sendDefault(0, 1487694048607L, 1, "foo");
 
 		Message<?> received = out.receive(10000);
 		assertThat(received).isNotNull();
@@ -118,6 +122,9 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic1);
 		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(0L);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048607L);
+		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
+
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
 
 		template.sendDefault(1, null);
@@ -131,6 +138,9 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic1);
 		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(1L);
+		assertThat((Long) headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isGreaterThan(0L);
+		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
+
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
 
 		adapter.setMessageConverter(new RecordMessageConverter() {
@@ -286,8 +296,8 @@ public class MessageDrivenAdapterTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
-		template.sendDefault(1, "foo");
-		template.sendDefault(1, "bar");
+		template.sendDefault(0, 1487694048607L, 1, "foo");
+		template.sendDefault(0, 1487694048608L, 1, "bar");
 
 		Message<?> received = out.receive(10000);
 		assertThat(received).isNotNull();
@@ -297,10 +307,14 @@ public class MessageDrivenAdapterTests {
 		assertThat(list.size()).isGreaterThan(0);
 
 		MessageHeaders headers = received.getHeaders();
-		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY).toString()).contains("[1");
-		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC).toString()).contains(topic2);
-		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID).toString()).contains("0");
-		assertThat(headers.get(KafkaHeaders.OFFSET).toString()).contains("[0");
+		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(Arrays.asList(1, 1));
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(Arrays.asList("testTopic2", "testTopic2"));
+		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(Arrays.asList(0, 0));
+		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(Arrays.asList(0L, 1L));
+		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE))
+				.isEqualTo(Arrays.asList("CREATE_TIME", "CREATE_TIME"));
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP))
+				.isEqualTo(Arrays.asList(1487694048607L, 1487694048608L));
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
 
 		adapter.setMessageConverter(new BatchMessageConverter() {
@@ -349,7 +363,7 @@ public class MessageDrivenAdapterTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic3);
-		template.sendDefault(1, "{\"bar\":\"baz\"}");
+		template.sendDefault(0, 1487694048607L, 1, "{\"bar\":\"baz\"}");
 
 		Message<?> received = out.receive(10000);
 		assertThat(received).isNotNull();
@@ -359,6 +373,9 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic3);
 		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(0L);
+
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048607L);
+		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 		assertThat(received.getPayload()).isInstanceOf(Map.class);
 
 		adapter.setPayloadType(Foo.class);
@@ -372,6 +389,9 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic3);
 		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(1L);
+		assertThat((Long) headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isGreaterThan(0L);
+		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
+
 		assertThat(received.getPayload()).isInstanceOf(Foo.class);
 		assertThat(received.getPayload()).isEqualTo(new Foo("baz"));
 

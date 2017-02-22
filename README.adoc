@@ -12,9 +12,6 @@ This 2.0 version is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java `Producer` and
 `Consumer` clients provided by Kafka 0.9.x.x.
 
-That project is currently at Release Candidate 1 and its
-http://docs.spring.io/spring-kafka/docs/1.0.0.RC1/reference/htmlsingle/[documentation is here].
-
 == Quick Start
 
 
@@ -65,12 +62,9 @@ Here's an example for sending a message with an arbitrary payload and the String
             );
 ----
 
-In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and
-target partition by applying SpEL expressions on the outbound message. To that end, it supports the mutually exclusive
-pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and
-`partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id`
-respectively as static values on the adapter, or to dynamically evaluate their values at runtime against
-the request message.
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, target partition and Kafka record timestamp by applying SpEL expressions on the outbound message.
+To that end, it supports the mutually exclusive pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against the request message.
+The Kafka record timestamp can be specified as a SpEL expression with an attribute name of `timestamp-expression`
 
 IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with
 headers.
@@ -99,7 +93,8 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
                                     channel="inputToKafka"
                                     topic="foo"
                                     message-key-expression="'bar'"
-                                    partition-id-expression="2">
+                                    partition-id-expression="2"
+                                    timestamp-expression="T(System).currentTimeMillis()">
 </int-kafka:outbound-channel-adapter>
 
 <bean id="template" class="org.springframework.kafka.core.KafkaTemplate">
@@ -118,6 +113,41 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
 
 NOTE: When using Kafka log compaction, a deleted key is represented by a `null` value.
 Since messages can't have `null` payloads, when you wish to send a null value to kafka, send a message with a payload of type `KafkaNull`.
+
+The Java DSL configuration sample is like:
+
+[source, java]
+----
+@Bean
+public ProducerFactory<Integer, String> producerFactory() {
+    return new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(embeddedKafka));
+}
+
+@Bean
+public IntegrationFlow sendToKafkaFlow() {
+    return f -> f
+        .<String>split(p -> Stream.generate(() -> p).limit(101).iterator(), null)
+        .publishSubscribeChannel(c -> c
+            .subscribe(sf -> sf.handle(kafkaMessageHandler(producerFactory(), TEST_TOPIC),
+                    e -> e.id("kafkaProducer")))
+            .subscribe(sf -> sf.handle(kafkaMessageHandler(producerFactory(), TEST_TOPIC3),
+                    e -> e.id("kafkaProducer3")))
+        );
+}
+
+private KafkaProducerMessageHandlerSpec<Integer, String>
+kafkaMessageHandler(ProducerFactory<Integer, String> producerFactory, String topic) {
+    return Kafka
+        .outboundChannelAdapter(producerFactory)
+        .messageKey(m -> m
+                .getHeaders()
+                .get(IntegrationMessageHeaderAccessor.SEQUENCE_NUMBER))
+        .partitionId(m -> 10)
+        .topicExpression("headers[kafka_topic] ?: '" + topic + "'")
+        .timestampExpression("T(System).currentTimeMillis()");
+}
+
+----
 
 == Message Driven Channel Adapter:
 
