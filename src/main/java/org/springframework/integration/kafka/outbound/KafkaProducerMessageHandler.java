@@ -61,6 +61,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
 	private volatile Expression partitionIdExpression;
 
+	private volatile Expression timestampExpression;
+
 	private boolean sync;
 
 	private Expression sendTimeoutExpression = new ValueExpression<>(DEFAULT_SEND_TIMEOUT);
@@ -80,6 +82,18 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 
 	public void setPartitionIdExpression(Expression partitionIdExpression) {
 		this.partitionIdExpression = partitionIdExpression;
+	}
+
+	/**
+	 * Specify a SpEL expression to evaluate a timestamp that will be added in the Kafka record.
+	 * The resulting value should be a {@link Long} type representing epoch time in milliseconds.
+	 *
+	 * @param timestampExpression the {@link Expression} for timestamp to wait for result
+	 * fo send operation.
+	 * @since 3.0.0
+	 */
+	public void setTimestampExpression(Expression timestampExpression) {
+		this.timestampExpression = timestampExpression;
 	}
 
 	public KafkaTemplate<?, ?> getKafkaTemplate() {
@@ -144,7 +158,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 
-		Long timestamp = message.getHeaders().get(KafkaHeaders.TIMESTAMP, Long.class);
+		Long timestamp = this.timestampExpression != null
+				? this.timestampExpression.getValue(this.evaluationContext, message, Long.class)
+				: message.getHeaders().get(KafkaHeaders.TIMESTAMP, Long.class);
 
 		V payload = (V) message.getPayload();
 		if (payload instanceof KafkaNull) {

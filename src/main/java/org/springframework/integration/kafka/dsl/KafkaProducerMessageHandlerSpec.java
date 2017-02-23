@@ -195,6 +195,51 @@ public class KafkaProducerMessageHandlerSpec<K, V>
 	}
 
 	/**
+	 * Configure a SpEL expression to determine the timestamp at runtime against a
+	 * request Message as a root object of evaluation context.
+	 *
+	 * @param timestampExpression the timestamp expression to use.
+	 * @return the spec.
+	 *
+	 * @since 3.0
+	 */
+	public KafkaProducerMessageHandlerSpec<K, V> timestampExpression(String timestampExpression) {
+		return this.timestampExpression(PARSER.parseExpression(timestampExpression));
+	}
+
+	/**
+	 * Configure a {@link Function} that will be invoked at run time to determine the Kafka record timestamp
+	 * will be stored in the topic. Typically used with a Java 8 Lambda expression:
+	 * <pre class="code">
+	 * {@code
+	 * .timestamp(m -> m.getHeaders().get("mytimestamp_header", Long.class))
+	 * }
+	 * </pre>
+	 * @param timestampFunction the partitionId function.
+	 * @param <P> the expected payload type.
+	 * @return the spec.
+	 *
+	 * @since 3.0
+	 */
+	public <P> KafkaProducerMessageHandlerSpec<K, V> timestamp(Function<Message<P>, Long> timestampFunction) {
+		return timestampExpression(new FunctionExpression<>(timestampFunction));
+	}
+
+	/**
+	 * Configure an {@link Expression} to determine the timestamp at runtime against a
+	 * request Message as a root object of evaluation context.
+	 * @param timestampExpression the timestamp expression to use.
+	 * @return the spec.
+	 *
+	 * @since 3.0
+	 */
+	public KafkaProducerMessageHandlerSpec<K, V> timestampExpression(Expression timestampExpression) {
+		this.target.setTimestampExpression(timestampExpression);
+		return _this();
+	}
+
+
+	/**
 	 * A {@code boolean} indicating if the {@link KafkaProducerMessageHandler}
 	 * should wait for the send operation results or not. Defaults to {@code false}.
 	 * In {@code sync} mode a downstream send operation exception will be re-thrown.

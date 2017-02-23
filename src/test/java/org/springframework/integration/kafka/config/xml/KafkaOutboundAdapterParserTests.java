@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2016 the original author or authors.
+ * Copyright 2013-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
  * @author Soby Chacko
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Biju Kunjummen
  * @since 0.5
  */
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -60,23 +61,27 @@ public class KafkaOutboundAdapterParserTests {
 
 	@Test
 	public void testOutboundAdapterConfiguration() {
-		KafkaProducerMessageHandler<?, ?> messageHandler
+		KafkaProducerMessageHandler<?, ?> messageHandler1
 			= this.appContext.getBean("kafkaOutboundChannelAdapter.handler", KafkaProducerMessageHandler.class);
-		assertThat(messageHandler).isNotNull();
-		assertThat(messageHandler.getOrder()).isEqualTo(3);
-		assertThat(TestUtils.getPropertyValue(messageHandler, "topicExpression.literalValue")).isEqualTo("foo");
-		assertThat(TestUtils.getPropertyValue(messageHandler, "messageKeyExpression.expression")).isEqualTo("'bar'");
-		assertThat(TestUtils.getPropertyValue(messageHandler, "partitionIdExpression.expression")).isEqualTo("'2'");
-		assertThat(TestUtils.getPropertyValue(messageHandler, "sync", Boolean.class)).isTrue();
-		assertThat(TestUtils.getPropertyValue(messageHandler, "sendTimeoutExpression.expression")).isEqualTo("1000");
+		assertThat(messageHandler1).isNotNull();
+		assertThat(messageHandler1.getOrder()).isEqualTo(3);
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "topicExpression.literalValue")).isEqualTo("foo");
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "messageKeyExpression.expression")).isEqualTo("'bar'");
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "partitionIdExpression.expression")).isEqualTo("'2'");
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "sync", Boolean.class)).isTrue();
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "sendTimeoutExpression.expression")).isEqualTo("1000");
+		assertThat(TestUtils.getPropertyValue(messageHandler1, "timestampExpression.expression"))
+				.isEqualTo("T(System).currentTimeMillis()");
 
-		messageHandler
+		KafkaProducerMessageHandler<?, ?> messageHandler2
 				= this.appContext.getBean("kafkaOutboundChannelAdapter2.handler", KafkaProducerMessageHandler.class);
-		assertThat(messageHandler).isNotNull();
-		assertThat(TestUtils.getPropertyValue(messageHandler, "partitionIdExpression.literalValue")).isEqualTo("0");
-		assertThat(TestUtils.getPropertyValue(messageHandler, "sync", Boolean.class)).isFalse();
+		assertThat(messageHandler2).isNotNull();
+		assertThat(TestUtils.getPropertyValue(messageHandler2, "partitionIdExpression.literalValue")).isEqualTo("0");
+		assertThat(TestUtils.getPropertyValue(messageHandler2, "sync", Boolean.class)).isFalse();
 
-		assertThat(TestUtils.getPropertyValue(messageHandler, "sendTimeoutExpression.literalValue")).isEqualTo("500");
+		assertThat(TestUtils.getPropertyValue(messageHandler2, "sendTimeoutExpression.literalValue")).isEqualTo("500");
+
+
 	}
 
 
