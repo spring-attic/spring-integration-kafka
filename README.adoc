@@ -57,7 +57,9 @@ Here's an example for sending a message with an arbitrary payload and the String
             );
 ----
 
-In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and target partition by applying SpEL expressions on the outbound message. To that end, it supports the mutually exclusive pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against the request message.
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, target partition and Kafka record timestamp by applying SpEL expressions on the outbound message.
+To that end, it supports the mutually exclusive pairs of attributes `topic`/`topic-expression`, `message-key`/`message-key-expression`, and `partition-id`/`partition-id-expression`, to allow the specification of `topic`,`message-key` and `partition-id` respectively as static values on the adapter, or to dynamically evaluate their values at runtime against the request message.
+The Kafka record timestamp can be specified as a SpEL expression with an attribute name of `timestamp-expression`
 
 IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with headers.
 The `messageKey` and `topic` default headers now require a `kafka_` prefix.
@@ -81,7 +83,8 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
                                     channel="inputToKafka"
                                     topic="foo"
                                     message-key-expression="'bar'"
-                                    partition-id-expression="2">
+                                    partition-id-expression="2"
+                                    timestamp-expression="T(System).currentTimeMillis()">
 </int-kafka:outbound-channel-adapter>
 
 <bean id="template" class="org.springframework.kafka.core.KafkaTemplate">
@@ -130,7 +133,8 @@ kafkaMessageHandler(ProducerFactory<Integer, String> producerFactory, String top
                 .getHeaders()
                 .get(IntegrationMessageHeaderAccessor.SEQUENCE_NUMBER))
         .partitionId(m -> 10)
-        .topicExpression("headers[kafka_topic] ?: '" + topic + "'");
+        .topicExpression("headers[kafka_topic] ?: '" + topic + "'")
+        .timestampExpression("T(System).currentTimeMillis()");
 }
 
 ----
