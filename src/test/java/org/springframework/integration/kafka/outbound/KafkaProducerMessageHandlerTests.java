@@ -23,14 +23,22 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
+import java.util.Map;
+import java.util.concurrent.Executors;
+
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.expression.FunctionExpression;
 import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.support.MessageBuilder;
@@ -38,7 +46,8 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -57,8 +66,12 @@ public class KafkaProducerMessageHandlerTests {
 
 	private static String topic2 = "testTopic2out";
 
+	private static String topic3 = "testTopic3out";
+
+	private static String topic3reply = "testTopic3reply";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic3reply);
 
 	private static Consumer<Integer, String> consumer;
 
@@ -67,12 +80,12 @@ public class KafkaProducerMessageHandlerTests {
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(
 				KafkaTestUtils.consumerProps("testOut", "true", embeddedKafka));
 		consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
+		embeddedKafka.consumeFromEmbeddedTopics(consumer, topic1, topic2);
 	}
 
 	@Test
-	public void testOutbound() {
-		ProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
+	public void testOutboundChannelAdapter() throws Exception {
+		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
@@ -122,11 +135,12 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(key(2));
 		assertThat(record).has(partition(1));
 		assertThat(record.value()).isNull();
+		producerFactory.destroy();
 	}
 
 	@Test
-	public void testOutboundWithTimestamp() {
-		ProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
+	public void testOutboundWithTimestamp() throws Exception {
+		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
@@ -146,11 +160,12 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("foo"));
 		assertThat(record).has(timestamp(1487694048607L));
+		producerFactory.destroy();
 	}
 
 	@Test
-	public void testOutboundWithTimestampExpression() {
-		ProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
+	public void testOutboundWithTimestampExpression() throws Exception {
+		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
@@ -183,6 +198,49 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record2).has(partition(1));
 		assertThat(record2).has(value("foo"));
 		assertThat(record2.timestamp()).isGreaterThanOrEqualTo(currentTimeMarker);
+		producerFactory.destroy();
+	}
+
+	@Test
+	public void testOutboundGateway() throws Exception {
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(embeddedKafka);
+		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		DefaultKafkaProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerProps);
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("gate1", "false", embeddedKafka);
+		consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		ConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		ContainerProperties containerProperties = new ContainerProperties(topic3reply);
+		KafkaMessageListenerContainer<String, String> replyContainer = new KafkaMessageListenerContainer<>(cf,
+				containerProperties);
+		KafkaProducerMessageHandler<String, String> handler = new KafkaProducerMessageHandler<>(template,
+				replyContainer);
+		handler.setBeanFactory(mock(BeanFactory.class));
+		QueueChannel replyChannel = new QueueChannel();
+		handler.setOutputChannel(replyChannel);
+		handler.afterPropertiesSet();
+		replyContainer.start();
+
+		final Message<?> message = MessageBuilder.withPayload("foo")
+				.setHeader(KafkaHeaders.TOPIC, topic3)
+				.setHeader(KafkaHeaders.PARTITION_ID, 1)
+				.build();
+		Executors.newSingleThreadExecutor().execute(() -> handler.handleMessage(message));
+
+		Consumer<String, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic3);
+		ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, topic3);
+		assertThat(record).has(partition(1));
+		assertThat(record).has(value("foo"));
+		template.send(topic3reply, record.key(), "FOO");
+
+		Message<?> reply = replyChannel.receive(10_000);
+		assertThat(reply).isNotNull();
+		assertThat(reply.getPayload()).isEqualTo("FOO");
+		System.out.println(reply);
+		replyContainer.stop();
+		producerFactory.destroy();
 	}
 
 }

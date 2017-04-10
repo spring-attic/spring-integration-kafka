@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.integration.config.xml.AbstractChannelAdapterParser;
 import org.springframework.integration.config.xml.IntegrationNamespaceUtils;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenEndpoint;
 import org.springframework.util.StringUtils;
 
 /**
@@ -38,7 +38,7 @@ public class KafkaMessageDrivenChannelAdapterParser extends AbstractChannelAdapt
 	@Override
 	protected AbstractBeanDefinition doParse(Element element, ParserContext parserContext, String channelName) {
 		BeanDefinitionBuilder builder =
-				BeanDefinitionBuilder.genericBeanDefinition(KafkaMessageDrivenChannelAdapter.class);
+				BeanDefinitionBuilder.genericBeanDefinition(KafkaMessageDrivenEndpoint.class);
 
 		String container = element.getAttribute("listener-container");
 		if (StringUtils.hasText(container)) {
@@ -49,8 +49,8 @@ public class KafkaMessageDrivenChannelAdapterParser extends AbstractChannelAdapt
 		}
 		builder.addConstructorArgValue(element.getAttribute("mode"));
 
-		builder.addPropertyReference("outputChannel", channelName);
-		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "send-timeout");
+		builder.addPropertyReference("requestChannel", channelName);
+		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "send-timeout", "requestTimeout");
 		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(builder, element, "error-channel");
 		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(builder, element, "message-converter");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "payload-type");

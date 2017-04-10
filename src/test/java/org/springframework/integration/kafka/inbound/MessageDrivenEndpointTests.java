@@ -17,12 +17,14 @@
 package org.springframework.integration.kafka.inbound;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -30,12 +32,11 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.integration.channel.QueueChannel;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter.ListenerMode;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenEndpoint.ListenerMode;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
@@ -51,8 +52,10 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.PollableChannel;
+import org.springframework.messaging.support.GenericMessage;
 
 /**
  *
@@ -63,7 +66,7 @@ import org.springframework.messaging.PollableChannel;
  * @since 2.0
  *
  */
-public class MessageDrivenAdapterTests {
+public class MessageDrivenEndpointTests {
 
 	private static String topic1 = "testTopic1";
 
@@ -71,8 +74,12 @@ public class MessageDrivenAdapterTests {
 
 	private static String topic3 = "testTopic3";
 
+	private static String topic4 = "testTopic4";
+
+	private static String topic5 = "testTopic5";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5);
 
 	@Test
 	public void testInboundRecord() throws Exception {
@@ -82,9 +89,9 @@ public class MessageDrivenAdapterTests {
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container);
+		KafkaMessageDrivenEndpoint<Integer, String> adapter = new KafkaMessageDrivenEndpoint<>(container);
 		QueueChannel out = new QueueChannel();
-		adapter.setOutputChannel(out);
+		adapter.setRequestChannel(out);
 		adapter.afterPropertiesSet();
 		adapter.setRecordMessageConverter(new MessagingMessageConverter() {
 
@@ -99,7 +106,7 @@ public class MessageDrivenAdapterTests {
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
 		template.sendDefault(0, 1487694048607L, 1, "foo");
@@ -155,6 +162,7 @@ public class MessageDrivenAdapterTests {
 				.contains("Failed to convert to message for: ConsumerRecord(topic = testTopic1");
 
 		adapter.stop();
+		pf.destroy();
 	}
 
 	@Test
@@ -165,10 +173,10 @@ public class MessageDrivenAdapterTests {
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container,
+		KafkaMessageDrivenEndpoint<Integer, String> adapter = new KafkaMessageDrivenEndpoint<>(container,
 				ListenerMode.batch);
 		QueueChannel out = new QueueChannel();
-		adapter.setOutputChannel(out);
+		adapter.setRequestChannel(out);
 		adapter.afterPropertiesSet();
 		adapter.setBatchMessageConverter(new BatchMessagingMessageConverter() {
 
@@ -183,7 +191,7 @@ public class MessageDrivenAdapterTests {
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
 		template.sendDefault(0, 1487694048607L, 1, "foo");
@@ -231,6 +239,7 @@ public class MessageDrivenAdapterTests {
 				.contains("Failed to convert to message for: [ConsumerRecord(topic = testTopic2");
 
 		adapter.stop();
+		pf.destroy();
 	}
 
 	@Test
@@ -241,16 +250,16 @@ public class MessageDrivenAdapterTests {
 		ContainerProperties containerProps = new ContainerProperties(topic3);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container);
+		KafkaMessageDrivenEndpoint<Integer, String> adapter = new KafkaMessageDrivenEndpoint<>(container);
 		adapter.setRecordMessageConverter(new StringJsonMessageConverter());
 		QueueChannel out = new QueueChannel();
-		adapter.setOutputChannel(out);
+		adapter.setRequestChannel(out);
 		adapter.afterPropertiesSet();
 		adapter.start();
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic3);
 		template.sendDefault(0, 1487694048607L, 1, "{\"bar\":\"baz\"}");
@@ -286,6 +295,50 @@ public class MessageDrivenAdapterTests {
 		assertThat(received.getPayload()).isEqualTo(new Foo("baz"));
 
 		adapter.stop();
+		pf.destroy();
+	}
+
+	@Test
+	public void testInboundGateway() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test4", "true", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic4);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic5);
+		KafkaMessageDrivenEndpoint<Integer, String> adapter = new KafkaMessageDrivenEndpoint<>(container, template);
+		QueueChannel out = new QueueChannel();
+		adapter.setRequestChannel(out);
+		adapter.afterPropertiesSet();
+		adapter.start();
+		ContainerTestUtils.waitForAssignment(container, 2);
+
+		template.send(topic4, 0, 1, "foo");
+
+		Message<?> received = out.receive(10000);
+		assertThat(received).isNotNull();
+		MessageHeaders headers = received.getHeaders();
+		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(topic4);
+		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID)).isEqualTo(0);
+		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(0L);
+
+		MessageChannel replyChannel = (MessageChannel) received.getHeaders().getReplyChannel();
+		assertThat(replyChannel).isNotNull();
+		replyChannel.send(new GenericMessage<>("FOO"));
+
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic5);
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, topic5);
+		assertThat(reply).isNotNull();
+		assertThat(reply).has(value("FOO"));
+
+		adapter.stop();
+		pf.destroy();
 	}
 
 	public static class Foo {

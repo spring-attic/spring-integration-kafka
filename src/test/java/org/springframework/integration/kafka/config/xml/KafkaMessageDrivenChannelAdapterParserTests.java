@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.integration.channel.NullChannel;
 import org.springframework.integration.channel.PublishSubscribeChannel;
 import org.springframework.integration.channel.QueueChannel;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter.ListenerMode;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenEndpoint;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenEndpoint.ListenerMode;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
@@ -56,17 +56,17 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 	private PublishSubscribeChannel errorChannel;
 
 	@Autowired
-	private KafkaMessageDrivenChannelAdapter<?, ?> kafkaListener;
+	private KafkaMessageDrivenEndpoint<?, ?> kafkaListener;
 
 	@Autowired
-	private KafkaMessageDrivenChannelAdapter<?, ?> kafkaBatchListener;
+	private KafkaMessageDrivenEndpoint<?, ?> kafkaBatchListener;
 
 	@Test
 	public void testKafkaMessageDrivenChannelAdapterParser() throws Exception {
 		assertThat(this.kafkaListener.isAutoStartup()).isFalse();
 		assertThat(this.kafkaListener.isRunning()).isFalse();
 		assertThat(this.kafkaListener.getPhase()).isEqualTo(100);
-		assertThat(TestUtils.getPropertyValue(this.kafkaListener, "outputChannel")).isSameAs(this.nullChannel);
+		assertThat(TestUtils.getPropertyValue(this.kafkaListener, "requestChannel")).isSameAs(this.nullChannel);
 		assertThat(TestUtils.getPropertyValue(this.kafkaListener, "errorChannel")).isSameAs(this.errorChannel);
 		KafkaMessageListenerContainer<?, ?> container =
 				TestUtils.getPropertyValue(this.kafkaListener, "messageListenerContainer",
@@ -85,7 +85,7 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 		assertThat(this.kafkaBatchListener.isAutoStartup()).isFalse();
 		assertThat(this.kafkaBatchListener.isRunning()).isFalse();
 		assertThat(this.kafkaBatchListener.getPhase()).isEqualTo(100);
-		assertThat(TestUtils.getPropertyValue(this.kafkaBatchListener, "outputChannel")).isSameAs(this.nullChannel);
+		assertThat(TestUtils.getPropertyValue(this.kafkaBatchListener, "requestChannel")).isSameAs(this.nullChannel);
 		assertThat(TestUtils.getPropertyValue(this.kafkaBatchListener, "errorChannel")).isSameAs(this.errorChannel);
 		KafkaMessageListenerContainer<?, ?> container =
 				TestUtils.getPropertyValue(this.kafkaBatchListener, "messageListenerContainer",
@@ -103,8 +103,8 @@ public class KafkaMessageDrivenChannelAdapterParserTests {
 		ContainerProperties containerProps = new ContainerProperties("foo");
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container);
-		adapter.setOutputChannel(new QueueChannel());
+		KafkaMessageDrivenEndpoint<Integer, String> adapter = new KafkaMessageDrivenEndpoint<>(container);
+		adapter.setRequestChannel(new QueueChannel());
 
 		adapter.setRecordFilterStrategy(mock(RecordFilterStrategy.class));
 		adapter.afterPropertiesSet();
