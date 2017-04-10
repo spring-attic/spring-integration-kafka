@@ -16,8 +16,9 @@
 
 package org.springframework.integration.kafka.dsl;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
 
 import org.springframework.expression.Expression;
@@ -29,6 +30,7 @@ import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -49,9 +51,19 @@ public class KafkaProducerMessageHandlerSpec<K, V>
 
 	protected final KafkaTemplate<K, V> kafkaTemplate;
 
+	protected final AbstractMessageListenerContainer<K, V> replyContainer;
+
 	KafkaProducerMessageHandlerSpec(KafkaTemplate<K, V> kafkaTemplate) {
 		this.target = new KafkaProducerMessageHandler<K, V>(kafkaTemplate);
 		this.kafkaTemplate = kafkaTemplate;
+		this.replyContainer = null;
+	}
+
+	KafkaProducerMessageHandlerSpec(KafkaTemplate<K, V> kafkaTemplate,
+			AbstractMessageListenerContainer<K, V> replyContainer) {
+		this.target = new KafkaProducerMessageHandler<K, V>(kafkaTemplate, replyContainer);
+		this.kafkaTemplate = kafkaTemplate;
+		this.replyContainer = replyContainer;
 	}
 
 	/**
@@ -283,7 +295,12 @@ public class KafkaProducerMessageHandlerSpec<K, V>
 
 		@Override
 		public Collection<Object> getComponentsToRegister() {
-			return Collections.singleton(this.kafkaTemplate);
+			List<Object> list = new ArrayList<>();
+			list.add(this.kafkaTemplate);
+			if (this.replyContainer != null) {
+				list.add(this.replyContainer);
+			}
+			return list;
 		}
 
 	}

@@ -38,7 +38,7 @@ import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.expression.ValueExpression;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.kafka.inbound.KafkaMessageDrivenEndpoint;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -176,7 +176,7 @@ public class KafkaDslTests {
 		public IntegrationFlow topic1ListenerFromKafkaFlow() {
 			return IntegrationFlows
 					.from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
-							KafkaMessageDrivenChannelAdapter.ListenerMode.record, TEST_TOPIC1)
+							KafkaMessageDrivenEndpoint.ListenerMode.record, TEST_TOPIC1)
 							.configureListenerContainer(c ->
 									c.ackMode(AbstractMessageListenerContainer.AckMode.MANUAL))
 							.errorChannel("errorChannel")
@@ -194,7 +194,7 @@ public class KafkaDslTests {
 		public IntegrationFlow topic2ListenerFromKafkaFlow() {
 			return IntegrationFlows
 					.from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
-							KafkaMessageDrivenChannelAdapter.ListenerMode.record, TEST_TOPIC2)
+							KafkaMessageDrivenEndpoint.ListenerMode.record, TEST_TOPIC2)
 							.configureListenerContainer(c ->
 									c.ackMode(AbstractMessageListenerContainer.AckMode.MANUAL))
 							.errorChannel("errorChannel")

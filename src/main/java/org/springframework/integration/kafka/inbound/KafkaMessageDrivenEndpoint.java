@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.integration.context.OrderlyShutdownCapable;
-import org.springframework.integration.endpoint.MessageProducerSupport;
+import org.springframework.integration.gateway.MessagingGatewaySupport;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
@@ -53,7 +54,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  *
  */
-public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSupport implements OrderlyShutdownCapable {
+public class KafkaMessageDrivenEndpoint<K, V> extends MessagingGatewaySupport implements OrderlyShutdownCapable {
 
 	private final AbstractMessageListenerContainer<K, V> messageListenerContainer;
 
@@ -62,6 +63,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	private final BatchMessagingMessageListenerAdapter<K, V> batchListener = new IntegrationBatchMessageListener();
 
 	private final ListenerMode mode;
+
+	private final KafkaTemplate<K, V> replyTemplate;
 
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
@@ -77,7 +80,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	 * Construct an instance with mode {@link ListenerMode#record}.
 	 * @param messageListenerContainer the container.
 	 */
-	public KafkaMessageDrivenChannelAdapter(AbstractMessageListenerContainer<K, V> messageListenerContainer) {
+	public KafkaMessageDrivenEndpoint(AbstractMessageListenerContainer<K, V> messageListenerContainer) {
 		this(messageListenerContainer, ListenerMode.record);
 	}
 
@@ -87,7 +90,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	 * @param mode the mode.
 	 * @since 1.2
 	 */
-	public KafkaMessageDrivenChannelAdapter(AbstractMessageListenerContainer<K, V> messageListenerContainer,
+	public KafkaMessageDrivenEndpoint(AbstractMessageListenerContainer<K, V> messageListenerContainer,
 			ListenerMode mode) {
 		Assert.notNull(messageListenerContainer, "messageListenerContainer is required");
 		Assert.isNull(messageListenerContainer.getContainerProperties().getMessageListener(),
@@ -95,6 +98,35 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		this.messageListenerContainer = messageListenerContainer;
 		this.messageListenerContainer.setAutoStartup(false);
 		this.mode = mode;
+		this.replyTemplate = null;
+	}
+
+	/**
+	 * Construct an instance with mode {@link ListenerMode#record}.
+	 * @param messageListenerContainer the container.
+	 * @param replyTemplate the reply template, configured with the reply topic.
+	 */
+	public KafkaMessageDrivenEndpoint(AbstractMessageListenerContainer<K, V> messageListenerContainer,
+			KafkaTemplate<K, V> replyTemplate) {
+		this(messageListenerContainer, ListenerMode.record, replyTemplate);
+	}
+
+	/**
+	 * Construct an instance with the provided mode.
+	 * @param messageListenerContainer the container.
+	 * @param mode the mode.
+	 * @param replyTemplate the reply template, configured with the reply topic.
+	 * @since 1.2
+	 */
+	public KafkaMessageDrivenEndpoint(AbstractMessageListenerContainer<K, V> messageListenerContainer,
+			ListenerMode mode, KafkaTemplate<K, V> replyTemplate) {
+		Assert.notNull(messageListenerContainer, "messageListenerContainer is required");
+		Assert.isNull(messageListenerContainer.getContainerProperties().getMessageListener(),
+				"Container must not already have a listener");
+		this.messageListenerContainer = messageListenerContainer;
+		this.messageListenerContainer.setAutoStartup(false);
+		this.mode = mode;
+		this.replyTemplate = replyTemplate;
 	}
 
 	/**
@@ -136,7 +168,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	/**
 	 * Specify a {@link RecordFilterStrategy} to wrap
-	 * {@link KafkaMessageDrivenChannelAdapter.IntegrationRecordMessageListener} into
+	 * {@link KafkaMessageDrivenEndpoint.IntegrationRecordMessageListener} into
 	 * {@link FilteringAcknowledgingMessageListenerAdapter}.
 	 * @param recordFilterStrategy the {@link RecordFilterStrategy} to use.
 	 * @since 2.0.1
@@ -158,7 +190,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	/**
 	 * Specify a {@link RetryTemplate} instance to wrap
-	 * {@link KafkaMessageDrivenChannelAdapter.IntegrationRecordMessageListener} into
+	 * {@link KafkaMessageDrivenEndpoint.IntegrationRecordMessageListener} into
 	 * {@link RetryingAcknowledgingMessageListenerAdapter}.
 	 * @param retryTemplate the {@link RetryTemplate} to use.
 	 * @since 2.0.1
@@ -207,7 +239,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	@Override
-	protected void onInit() {
+	protected void onInit() throws Exception {
 		super.onInit();
 
 		if (this.mode.equals(ListenerMode.record)) {
@@ -271,6 +303,19 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		return getPhase();
 	}
 
+	@SuppressWarnings("unchecked")
+	private void exchange(Message<?> message) {
+		Object replyObject = sendAndReceive(message);
+		V reply = null;
+		try {
+			reply = (V) replyObject;
+		}
+		catch (ClassCastException e) {
+			logger.error("Unexpected reply type: " + replyObject.getClass().getName(), e);
+		}
+		this.replyTemplate.send(getMessageBuilderFactory().withPayload(reply).build());
+	}
+
 	/**
 	 * The listener mode for the container, record or batch.
 	 * @since 1.2
@@ -305,14 +350,20 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + record, e);
 				if (getErrorChannel() != null) {
-					getMessagingTemplate().send(getErrorChannel(), new ErrorMessage(exception));
+					KafkaMessageDrivenEndpoint.this.messagingTemplate.send(getErrorChannel(),
+							new ErrorMessage(exception));
 				}
 			}
 			if (message != null) {
-				sendMessage(message);
+				if (KafkaMessageDrivenEndpoint.this.replyTemplate == null) {
+					send(message);
+				}
+				else {
+					exchange(message);
+				}
 			}
 			else {
-				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
+				KafkaMessageDrivenEndpoint.this.logger.debug("Converter returned a null message for: "
 						+ record);
 			}
 		}
@@ -334,14 +385,20 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + records, e);
 				if (getErrorChannel() != null) {
-					getMessagingTemplate().send(getErrorChannel(), new ErrorMessage(exception));
+					KafkaMessageDrivenEndpoint.this.messagingTemplate.send(getErrorChannel(),
+							new ErrorMessage(exception));
 				}
 			}
 			if (message != null) {
-				sendMessage(message);
+				if (KafkaMessageDrivenEndpoint.this.replyTemplate == null) {
+					send(message);
+				}
+				else {
+					exchange(message);
+				}
 			}
 			else {
-				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
+				KafkaMessageDrivenEndpoint.this.logger.debug("Converter returned a null message for: "
 						+ records);
 			}
 		}
