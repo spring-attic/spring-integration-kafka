@@ -22,6 +22,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.integration.context.OrderlyShutdownCapable;
 import org.springframework.integration.endpoint.MessageProducerSupport;
+import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
+import org.springframework.integration.support.ErrorMessagePublishingRecoveryCallback;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
@@ -39,6 +41,10 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryListener;
+import org.springframework.retry.context.RetryContextSupport;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -55,11 +61,18 @@ import org.springframework.util.Assert;
  */
 public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSupport implements OrderlyShutdownCapable {
 
+	/**
+	 * Header name/retry context variable for the raw received record (or records).
+	 */
+	public static final String RAW_RECORD = "record";
+
+	private static final ThreadLocal<RetryContext> contextHolder = new ThreadLocal<RetryContext>();
+
 	private final AbstractMessageListenerContainer<K, V> messageListenerContainer;
 
-	private final RecordMessagingMessageListenerAdapter<K, V> recordListener = new IntegrationRecordMessageListener();
+	private final IntegrationRecordMessageListener recordListener = new IntegrationRecordMessageListener();
 
-	private final BatchMessagingMessageListenerAdapter<K, V> batchListener = new IntegrationBatchMessageListener();
+	private final IntegrationBatchMessageListener batchListener = new IntegrationBatchMessageListener();
 
 	private final ListenerMode mode;
 
@@ -170,9 +183,10 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * A {@link RecoveryCallback} instance for retry operation;
-	 * if null, the exception will be thrown to the container after retries are exhausted.
-	 * Does not make sense if {@link #setRetryTemplate(RetryTemplate)} isn't specified.
+	 * A {@link RecoveryCallback} instance for retry operation; if null, the exception
+	 * will be thrown to the container after retries are exhausted. An
+	 * {@link ErrorMessageSendingRecoverer} can also be used herewith an error channel and
+	 * without retry, to build a custom error message.
 	 * @param recoveryCallback the recovery callback.
 	 * @since 2.0.1
 	 */
@@ -221,11 +235,13 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 						this.ackDiscarded);
 				listener = new RetryingAcknowledgingMessageListenerAdapter<>(listener, this.retryTemplate,
 							this.recoveryCallback);
+				this.retryTemplate.registerListener(this.recordListener);
 			}
 			else {
 				if (this.retryTemplate != null) {
 					listener = new RetryingAcknowledgingMessageListenerAdapter<>(listener, this.retryTemplate,
 							this.recoveryCallback);
+					this.retryTemplate.registerListener(this.recordListener);
 				}
 				if (this.recordFilterStrategy != null) {
 					listener = new FilteringAcknowledgingMessageListenerAdapter<>(listener, this.recordFilterStrategy,
@@ -271,6 +287,26 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		return getPhase();
 	}
 
+	@Override
+	protected ErrorMessage buildErrorMessage(RuntimeException exception) {
+		if (this.recoveryCallback instanceof ErrorMessageSendingRecoverer) {
+			ErrorMessageSendingRecoverer emsRecoverer = (ErrorMessageSendingRecoverer) this.recoveryCallback;
+			RetryContext retryContext = contextHolder.get();
+			if (retryContext == null) {
+				retryContext = emsRecoverer
+						.getRetryContextFor(
+								retryContext == null ? null
+										: (Message<?>) retryContext.getAttribute(
+												ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY),
+								null, exception);
+			}
+			return emsRecoverer.getErrorMessageStrategy().buildErrorMessage(retryContext);
+		}
+		else {
+			return super.buildErrorMessage(exception);
+		}
+	}
+
 	/**
 	 * The listener mode for the container, record or batch.
 	 * @since 1.2
@@ -290,7 +326,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		batch
 	}
 
-	private class IntegrationRecordMessageListener extends RecordMessagingMessageListenerAdapter<K, V> {
+	private class IntegrationRecordMessageListener extends RecordMessagingMessageListenerAdapter<K, V>
+			implements RetryListener {
 
 		IntegrationRecordMessageListener() {
 			super(null, null);
@@ -301,6 +338,14 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(record, acknowledgment);
+				if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
+						contextHolder.set(new RetryContextSupport(null));
+					}
+					contextHolder.get().setAttribute(ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY,
+							message);
+					contextHolder.get().setAttribute(RAW_RECORD, record);
+				}
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + record, e);
@@ -317,9 +362,32 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			}
 		}
 
+		@Override
+		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+				contextHolder.set(context);
+			}
+			return true;
+		}
+
+		@Override
+		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
+				Throwable throwable) {
+			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+				contextHolder.remove();
+			}
+		}
+
+		@Override
+		public <T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback,
+				Throwable throwable) {
+			// Empty
+		}
+
 	}
 
-	private class IntegrationBatchMessageListener extends BatchMessagingMessageListenerAdapter<K, V> {
+	private class IntegrationBatchMessageListener extends BatchMessagingMessageListenerAdapter<K, V>
+			implements RetryListener {
 
 		IntegrationBatchMessageListener() {
 			super(null, null);
@@ -330,6 +398,14 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(records, acknowledgment);
+				if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
+						contextHolder.set(new RetryContextSupport(null));
+					}
+					contextHolder.get().setAttribute(ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY,
+							message);
+					contextHolder.get().setAttribute(RAW_RECORD, records);
+				}
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + records, e);
@@ -344,6 +420,28 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
 						+ records);
 			}
+		}
+
+		@Override
+		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+				contextHolder.set(context);
+			}
+			return true;
+		}
+
+		@Override
+		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
+				Throwable throwable) {
+			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+				contextHolder.remove();
+			}
+		}
+
+		@Override
+		public <T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback,
+				Throwable throwable) {
+			// Empty
 		}
 
 	}
