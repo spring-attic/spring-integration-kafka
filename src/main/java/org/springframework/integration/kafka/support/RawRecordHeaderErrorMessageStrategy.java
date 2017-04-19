@@ -21,7 +21,6 @@ import java.util.Map;
 
 import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
-import org.springframework.integration.message.EnhancedErrorMessage;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.messaging.Message;
@@ -29,7 +28,7 @@ import org.springframework.messaging.support.ErrorMessage;
 
 /**
  * {@link DefaultRecovererErrorMessageStrategy} extension that adds the raw record as
- * a header to the {@link EnhancedErrorMessage}.
+ * a header to the {@link org.springframework.integration.message.EnhancedErrorMessage}.
  *
  * @author Gary Russell
  * @since 2.1.1
@@ -37,6 +36,7 @@ import org.springframework.messaging.support.ErrorMessage;
  */
 public class RawRecordHeaderErrorMessageStrategy implements ErrorMessageStrategy {
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public ErrorMessage buildErrorMessage(Throwable throwable, AttributeAccessor context) {
 		Object inputMessage = context.getAttribute(ErrorMessageUtils.INPUT_MESSAGE_CONTEXT_KEY);
@@ -44,7 +44,8 @@ public class RawRecordHeaderErrorMessageStrategy implements ErrorMessageStrategy
 				KafkaMessageDrivenChannelAdapter.RAW_RECORD,
 				context.getAttribute(KafkaMessageDrivenChannelAdapter.RAW_RECORD));
 		return inputMessage instanceof Message
-				? new EnhancedErrorMessage((Message<?>) inputMessage, throwable, headers)
+				? new org.springframework.integration.message.EnhancedErrorMessage((Message<?>) inputMessage,
+						throwable, headers)
 				: new ErrorMessage(throwable, headers);
 	}
 

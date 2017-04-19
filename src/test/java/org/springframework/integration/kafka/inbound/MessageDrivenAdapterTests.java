@@ -33,7 +33,6 @@ import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter.ListenerMode;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
-import org.springframework.integration.message.EnhancedErrorMessage;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -158,6 +157,7 @@ public class MessageDrivenAdapterTests {
 		adapter.stop();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testInboundRecordRetryRecover() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test4", "true", embeddedKafka);
@@ -195,10 +195,10 @@ public class MessageDrivenAdapterTests {
 		template.sendDefault(1, "foo");
 
 		Message<?> received = errorChannel.receive(10000);
-		assertThat(received).isInstanceOf(EnhancedErrorMessage.class);
+		assertThat(received).isInstanceOf(org.springframework.integration.message.EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
 		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
-		received = ((EnhancedErrorMessage) received).getOriginalMessage();
+		received = ((org.springframework.integration.message.EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();
 		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
@@ -209,6 +209,7 @@ public class MessageDrivenAdapterTests {
 		adapter.stop();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testInboundRecordNoRetryRecover() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test5", "true", embeddedKafka);
@@ -242,10 +243,10 @@ public class MessageDrivenAdapterTests {
 		template.sendDefault(1, "foo");
 
 		Message<?> received = errorChannel.receive(10000);
-		assertThat(received).isInstanceOf(EnhancedErrorMessage.class);
+		assertThat(received).isInstanceOf(org.springframework.integration.message.EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
 		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
-		received = ((EnhancedErrorMessage) received).getOriginalMessage();
+		received = ((org.springframework.integration.message.EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();
 		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
