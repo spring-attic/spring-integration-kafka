@@ -20,10 +20,11 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.context.OrderlyShutdownCapable;
 import org.springframework.integration.endpoint.MessageProducerSupport;
-import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
-import org.springframework.integration.support.ErrorMessagePublishingRecoveryCallback;
+import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
+import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
@@ -44,7 +45,6 @@ import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
-import org.springframework.retry.context.RetryContextSupport;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -66,7 +66,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	 */
 	public static final String RAW_RECORD = "record";
 
-	private static final ThreadLocal<RetryContext> contextHolder = new ThreadLocal<RetryContext>();
+	private static final ThreadLocal<AttributeAccessor> attributesHolder = new ThreadLocal<AttributeAccessor>();
 
 	private final AbstractMessageListenerContainer<K, V> messageListenerContainer;
 
@@ -108,6 +108,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		this.messageListenerContainer = messageListenerContainer;
 		this.messageListenerContainer.setAutoStartup(false);
 		this.mode = mode;
+		setErrorMessageStrategy(new RawRecordHeaderErrorMessageStrategy());
 	}
 
 	/**
@@ -183,10 +184,10 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * A {@link RecoveryCallback} instance for retry operation; if null, the exception
-	 * will be thrown to the container after retries are exhausted. An
-	 * {@link ErrorMessageSendingRecoverer} can also be used herewith an error channel and
-	 * without retry, to build a custom error message.
+	 * A {@link RecoveryCallback} instance for retry operation;
+	 * if null, the exception will be thrown to the container after retries are exhausted
+	 * (unless an error channel is configured).
+	 * Does not make sense if {@link #setRetryTemplate(RetryTemplate)} isn't specified.
 	 * @param recoveryCallback the recovery callback.
 	 * @since 2.0.1
 	 */
@@ -287,23 +288,29 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		return getPhase();
 	}
 
-	@Override
-	protected ErrorMessage buildErrorMessage(RuntimeException exception) {
-		if (this.recoveryCallback instanceof ErrorMessageSendingRecoverer) {
-			ErrorMessageSendingRecoverer emsRecoverer = (ErrorMessageSendingRecoverer) this.recoveryCallback;
-			RetryContext retryContext = contextHolder.get();
-			if (retryContext == null) {
-				retryContext = emsRecoverer
-						.getRetryContextFor(
-								retryContext == null ? null
-										: (Message<?>) retryContext.getAttribute(
-												ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY),
-								null, exception);
+	protected void setAttributesIfNecessary(Object record, Message<?> message) {
+		boolean needAttributes = getErrorChannel() != null
+				&& KafkaMessageDrivenChannelAdapter.this.retryTemplate == null;
+		if (needAttributes) {
+			attributesHolder.set(ErrorMessageUtils.getAttributeAccessor(null, null));
+		}
+		if (needAttributes || KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+			AttributeAccessor attributes = attributesHolder.get();
+			if (attributes != null) {
+				attributes.setAttribute(ErrorMessageUtils.INPUT_MESSAGE_CONTEXT_KEY, message);
+				attributes.setAttribute(RAW_RECORD, record);
 			}
-			return emsRecoverer.getErrorMessageStrategy().buildErrorMessage(retryContext);
+		}
+	}
+
+	@Override
+	protected AttributeAccessor getErrorMessageAttributes(Message<?> message) {
+		AttributeAccessor attributes = attributesHolder.get();
+		if (attributes == null) {
+			return super.getErrorMessageAttributes(message);
 		}
 		else {
-			return super.buildErrorMessage(exception);
+			return attributes;
 		}
 	}
 
@@ -338,14 +345,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(record, acknowledgment);
-				if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
-						contextHolder.set(new RetryContextSupport(null));
-					}
-					contextHolder.get().setAttribute(ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY,
-							message);
-					contextHolder.get().setAttribute(RAW_RECORD, record);
-				}
+				setAttributesIfNecessary(record, message);
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + record, e);
@@ -365,7 +365,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
 			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				contextHolder.set(context);
+				attributesHolder.set(context);
 			}
 			return true;
 		}
@@ -374,7 +374,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
 			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				contextHolder.remove();
+				attributesHolder.remove();
 			}
 		}
 
@@ -398,14 +398,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(records, acknowledgment);
-				if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
-						contextHolder.set(new RetryContextSupport(null));
-					}
-					contextHolder.get().setAttribute(ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY,
-							message);
-					contextHolder.get().setAttribute(RAW_RECORD, records);
-				}
+				setAttributesIfNecessary(records, message);
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + records, e);
@@ -425,7 +418,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
 			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				contextHolder.set(context);
+				attributesHolder.set(context);
 			}
 			return true;
 		}
@@ -434,7 +427,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
 			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				contextHolder.remove();
+				attributesHolder.remove();
 			}
 		}
 

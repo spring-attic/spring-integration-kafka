@@ -198,7 +198,7 @@ public class MessageDrivenAdapterTests {
 		assertThat(received).isInstanceOf(EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
 		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
-		received = ((EnhancedErrorMessage) received).getInputMessage();
+		received = ((EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();
 		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);
@@ -245,7 +245,7 @@ public class MessageDrivenAdapterTests {
 		assertThat(received).isInstanceOf(EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
 		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
-		received = ((EnhancedErrorMessage) received).getInputMessage();
+		received = ((EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();
 		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo(1);

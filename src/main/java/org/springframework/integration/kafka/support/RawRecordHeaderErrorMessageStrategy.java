@@ -19,13 +19,13 @@ package org.springframework.integration.kafka.support;
 import java.util.Collections;
 import java.util.Map;
 
-import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer.DefaultRecovererErrorMessageStrategy;
+import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.message.EnhancedErrorMessage;
-import org.springframework.integration.support.ErrorMessagePublishingRecoveryCallback;
+import org.springframework.integration.support.ErrorMessageStrategy;
+import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.ErrorMessage;
-import org.springframework.retry.RetryContext;
 
 /**
  * {@link DefaultRecovererErrorMessageStrategy} extension that adds the raw record as
@@ -35,19 +35,17 @@ import org.springframework.retry.RetryContext;
  * @since 2.1.1
  *
  */
-public class RawRecordHeaderErrorMessageStrategy extends DefaultRecovererErrorMessageStrategy {
+public class RawRecordHeaderErrorMessageStrategy implements ErrorMessageStrategy {
 
 	@Override
-	public ErrorMessage buildErrorMessage(RetryContext context) {
-		Throwable lastThrowable = determinePayload(context);
-		Object inputMessage = context
-				.getAttribute(ErrorMessagePublishingRecoveryCallback.INPUT_MESSAGE_CONTEXT_KEY);
+	public ErrorMessage buildErrorMessage(Throwable throwable, AttributeAccessor context) {
+		Object inputMessage = context.getAttribute(ErrorMessageUtils.INPUT_MESSAGE_CONTEXT_KEY);
 		Map<String, Object> headers = Collections.singletonMap(
 				KafkaMessageDrivenChannelAdapter.RAW_RECORD,
 				context.getAttribute(KafkaMessageDrivenChannelAdapter.RAW_RECORD));
 		return inputMessage instanceof Message
-				? new EnhancedErrorMessage((Message<?>) inputMessage, lastThrowable, headers)
-				: new ErrorMessage(lastThrowable, headers);
+				? new EnhancedErrorMessage((Message<?>) inputMessage, throwable, headers)
+				: new ErrorMessage(throwable, headers);
 	}
 
 }
