@@ -180,7 +180,7 @@ public class MessageDrivenAdapterTests {
 		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
 		retryPolicy.setMaxAttempts(1);
 		retryTemplate.setRetryPolicy(retryPolicy);
-		QueueChannel errorChannel= new QueueChannel();
+		QueueChannel errorChannel = new QueueChannel();
 		adapter.setRecoveryCallback(
 				new ErrorMessageSendingRecoverer(errorChannel, new RawRecordHeaderErrorMessageStrategy()));
 		adapter.setRetryTemplate(retryTemplate);
@@ -197,7 +197,7 @@ public class MessageDrivenAdapterTests {
 		Message<?> received = errorChannel.receive(10000);
 		assertThat(received).isInstanceOf(org.springframework.integration.message.EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
-		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
+		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA)).isNotNull();
 		received = ((org.springframework.integration.message.EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();
@@ -228,7 +228,7 @@ public class MessageDrivenAdapterTests {
 
 		};
 		adapter.setOutputChannel(out);
-		QueueChannel errorChannel= new QueueChannel();
+		QueueChannel errorChannel = new QueueChannel();
 		adapter.setErrorChannel(errorChannel);
 		adapter.setRecoveryCallback(
 				new ErrorMessageSendingRecoverer(errorChannel, new RawRecordHeaderErrorMessageStrategy()));
@@ -245,7 +245,7 @@ public class MessageDrivenAdapterTests {
 		Message<?> received = errorChannel.receive(10000);
 		assertThat(received).isInstanceOf(org.springframework.integration.message.EnhancedErrorMessage.class);
 		MessageHeaders headers = received.getHeaders();
-		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.RAW_RECORD)).isNotNull();
+		assertThat(headers.get(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA)).isNotNull();
 		received = ((org.springframework.integration.message.EnhancedErrorMessage) received).getOriginalMessage();
 		assertThat(received).isNotNull();
 		headers = received.getHeaders();

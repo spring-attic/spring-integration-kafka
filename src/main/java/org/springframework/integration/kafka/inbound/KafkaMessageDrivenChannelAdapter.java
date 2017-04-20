@@ -64,7 +64,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	/**
 	 * Header name/retry context variable for the raw received record (or records).
 	 */
-	public static final String RAW_RECORD = "record";
+	public static final String KAFKA_RAW_DATA = "kafka_data"; // move to KafkaHeaders.RAW_DATA in 3.0
 
 	private static final ThreadLocal<AttributeAccessor> attributesHolder = new ThreadLocal<AttributeAccessor>();
 
@@ -298,7 +298,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			AttributeAccessor attributes = attributesHolder.get();
 			if (attributes != null) {
 				attributes.setAttribute(ErrorMessageUtils.INPUT_MESSAGE_CONTEXT_KEY, message);
-				attributes.setAttribute(RAW_RECORD, record);
+				attributes.setAttribute(KAFKA_RAW_DATA, record);
 			}
 		}
 	}
