@@ -299,12 +299,13 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	 * @since 2.1.1
 	 */
 	private void setAttributesIfNecessary(Object record, Message<?> message) {
-		boolean needAttributes = getErrorChannel() != null
+		boolean needHolder = getErrorChannel() != null
 				&& KafkaMessageDrivenChannelAdapter.this.retryTemplate == null;
-		if (needAttributes) {
+		boolean needAttributes = needHolder | KafkaMessageDrivenChannelAdapter.this.retryTemplate != null;
+		if (needHolder) {
 			attributesHolder.set(ErrorMessageUtils.getAttributeAccessor(null, null));
 		}
-		if (needAttributes || KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+		if (needAttributes) {
 			AttributeAccessor attributes = attributesHolder.get();
 			if (attributes != null) {
 				attributes.setAttribute(ErrorMessageUtils.INPUT_MESSAGE_CONTEXT_KEY, message);
