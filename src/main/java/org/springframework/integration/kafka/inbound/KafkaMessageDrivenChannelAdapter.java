@@ -24,6 +24,7 @@ import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.context.OrderlyShutdownCapable;
 import org.springframework.integration.endpoint.MessageProducerSupport;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
+import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
@@ -288,7 +289,16 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		return getPhase();
 	}
 
-	protected void setAttributesIfNecessary(Object record, Message<?> message) {
+	/**
+	 * If there's a retry template, it will set the attributes holder via the listener. If
+	 * there's no retry template, but there's an error channel, we create a new attributes
+	 * holder here. If an attributes holder exists (by either method), we set the
+	 * attributes for use by the {@link ErrorMessageStrategy}.
+	 * @param record the record.
+	 * @param message the message.
+	 * @since 2.1.1
+	 */
+	private void setAttributesIfNecessary(Object record, Message<?> message) {
 		boolean needAttributes = getErrorChannel() != null
 				&& KafkaMessageDrivenChannelAdapter.this.retryTemplate == null;
 		if (needAttributes) {
@@ -354,7 +364,12 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				}
 			}
 			if (message != null) {
-				sendMessage(message);
+				try {
+					sendMessage(message);
+				}
+				finally {
+					attributesHolder.remove();
+				}
 			}
 			else {
 				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
@@ -373,9 +388,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				attributesHolder.remove();
-			}
+			// Empty
 		}
 
 		@Override
@@ -407,7 +420,12 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				}
 			}
 			if (message != null) {
-				sendMessage(message);
+				try {
+					sendMessage(message);
+				}
+				finally {
+					attributesHolder.remove();
+				}
 			}
 			else {
 				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
@@ -426,9 +444,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
-				attributesHolder.remove();
-			}
+			// Empty
 		}
 
 		@Override
