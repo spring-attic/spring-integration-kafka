@@ -359,10 +359,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				setAttributesIfNecessary(record, message);
 			}
 			catch (RuntimeException e) {
-				Exception exception = new ConversionException("Failed to convert to message for: " + record, e);
-				if (getErrorChannel() != null) {
-					getMessagingTemplate().send(getErrorChannel(), new ErrorMessage(exception));
-				}
+				RuntimeException exception = new ConversionException("Failed to convert to message for: " + record, e);
+				sendErrorMessageIfNecessary(null, exception);
 			}
 			if (message != null) {
 				try {

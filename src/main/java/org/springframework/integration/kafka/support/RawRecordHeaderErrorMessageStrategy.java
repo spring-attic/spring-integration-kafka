@@ -44,8 +44,8 @@ public class RawRecordHeaderErrorMessageStrategy implements ErrorMessageStrategy
 				KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA,
 				context.getAttribute(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA));
 		return inputMessage instanceof Message
-				? new org.springframework.integration.message.EnhancedErrorMessage((Message<?>) inputMessage,
-						throwable, headers)
+				? new org.springframework.integration.message.EnhancedErrorMessage(throwable, headers,
+						(Message<?>) inputMessage)
 				: new ErrorMessage(throwable, headers);
 	}
 
