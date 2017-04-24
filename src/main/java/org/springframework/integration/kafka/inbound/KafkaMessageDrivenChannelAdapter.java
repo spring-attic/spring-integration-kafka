@@ -226,6 +226,11 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	protected void onInit() {
 		super.onInit();
 
+		if (this.retryTemplate != null) {
+			Assert.state(getErrorChannel() == null, "Cannot have an 'errorChannel' property when a 'RetryTemplate' is "
+					+ "provided; use an 'ErrorMessageSendingRecoverer' in the 'recoveryCallback' property to "
+					+ "send an error message when retries are exhausted");
+		}
 		if (this.mode.equals(ListenerMode.record)) {
 			AcknowledgingMessageListener<K, V> listener = this.recordListener;
 
