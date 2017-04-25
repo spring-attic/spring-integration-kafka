@@ -372,7 +372,9 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 					sendMessage(message);
 				}
 				finally {
-					attributesHolder.remove();
+					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
+						attributesHolder.remove();
+					}
 				}
 			}
 			else {
@@ -392,7 +394,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
-			// Empty
+			attributesHolder.remove();
 		}
 
 		@Override
@@ -428,7 +430,9 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 					sendMessage(message);
 				}
 				finally {
-					attributesHolder.remove();
+					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
+						attributesHolder.remove();
+					}
 				}
 			}
 			else {
@@ -448,7 +452,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
-			// Empty
+			attributesHolder.remove();
 		}
 
 		@Override
