@@ -138,7 +138,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	/**
 	 * Specify a {@link RecordFilterStrategy} to wrap
 	 * {@link KafkaMessageDrivenChannelAdapter.IntegrationRecordMessageListener} into
-	 * {@link FilteringAcknowledgingMessageListenerAdapter}.
+	 * {@link FilteringMessageListenerAdapter}.
 	 * @param recordFilterStrategy the {@link RecordFilterStrategy} to use.
 	 * @since 2.0.1
 	 */
@@ -147,7 +147,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * A {@code boolean} flag to indicate if {@link FilteringAcknowledgingMessageListenerAdapter}
+	 * A {@code boolean} flag to indicate if {@link FilteringMessageListenerAdapter}
 	 * should acknowledge discarded records or not.
 	 * Does not make sense if {@link #setRecordFilterStrategy(RecordFilterStrategy)} isn't specified.
 	 * @param ackDiscarded true to ack (commit offset for) discarded messages.
@@ -160,7 +160,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	/**
 	 * Specify a {@link RetryTemplate} instance to wrap
 	 * {@link KafkaMessageDrivenChannelAdapter.IntegrationRecordMessageListener} into
-	 * {@link RetryingAcknowledgingMessageListenerAdapter}.
+	 * {@link RetryingMessageListenerAdapter}.
 	 * @param retryTemplate the {@link RetryTemplate} to use.
 	 * @since 2.0.1
 	 */
@@ -183,13 +183,13 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	/**
 	 * The {@code boolean} flag to specify the order how
-	 * {@link RetryingAcknowledgingMessageListenerAdapter} and
-	 * {@link FilteringAcknowledgingMessageListenerAdapter} are wrapped to each other,
+	 * {@link RetryingMessageListenerAdapter} and
+	 * {@link FilteringMessageListenerAdapter} are wrapped to each other,
 	 * if both of them are present.
 	 * Does not make sense if only one of {@link RetryTemplate} or
 	 * {@link RecordFilterStrategy} is present, or any.
-	 * @param filterInRetry the order for {@link RetryingAcknowledgingMessageListenerAdapter} and
-	 * {@link FilteringAcknowledgingMessageListenerAdapter} wrapping. Defaults to {@code false}.
+	 * @param filterInRetry the order for {@link RetryingMessageListenerAdapter} and
+	 * {@link FilteringMessageListenerAdapter} wrapping. Defaults to {@code false}.
 	 * @since 2.0.1
 	 */
 	public void setFilterInRetry(boolean filterInRetry) {
