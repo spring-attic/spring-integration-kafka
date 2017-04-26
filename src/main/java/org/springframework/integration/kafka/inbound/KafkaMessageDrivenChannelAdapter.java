@@ -222,12 +222,12 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				listener = new FilteringMessageListenerAdapter<>(listener, this.recordFilterStrategy,
 						this.ackDiscarded);
 				listener = new RetryingMessageListenerAdapter<>(listener, this.retryTemplate,
-						(RecoveryCallback<Object>) this.recoveryCallback);
+						this.recoveryCallback);
 			}
 			else {
 				if (this.retryTemplate != null) {
 					listener = new RetryingMessageListenerAdapter<>(listener, this.retryTemplate,
-							(RecoveryCallback<Object>) this.recoveryCallback);
+							this.recoveryCallback);
 				}
 				if (this.recordFilterStrategy != null) {
 					listener = new FilteringMessageListenerAdapter<>(listener, this.recordFilterStrategy,
@@ -302,7 +302,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 			Message<?> message = null;
 			try {
-				message = toMessagingMessage(record, acknowledgment);
+				message = toMessagingMessage(record, acknowledgment, consumer);
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + record, e);
@@ -332,7 +332,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 					Consumer<?, ?> consumer) {
 				Message<?> message = null;
 			try {
-				message = toMessagingMessage(records, acknowledgment);
+				message = toMessagingMessage(records, acknowledgment, consumer);
 			}
 			catch (RuntimeException e) {
 				Exception exception = new ConversionException("Failed to convert to message for: " + records, e);
