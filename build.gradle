@@ -44,9 +44,9 @@ if (project.hasProperty('platformVersion')) {
 group = 'org.springframework.integration'
 
 repositories {
-	maven { url 'http://repo.spring.io/libs-snapshot' }
-	if (project.hasProperty('platformVersion')) {
-		maven { url 'https://repo.spring.io/snapshot' }
+	maven { url 'http://repo.spring.io/libs-milestone' }
+	if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
+		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
 //	maven { url 'http://repo.spring.io/libs-staging-local' }
 }
