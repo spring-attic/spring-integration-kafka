@@ -36,9 +36,9 @@ if (project.hasProperty('platformVersion')) {
 group = 'org.springframework.integration'
 
 repositories {
-	maven { url 'http://repo.spring.io/libs-snapshot' }
-	if (project.hasProperty('platformVersion')) {
-		maven { url 'https://repo.spring.io/snapshot' }
+	maven { url 'https://repo.spring.io/libs-milestone' }
+	if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
+		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
 //	maven { url 'http://repo.spring.io/libs-staging-local' }
 }
@@ -55,8 +55,8 @@ compileTestJava {
 
 ext {
 	assertjVersion = '3.4.1'
-	springIntegrationVersion = '4.2.8.RELEASE'
-	springKafkaVersion = '1.0.3.RELEASE'
+	springIntegrationVersion = '4.2.11.RELEASE'
+	springKafkaVersion = '1.0.6.RELEASE'
 
 	idPrefix = 'kafka'
 
