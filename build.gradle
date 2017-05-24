@@ -3,8 +3,8 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
-		classpath 'io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE'
-		classpath 'io.spring.gradle:spring-io-plugin:0.0.6.RELEASE'
+		classpath 'io.spring.gradle:dependency-management-plugin:1.0.2.RELEASE'
+		classpath 'io.spring.gradle:spring-io-plugin:0.0.7.RELEASE'
 	}
 }
 
@@ -61,8 +61,8 @@ ext {
 	jacksonVersion = '2.8.6'
 	log4jVersion = '2.7'
 	slf4jVersion = '1.7.22'
-	springIntegrationVersion = '5.0.0.M3'
-	springKafkaVersion = '2.0.0.M2'
+	springIntegrationVersion = '5.0.0.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.0.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
