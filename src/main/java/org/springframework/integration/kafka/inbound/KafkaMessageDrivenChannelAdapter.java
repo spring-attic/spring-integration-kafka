@@ -207,6 +207,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		this.batchListener.setFallbackType(payloadType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void onInit() {
 		super.onInit();
