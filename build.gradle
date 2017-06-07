@@ -65,7 +65,7 @@ ext {
 	assertjVersion = '2.6.0'
 	jacksonVersion = '2.8.5'
 	log4jVersion = '2.7'
-	springIntegrationVersion = '4.3.10.BUILD-SNAPSHOT'
+	springIntegrationVersion = '4.3.10.RELEASE'
 	springKafkaVersion = '1.1.6.RELEASE'
 
 	idPrefix = 'kafka'
