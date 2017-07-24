@@ -31,7 +31,6 @@ import org.junit.Test;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.integration.expression.FunctionExpression;
 import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -174,7 +173,7 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record1).has(timestamp(1487694048633L));
 
 		Long currentTimeMarker = System.currentTimeMillis();
-		handler.setTimestampExpression(new FunctionExpression<Message<?>>(m -> System.currentTimeMillis()));
+		handler.setTimestampExpression(new ValueExpression<>(System.currentTimeMillis()));
 
 		handler.handleMessage(message);
 
