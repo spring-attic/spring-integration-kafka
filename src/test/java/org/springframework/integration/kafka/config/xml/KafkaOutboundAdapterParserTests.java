@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.producer.MockProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.Test;
@@ -38,6 +39,7 @@ import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.test.annotation.DirtiesContext;
@@ -90,8 +92,27 @@ public class KafkaOutboundAdapterParserTests {
 	public void testSyncMode() {
 		@SuppressWarnings("resource")
 		MockProducer<Integer, String> mockProducer =
-				new MockProducer<>(false, new IntegerSerializer(), new StringSerializer());
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(() -> mockProducer);
+				new MockProducer<Integer, String>(false, new IntegerSerializer(), new StringSerializer()) {
+
+					@Override
+					public void close() {
+						// To avoid non transactional closes.
+					}
+
+				};
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(new ProducerFactory<Integer, String>() {
+
+			@Override
+			public Producer<Integer, String> createProducer() {
+				return mockProducer;
+			}
+
+			@Override
+			public boolean transactionCapable() {
+				return false;
+			}
+
+		});
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
 		handler.setBeanFactory(mock(BeanFactory.class));
 		handler.afterPropertiesSet();
