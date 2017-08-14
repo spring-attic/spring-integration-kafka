@@ -19,19 +19,28 @@ package org.springframework.integration.kafka.outbound;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
+
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.expression.ValueExpression;
-import org.springframework.integration.handler.AbstractMessageHandler;
+import org.springframework.integration.handler.AbstractMessageProducingHandler;
+import org.springframework.integration.kafka.support.KafkaSendFailureException;
+import org.springframework.integration.support.DefaultErrorMessageStrategy;
+import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * Kafka Message Handler.
@@ -45,7 +54,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @author Marius Bogoevici
  * @since 0.5
  */
-public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
+public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingHandler {
 
 	private static final long DEFAULT_SEND_TIMEOUT = 10000;
 
@@ -62,6 +71,12 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	private boolean sync;
 
 	private Expression sendTimeoutExpression = new ValueExpression<>(DEFAULT_SEND_TIMEOUT);
+
+	private MessageChannel sendFailureChannel;
+
+	private String sendFailureChannelName;
+
+	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
@@ -99,10 +114,13 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	 * Specify a timeout in milliseconds for how long this
 	 * {@link KafkaProducerMessageHandler} should wait wait for send operation
 	 * results. Defaults to 10 seconds. The timeout is applied only in {@link #sync} mode.
+	 * Also applies when sending to the success or failure channels.
 	 * @param sendTimeout the timeout to wait for result fo send operation.
 	 * @since 2.0.1
 	 */
+	@Override
 	public void setSendTimeout(long sendTimeout) {
+		super.setSendTimeout(sendTimeout);
 		setSendTimeoutExpression(new ValueExpression<>(sendTimeout));
 	}
 
@@ -119,6 +137,50 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 		this.sendTimeoutExpression = sendTimeoutExpression;
 	}
 
+	/**
+	 * Set the failure channel. After a send failure, an {@link ErrorMessage} will be sent
+	 * to this channel with a payload of a {@link KafkaSendFailureException} with the
+	 * failed message and cause.
+	 * @param sendFailureChannel the failure channel.
+	 * @since 2.1.2
+	 */
+	public void setSendFailureChannel(MessageChannel sendFailureChannel) {
+		this.sendFailureChannel = sendFailureChannel;
+	}
+
+	/**
+	 * Set the failure channel name. After a send failure, an {@link ErrorMessage} will be
+	 * sent to this channel name with a payload of a {@link KafkaSendFailureException}
+	 * with the failed message and cause.
+	 * @param sendFailureChannelName the failure channel name.
+	 * @since 2.1.2
+	 */
+	public void setSendFailureChannelName(String sendFailureChannelName) {
+		this.sendFailureChannelName = sendFailureChannelName;
+	}
+
+	/**
+	 * Set the error message strategy implementation to use when sending error messages after
+	 * send failures. Cannot be null.
+	 * @param errorMessageStrategy the implementation.
+	 * @since 2.1.2
+	 */
+	public void setErrorMessageStrategy(ErrorMessageStrategy errorMessageStrategy) {
+		Assert.notNull(errorMessageStrategy, "'errorMessageStrategy' cannot be null");
+		this.errorMessageStrategy = errorMessageStrategy;
+	}
+
+	protected MessageChannel getSendFailureChannel() {
+		if (this.sendFailureChannel != null) {
+			return this.sendFailureChannel;
+		}
+		else if (this.sendFailureChannelName != null) {
+			this.sendFailureChannel = getChannelResolver().resolveDestination(this.sendFailureChannelName);
+			return this.sendFailureChannel;
+		}
+		return null;
+	}
+
 	@Override
 	protected void onInit() throws Exception {
 		super.onInit();
@@ -128,26 +190,27 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void handleMessageInternal(final Message<?> message) throws Exception {
-		String topic = this.topicExpression != null ?
+		final String topic = this.topicExpression != null ?
 				this.topicExpression.getValue(this.evaluationContext, message, String.class)
 				: message.getHeaders().get(KafkaHeaders.TOPIC, String.class);
 
 		Assert.state(StringUtils.hasText(topic), "The 'topic' can not be empty or null");
 
-		Integer partitionId = this.partitionIdExpression != null ?
+		final Integer partitionId = this.partitionIdExpression != null ?
 				this.partitionIdExpression.getValue(this.evaluationContext, message, Integer.class)
 				: message.getHeaders().get(KafkaHeaders.PARTITION_ID, Integer.class);
 
-		Object messageKey = this.messageKeyExpression != null
+		final Object messageKey = this.messageKeyExpression != null
 				? this.messageKeyExpression.getValue(this.evaluationContext, message)
 				: message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
 
-		ListenableFuture<?> future;
+		ListenableFuture<SendResult<K, V>> future;
 
-		V payload = (V) message.getPayload();
-		if (payload instanceof KafkaNull) {
-			payload = null;
-		}
+		final V payload =
+				message.getPayload() instanceof KafkaNull
+						? null
+						: (V) message.getPayload();
+
 		if (partitionId == null) {
 			if (messageKey == null) {
 				future = this.kafkaTemplate.send(topic, payload);
@@ -164,6 +227,33 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 				future = this.kafkaTemplate.send(topic, partitionId, (K) messageKey, payload);
 			}
 		}
+		if (getSendFailureChannel() != null || getOutputChannel() != null) {
+			future.addCallback(new ListenableFutureCallback<SendResult<?, ?>>() {
+
+				@Override
+				public void onSuccess(SendResult<?, ?> result) {
+					if (getOutputChannel() != null) {
+						KafkaProducerMessageHandler.this.messagingTemplate.send(getOutputChannel(),
+								getMessageBuilderFactory().fromMessage(message)
+										// TODO: change to constant when available
+										.setHeader("kafka_recordMetadata", result.getRecordMetadata()).build());
+					}
+				}
+
+				@Override
+				public void onFailure(Throwable ex) {
+					if (getSendFailureChannel() != null) {
+						ProducerRecord<Object, Object> producerRecord =
+								new ProducerRecord<Object, Object>(topic, partitionId, messageKey, payload);
+						KafkaProducerMessageHandler.this.messagingTemplate.send(getSendFailureChannel(),
+								KafkaProducerMessageHandler.this.errorMessageStrategy.buildErrorMessage(
+										new KafkaSendFailureException(message, producerRecord, ex), null));
+					}
+				}
+
+			});
+		}
+
 		if (this.sync) {
 			Long sendTimeout = this.sendTimeoutExpression.getValue(this.evaluationContext, message, Long.class);
 			if (sendTimeout == null || sendTimeout < 0) {
