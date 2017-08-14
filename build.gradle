@@ -61,7 +61,7 @@ ext {
 	jacksonVersion = '2.8.6'
 	log4jVersion = '2.8.2'
 	slf4jVersion = '1.7.22'
-	springIntegrationVersion = '5.0.0.M6'
+	springIntegrationVersion = '5.0.0.BUILD-SNAPSHOT'
 	springKafkaVersion = '2.0.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
@@ -110,7 +110,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.0'
+	toolVersion = '8.1'
 }
 
 jacocoTestReport {
