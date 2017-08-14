@@ -23,22 +23,32 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import org.springframework.core.AttributeAccessor;
+import org.springframework.core.AttributeAccessorSupport;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.expression.ValueExpression;
-import org.springframework.integration.handler.AbstractMessageHandler;
+import org.springframework.integration.handler.AbstractMessageProducingHandler;
+import org.springframework.integration.kafka.support.KafkaSendFailureException;
+import org.springframework.integration.support.DefaultErrorMessageStrategy;
+import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandlingException;
+import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * Kafka Message Handler.
@@ -54,7 +64,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  *
  * @since 0.5
  */
-public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
+public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingHandler {
 
 	private static final long DEFAULT_SEND_TIMEOUT = 10000;
 
@@ -75,6 +85,18 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	private Expression sendTimeoutExpression = new ValueExpression<>(DEFAULT_SEND_TIMEOUT);
 
 	private KafkaHeaderMapper headerMapper;
+
+	private MessageChannel sendSuccessChannel;
+
+	private String sendSuccessChannelName;
+
+	private MessageChannel sendFailureChannel;
+
+	private String sendFailureChannelName;
+
+	private boolean sendResults = true;
+
+	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
@@ -136,10 +158,13 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	 * Specify a timeout in milliseconds for how long this
 	 * {@link KafkaProducerMessageHandler} should wait wait for send operation
 	 * results. Defaults to 10 seconds. The timeout is applied only in {@link #sync} mode.
+	 * Also applies when sending to the success or failure channels.
 	 * @param sendTimeout the timeout to wait for result fo send operation.
 	 * @since 2.0.1
 	 */
+	@Override
 	public void setSendTimeout(long sendTimeout) {
+		super.setSendTimeout(sendTimeout);
 		setSendTimeoutExpression(new ValueExpression<>(sendTimeout));
 	}
 
@@ -156,10 +181,85 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 		this.sendTimeoutExpression = sendTimeoutExpression;
 	}
 
+	/**
+	 * Set the success channel. After a successful send, the original message will be sent
+	 * to this channel.
+	 * @param sendSuccessChannel the success channel.
+	 * @since 2.1.2
+	 */
+	public void setSendSuccessChannel(MessageChannel sendSuccessChannel) {
+		this.sendSuccessChannel = sendSuccessChannel;
+	}
+
+	/**
+	 * Set the success channel name. After a successful send, the original message will be
+	 * sent to this channel name.
+	 * @param sendSuccessChannelName the success channel name.
+	 * @since 2.1.2
+	 */
+	public void setSendSuccessChannelName(String sendSuccessChannelName) {
+		this.sendSuccessChannelName = sendSuccessChannelName;
+	}
+
+	/**
+	 * Set the failure channel. After a send failure, an {@link ErrorMessage} will be sent
+	 * to this channel with a payload of a {@link MessageHandlingException} with the failed
+	 * message and cause.
+	 * @param sendFailureChannel the failure channel.
+	 * @since 2.1.2
+	 */
+	public void setSendFailureChannel(MessageChannel sendFailureChannel) {
+		this.sendFailureChannel = sendFailureChannel;
+	}
+
+	/**
+	 * Set the failure channel name. After a send failure, an {@link ErrorMessage} will be
+	 * sent to this channel name with a payload of a {@link MessageHandlingException} with
+	 * the failed message and cause.
+	 * @param sendFailureChannelName the failure channel name.
+	 */
+	public void setSendFailureChannelName(String sendFailureChannelName) {
+		this.sendFailureChannelName = sendFailureChannelName;
+	}
+
+	/**
+	 * Set the error message strategy implementation to use when sending error messages after
+	 * send failures. Cannot be null.
+	 * @param errorMessageStrategy the implementation.
+	 */
+	public void setErrorMessageStrategy(ErrorMessageStrategy errorMessageStrategy) {
+		Assert.notNull(errorMessageStrategy, "'errorMessageStrategy' cannot be null");
+		this.errorMessageStrategy = errorMessageStrategy;
+	}
+
+	protected MessageChannel getSendSuccessChannel() {
+		if (this.sendSuccessChannel != null) {
+			return this.sendSuccessChannel;
+		}
+		else if (this.sendSuccessChannelName != null) {
+			this.sendSuccessChannel = getChannelResolver().resolveDestination(this.sendSuccessChannelName);
+			return this.sendSuccessChannel;
+		}
+		return null;
+	}
+
+	protected MessageChannel getSendFailureChannel() {
+		if (this.sendFailureChannel != null) {
+			return this.sendFailureChannel;
+		}
+		else if (this.sendFailureChannelName != null) {
+			this.sendFailureChannel = getChannelResolver().resolveDestination(this.sendFailureChannelName);
+			return this.sendFailureChannel;
+		}
+		return null;
+	}
+
 	@Override
 	protected void onInit() throws Exception {
 		super.onInit();
 		this.evaluationContext = ExpressionUtils.createStandardEvaluationContext(getBeanFactory());
+		this.sendResults = this.sendSuccessChannel != null || this.sendFailureChannel != null
+				|| this.sendSuccessChannelName != null || this.sendFailureChannelName != null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -193,9 +293,29 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 			headers = new RecordHeaders();
 			this.headerMapper.fromHeaders(message.getHeaders(), headers);
 		}
-		ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partitionId, timestamp, (K) messageKey,
-				payload, headers);
-		ListenableFuture<?> future = this.kafkaTemplate.send(producerRecord);
+		final ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partitionId, timestamp,
+				(K) messageKey, payload, headers);
+		ListenableFuture<SendResult<K, V>> future = this.kafkaTemplate.send(producerRecord);
+		if (this.sendResults) {
+			future.addCallback(new ListenableFutureCallback<SendResult<K, V>>() {
+
+				@Override
+				public void onSuccess(SendResult<K, V> result) {
+					if (getSendSuccessChannel() != null) {
+						KafkaProducerMessageHandler.this.messagingTemplate.send(getSendSuccessChannel(), message);
+					}
+				}
+
+				@Override
+				public void onFailure(Throwable ex) {
+					AttributeAccessor attributes = new Attributes();
+					KafkaProducerMessageHandler.this.messagingTemplate.send(getSendFailureChannel(),
+							KafkaProducerMessageHandler.this.errorMessageStrategy.buildErrorMessage(
+									new KafkaSendFailureException(message, producerRecord, ex), attributes));
+				}
+
+			});
+		}
 
 		if (this.sync) {
 			Long sendTimeout = this.sendTimeoutExpression.getValue(this.evaluationContext, message, Long.class);
@@ -216,6 +336,16 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageHandler {
 	@Override
 	public String getComponentType() {
 		return "kafka:outbound-channel-adapter";
+	}
+
+	// TODO: Remove this when SI 4.3.12 is available.
+	@SuppressWarnings("serial")
+	private static final class Attributes extends AttributeAccessorSupport {
+
+		Attributes() {
+			super();
+		}
+
 	}
 
 }
