@@ -41,7 +41,6 @@ import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -175,8 +174,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 
 	/**
 	 * Set the failure channel. After a send failure, an {@link ErrorMessage} will be sent
-	 * to this channel with a payload of a {@link MessageHandlingException} with the failed
-	 * message and cause.
+	 * to this channel with a payload of a {@link KafkaSendFailureException} with the
+	 * failed message and cause.
 	 * @param sendFailureChannel the failure channel.
 	 * @since 2.1.2
 	 */
@@ -186,8 +185,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 
 	/**
 	 * Set the failure channel name. After a send failure, an {@link ErrorMessage} will be
-	 * sent to this channel name with a payload of a {@link MessageHandlingException} with
-	 * the failed message and cause.
+	 * sent to this channel name with a payload of a {@link KafkaSendFailureException}
+	 * with the failed message and cause.
 	 * @param sendFailureChannelName the failure channel name.
 	 */
 	public void setSendFailureChannelName(String sendFailureChannelName) {
