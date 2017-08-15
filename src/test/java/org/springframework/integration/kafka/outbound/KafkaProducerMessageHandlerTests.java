@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -211,7 +212,7 @@ public class KafkaProducerMessageHandlerTests {
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
 		handler.setBeanFactory(mock(BeanFactory.class));
 		PollableChannel successes = new QueueChannel();
-		handler.setSendSuccessChannel(successes);
+		handler.setOutputChannel(successes);
 		handler.afterPropertiesSet();
 
 		Message<?> message = MessageBuilder.withPayload("foo")
@@ -225,7 +226,8 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(key(2));
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("foo"));
-		assertThat(successes.receive(10000)).isNotNull();
+		Message<?> received = successes.receive(10000);
+		assertThat(received.getPayload()).isInstanceOf(RecordMetadata.class);
 
 		final RuntimeException fooException = new RuntimeException("foo");
 
@@ -250,7 +252,7 @@ public class KafkaProducerMessageHandlerTests {
 				.build();
 		handler.handleMessage(message);
 
-		Message<?> received = failures.receive(10000);
+		received = failures.receive(10000);
 		assertThat(received).isNotNull();
 		assertThat(received).isInstanceOf(ErrorMessage.class);
 		assertThat(((MessagingException) received.getPayload()).getFailedMessage()).isSameAs(message);

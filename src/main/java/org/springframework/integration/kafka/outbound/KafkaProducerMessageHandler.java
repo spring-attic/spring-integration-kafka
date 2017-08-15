@@ -84,15 +84,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 
 	private KafkaHeaderMapper headerMapper;
 
-	private MessageChannel sendSuccessChannel;
-
-	private String sendSuccessChannelName;
-
 	private MessageChannel sendFailureChannel;
 
 	private String sendFailureChannelName;
-
-	private boolean sendResults = true;
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
@@ -180,26 +174,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 	}
 
 	/**
-	 * Set the success channel. After a successful send, the original message will be sent
-	 * to this channel.
-	 * @param sendSuccessChannel the success channel.
-	 * @since 2.1.2
-	 */
-	public void setSendSuccessChannel(MessageChannel sendSuccessChannel) {
-		this.sendSuccessChannel = sendSuccessChannel;
-	}
-
-	/**
-	 * Set the success channel name. After a successful send, the original message will be
-	 * sent to this channel name.
-	 * @param sendSuccessChannelName the success channel name.
-	 * @since 2.1.2
-	 */
-	public void setSendSuccessChannelName(String sendSuccessChannelName) {
-		this.sendSuccessChannelName = sendSuccessChannelName;
-	}
-
-	/**
 	 * Set the failure channel. After a send failure, an {@link ErrorMessage} will be sent
 	 * to this channel with a payload of a {@link MessageHandlingException} with the failed
 	 * message and cause.
@@ -230,17 +204,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 		this.errorMessageStrategy = errorMessageStrategy;
 	}
 
-	protected MessageChannel getSendSuccessChannel() {
-		if (this.sendSuccessChannel != null) {
-			return this.sendSuccessChannel;
-		}
-		else if (this.sendSuccessChannelName != null) {
-			this.sendSuccessChannel = getChannelResolver().resolveDestination(this.sendSuccessChannelName);
-			return this.sendSuccessChannel;
-		}
-		return null;
-	}
-
 	protected MessageChannel getSendFailureChannel() {
 		if (this.sendFailureChannel != null) {
 			return this.sendFailureChannel;
@@ -256,8 +219,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 	protected void onInit() throws Exception {
 		super.onInit();
 		this.evaluationContext = ExpressionUtils.createStandardEvaluationContext(getBeanFactory());
-		this.sendResults = this.sendSuccessChannel != null || this.sendFailureChannel != null
-				|| this.sendSuccessChannelName != null || this.sendFailureChannelName != null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -294,21 +255,24 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 		final ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partitionId, timestamp,
 				(K) messageKey, payload, headers);
 		ListenableFuture<SendResult<K, V>> future = this.kafkaTemplate.send(producerRecord);
-		if (this.sendResults) {
+		if (getSendFailureChannel() != null || getOutputChannel() != null) {
 			future.addCallback(new ListenableFutureCallback<SendResult<K, V>>() {
 
 				@Override
 				public void onSuccess(SendResult<K, V> result) {
-					if (getSendSuccessChannel() != null) {
-						KafkaProducerMessageHandler.this.messagingTemplate.send(getSendSuccessChannel(), message);
+					if (getOutputChannel() != null) {
+						KafkaProducerMessageHandler.this.messagingTemplate.send(getOutputChannel(),
+								getMessageBuilderFactory().withPayload(result.getRecordMetadata()).build());
 					}
 				}
 
 				@Override
 				public void onFailure(Throwable ex) {
-					KafkaProducerMessageHandler.this.messagingTemplate.send(getSendFailureChannel(),
-							KafkaProducerMessageHandler.this.errorMessageStrategy.buildErrorMessage(
-									new KafkaSendFailureException(message, producerRecord, ex), null));
+					if (getSendFailureChannel() != null) {
+						KafkaProducerMessageHandler.this.messagingTemplate.send(getSendFailureChannel(),
+								KafkaProducerMessageHandler.this.errorMessageStrategy.buildErrorMessage(
+										new KafkaSendFailureException(message, producerRecord, ex), null));
+					}
 				}
 
 			});
