@@ -262,7 +262,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 				public void onSuccess(SendResult<K, V> result) {
 					if (getOutputChannel() != null) {
 						KafkaProducerMessageHandler.this.messagingTemplate.send(getOutputChannel(),
-								getMessageBuilderFactory().withPayload(result.getRecordMetadata()).build());
+								getMessageBuilderFactory().fromMessage(message)
+										// TODO: change to constant when available
+										.setHeader("kafka_recordMetadata", result.getRecordMetadata()).build());
 					}
 				}
 

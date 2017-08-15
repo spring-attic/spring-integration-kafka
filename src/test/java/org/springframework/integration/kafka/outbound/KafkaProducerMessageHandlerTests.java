@@ -227,7 +227,10 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("foo"));
 		Message<?> received = successes.receive(10000);
-		assertThat(received.getPayload()).isInstanceOf(RecordMetadata.class);
+		assertThat(received).isNotNull();
+		assertThat(received.getPayload()).isEqualTo("foo");
+		// TODO: Change to constant when available
+		assertThat(received.getHeaders().get("kafka_recordMetadata")).isInstanceOf(RecordMetadata.class);
 
 		final RuntimeException fooException = new RuntimeException("foo");
 
