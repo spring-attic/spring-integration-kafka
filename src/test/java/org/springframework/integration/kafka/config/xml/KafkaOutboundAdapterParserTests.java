@@ -76,6 +76,13 @@ public class KafkaOutboundAdapterParserTests {
 		assertThat(TestUtils.getPropertyValue(messageHandler, "timestampExpression.expression"))
 				.isEqualTo("T(System).currentTimeMillis()");
 
+		assertThat(TestUtils.getPropertyValue(messageHandler, "errorMessageStrategy"))
+				.isSameAs(this.appContext.getBean("ems"));
+		assertThat(TestUtils.getPropertyValue(messageHandler, "sendFailureChannel"))
+				.isSameAs(this.appContext.getBean("failures"));
+		assertThat(TestUtils.getPropertyValue(messageHandler, "outputChannel"))
+				.isSameAs(this.appContext.getBean("successes"));
+
 		messageHandler
 				= this.appContext.getBean("kafkaOutboundChannelAdapter2.handler", KafkaProducerMessageHandler.class);
 		assertThat(messageHandler).isNotNull();
@@ -83,14 +90,11 @@ public class KafkaOutboundAdapterParserTests {
 		assertThat(TestUtils.getPropertyValue(messageHandler, "sync", Boolean.class)).isFalse();
 
 		assertThat(TestUtils.getPropertyValue(messageHandler, "sendTimeoutExpression.literalValue")).isEqualTo("500");
-
-
 	}
 
 
 	@Test
 	public void testSyncMode() {
-		@SuppressWarnings("resource")
 		MockProducer<Integer, String> mockProducer =
 				new MockProducer<Integer, String>(false, new IntegerSerializer(), new StringSerializer()) {
 
