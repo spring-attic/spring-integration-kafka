@@ -68,14 +68,11 @@ compileTestJava {
 
 ext {
 	assertjVersion = '3.6.2'
-	jacksonVersion = '2.8.6'
+	jacksonVersion = '2.8.10'
 	log4jVersion = '2.8.2'
-	assertjVersion = '2.6.0'
-	jacksonVersion = '2.8.5'
-	log4jVersion = '2.7'
-	slf4jVersion = '1.7.22'
+	slf4jVersion = '1.7.25'
 	springIntegrationVersion = '4.3.11.RELEASE'
-	springKafkaVersion = '1.3.0.M2'
+	springKafkaVersion = '1.3.0.RC1'
 
 	idPrefix = 'kafka'
 
