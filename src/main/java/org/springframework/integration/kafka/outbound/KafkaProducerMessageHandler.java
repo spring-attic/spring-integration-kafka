@@ -23,7 +23,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
-import org.springframework.core.AttributeAccessorSupport;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
@@ -274,7 +273,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 					if (getSendFailureChannel() != null) {
 						KafkaProducerMessageHandler.this.messagingTemplate.send(getSendFailureChannel(),
 								KafkaProducerMessageHandler.this.errorMessageStrategy.buildErrorMessage(
-										new KafkaSendFailureException(message, producerRecord, ex), new Attributes()));
+										new KafkaSendFailureException(message, producerRecord, ex), null));
 					}
 				}
 
@@ -300,16 +299,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 	@Override
 	public String getComponentType() {
 		return "kafka:outbound-channel-adapter";
-	}
-
-	// TODO: Remove this when SI 4.3.12 is available.
-	@SuppressWarnings("serial")
-	private static final class Attributes extends AttributeAccessorSupport {
-
-		Attributes() {
-			super();
-		}
-
 	}
 
 }
