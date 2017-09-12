@@ -63,9 +63,9 @@ compileTestJava {
 
 ext {
 	assertjVersion = '2.6.0'
-	jacksonVersion = '2.8.5'
-	log4jVersion = '2.7'
-	springIntegrationVersion = '4.3.12.BUILD-SNAPSHOT'
+	jacksonVersion = '2.8.10'
+	log4jVersion = '2.8.2'
+	springIntegrationVersion = '4.3.12.RELEASE'
 	springKafkaVersion = '1.1.6.RELEASE'
 
 	idPrefix = 'kafka'
@@ -82,7 +82,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.8"
+	toolVersion = "0.7.9"
 }
 
 dependencies {
