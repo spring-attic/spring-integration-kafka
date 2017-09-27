@@ -66,12 +66,12 @@ ext {
 
 	idPrefix = 'kafka'
 
-	linkHomepage = 'https://github.com/spring-projects/spring-integration-extensions'
+	linkHomepage = 'https://github.com/spring-projects/spring-integration-kafka'
 	linkCi = 'https://build.spring.io/browse/INTEXT'
 	linkIssue = 'https://jira.spring.io/browse/INTEXT'
-	linkScmUrl = 'https://github.com/spring-projects/spring-integration-extensions'
-	linkScmConnection = 'https://github.com/spring-projects/spring-integration-extensions.git'
-	linkScmDevConnection = 'git@github.com:spring-projects/spring-integration-extensions.git'
+	linkScmUrl = 'https://github.com/spring-projects/spring-integration-kafka'
+	linkScmConnection = 'https://github.com/spring-projects/spring-integration-kafka.git'
+	linkScmDevConnection = 'git@github.com:spring-projects/spring-integration-kafka.git'
 
 }
 
@@ -131,6 +131,20 @@ task sourcesJar(type: Jar) {
 task javadocJar(type: Jar) {
 	classifier = 'javadoc'
 	from javadoc
+}
+
+jar {
+	manifest {
+		attributes(
+				'Implementation-Version': version,
+				'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
+				'Implementation-Title': project.name,
+				'Implementation-Vendor-Id': project.group,
+				'Implementation-Vendor': 'Pivotal Software, Inc.',
+				'Implementation-URL': linkHomepage,
+				'Automatic-Module-Name': project.name.replace('-', '.')  // for Jigsaw
+		)
+	}
 }
 
 artifacts {
