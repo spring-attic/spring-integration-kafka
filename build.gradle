@@ -3,7 +3,7 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
-		classpath 'io.spring.gradle:dependency-management-plugin:1.0.2.RELEASE'
+		classpath 'io.spring.gradle:dependency-management-plugin:1.0.4.RELEASE'
 		classpath 'io.spring.gradle:spring-io-plugin:0.0.8.RELEASE'
 	}
 }
@@ -13,7 +13,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.5'
+	id 'org.sonarqube' version '2.6.1'
 	id 'checkstyle'
 }
 
@@ -62,7 +62,7 @@ ext {
 	log4jVersion = '2.8.2'
 	slf4jVersion = '1.7.25'
 	springIntegrationVersion = '5.0.1.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.1.0.RELEASE'
+	springKafkaVersion = '2.1.1.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
@@ -88,10 +88,10 @@ dependencies {
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
 	testCompile "org.assertj:assertj-core:$assertjVersion"
-	testCompile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-	testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-	testCompile "org.apache.logging.log4j:log4j-core:$log4jVersion"
 
+	testRuntime "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+	testRuntime "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+	testRuntime "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	testRuntime "org.slf4j:slf4j-log4j12:$slf4jVersion"
 }
 
@@ -110,7 +110,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.1'
+	toolVersion = '8.5'
 }
 
 jacocoTestReport {
