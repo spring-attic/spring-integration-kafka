@@ -46,7 +46,15 @@ import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 /**
- * Polled message source for kafka.
+ * Polled message source for kafka. Only one thread can poll for data (or
+ * acknowledge a message) at a time.
+ * <p>
+ * Since Kafka acknowledgments set a topic/partition offset, if applications
+ * decide to defer acknowledgments across multiple polls, they should be careful
+ * not to acknowledge messages out of order.
+ * <p>
+ * Also, if a message is requeued, all subsequent messages will be received
+ * after the next poll.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -65,6 +73,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	private final KafkaAckCallbackFactory<K, V> ackCallbackFactory;
 
 	private final String[] topics;
+
+	private final Object consumerMonitor = new Object();
 
 	private String groupId;
 
@@ -136,7 +146,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	}
 
 	/**
-	 * Set the messsage converter to replace the default
+	 * Set the message converter to replace the default
 	 * {@link MessagingMessageConverter}.
 	 * @param messageConverter the converter.
 	 */
@@ -172,7 +182,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			record = this.recordIterator.next();
 		}
 		else {
-			synchronized (this.consumer) {
+			synchronized (this.consumerMonitor) {
 				try {
 					Set<TopicPartition> paused = this.consumer.paused();
 					if (paused.size() > 0) {
@@ -196,14 +206,14 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		Message<Object> message = (Message<Object>) this.messageConverter.toMessage(record, null, null,
 				this.payloadType);
 		AcknowledgmentCallback ackCallback = this.ackCallbackFactory
-				.createCallback(new KafkaAckInfo<K, V>(this.consumer, record, this::resetIterator));
+			.createCallback(new KafkaAckInfo<K, V>(this.consumerMonitor, this.consumer, record, this::resetIterator));
 		return getMessageBuilderFactory().fromMessage(message)
 				.setHeader(IntegrationMessageHeaderAccessor.ACKNOWLEDGMENT_CALLBACK, ackCallback);
 	}
 
 	protected void createConsumer() {
 		this.consumer = this.consumerFactory.createConsumer(this.groupId, this.clientId, null);
-		synchronized (this.consumer) {
+		synchronized (this.consumerMonitor) {
 			this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
 
 				@Override
@@ -229,7 +239,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		if (this.consumer != null) {
 			Consumer<K, V> consumer2 = this.consumer;
 			this.consumer = null;
-			synchronized (consumer2) {
+			synchronized (this.consumerMonitor) {
 				consumer2.close(30, TimeUnit.SECONDS);
 			}
 		}
@@ -271,19 +281,18 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		@Override
 		public void acknowledge(Status status) {
 			Assert.notNull(status, "'status' cannot be null");
-			synchronized (this.ackInfo.getConsumer()) {
+			synchronized (this.ackInfo.getConsumerMonitor()) {
 				try {
+					ConsumerRecord<K, V> record = this.ackInfo.getRecord();
 					switch (status) {
 					case ACCEPT:
 					case REJECT:
 						this.ackInfo.getConsumer().commitSync(Collections.singletonMap(new TopicPartition(
-							this.ackInfo.getRecord().topic(), this.ackInfo.getRecord().partition()),
-							new OffsetAndMetadata(this.ackInfo.getRecord().offset() + 1)));
+							record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1)));
 						break;
 					case REQUEUE:
 						this.ackInfo.getConsumer().seek(
-							new TopicPartition(this.ackInfo.getRecord().topic(), this.ackInfo.getRecord().partition()),
-							this.ackInfo.getRecord().offset());
+							new TopicPartition(record.topic(), record.partition()), record.offset());
 						this.ackInfo.getReset().reset();
 						break;
 					default:
@@ -315,16 +324,23 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 */
 	public static class KafkaAckInfo<K, V> {
 
+		private final Object consumerMonitor;
+
 		private final Consumer<K, V> consumer;
 
 		private final ConsumerRecord<K, V> record;
 
 		private final Reset reset;
 
-		KafkaAckInfo(Consumer<K, V> consumer, ConsumerRecord<K, V> record, Reset reset) {
+		KafkaAckInfo(Object consumerMonitor, Consumer<K, V> consumer, ConsumerRecord<K, V> record, Reset reset) {
+			this.consumerMonitor = consumerMonitor;
 			this.consumer = consumer;
 			this.record = record;
 			this.reset = reset;
+		}
+
+		Object getConsumerMonitor() {
+			return this.consumerMonitor;
 		}
 
 		public Consumer<K, V> getConsumer() {

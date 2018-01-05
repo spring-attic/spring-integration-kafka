@@ -17,9 +17,7 @@
 package org.springframework.integration.kafka.dsl;
 
 import java.lang.reflect.Type;
-import java.util.Map;
 
-import org.springframework.expression.Expression;
 import org.springframework.integration.dsl.MessageSourceSpec;
 import org.springframework.integration.kafka.inbound.KafkaMessageSource;
 import org.springframework.integration.kafka.inbound.KafkaMessageSource.KafkaAckCallbackFactory;
@@ -48,12 +46,6 @@ public class KafkaInboundChannelAdapterSpec<K, V>
 			KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
 
 		this.target = new KafkaMessageSource<>(consumerFactory, ackCallbackFactory, topics);
-	}
-
-	// TODO: promote this to the super class - applies to all AbstractMessageSource
-	public KafkaInboundChannelAdapterSpec<K, V> headerExpressions(Map<String, Expression> headerExpressions) {
-		this.target.setHeaderExpressions(headerExpressions);
-		return this;
 	}
 
 	public KafkaInboundChannelAdapterSpec<K, V> groupId(String groupId) {
