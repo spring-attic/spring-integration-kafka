@@ -295,7 +295,7 @@ public class KafkaDslTests {
 
 
 		@Bean
-		public IntegrationFlow flow() {
+		public IntegrationFlow soureFlow() {
 			return IntegrationFlows.from(Kafka.inboundChannelAdapter(consumerFactory(), TEST_TOPIC3),
 							e -> e.poller(Pollers.fixedDelay(100)))
 					.handle(p -> {

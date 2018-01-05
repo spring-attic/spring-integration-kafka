@@ -74,11 +74,10 @@ public final class Kafka {
 	 * @param topics the topic(s).
 	 * @param <K> the Kafka message key type.
 	 * @param <V> the Kafka message value type.
-	 * @param <S> the {@link KafkaInboundChannelAdapterSpec} extension type.
 	 * @return the spec.
+	 * @since 3.0.1
 	 */
-	public static <K, V, S extends KafkaInboundChannelAdapterSpec<K, V, S>>
-		KafkaInboundChannelAdapterSpec<K, V, S>
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V>
 			inboundChannelAdapter(ConsumerFactory<K, V> consumerFactory, String... topics) {
 
 		return new KafkaInboundChannelAdapterSpec<>(consumerFactory, topics);
@@ -92,11 +91,10 @@ public final class Kafka {
 	 * @param topics the topic(s).
 	 * @param <K> the Kafka message key type.
 	 * @param <V> the Kafka message value type.
-	 * @param <S> the {@link KafkaInboundChannelAdapterSpec} extension type.
 	 * @return the spec.
+	 * @since 3.0.1
 	 */
-	public static <K, V, S extends KafkaInboundChannelAdapterSpec<K, V, S>>
-		KafkaInboundChannelAdapterSpec<K, V, S>
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V>
 			inboundChannelAdapter(ConsumerFactory<K, V> consumerFactory,
 					KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
 

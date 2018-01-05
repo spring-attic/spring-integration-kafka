@@ -31,52 +31,52 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
  *
  * @param <K> the key type.
  * @param <V> the value type.
- * @param <S> the target {@link KafkaInboundChannelAdapterSpec} implementation type.
  *
  * @author Gary Russell
  *
  * @since 3.0.1
  *
  */
-public class KafkaInboundChannelAdapterSpec<K, V, S extends KafkaInboundChannelAdapterSpec<K, V, S>>
-		extends MessageSourceSpec<KafkaInboundChannelAdapterSpec<K, V, S>, KafkaMessageSource<K, V>> {
+public class KafkaInboundChannelAdapterSpec<K, V>
+		extends MessageSourceSpec<KafkaInboundChannelAdapterSpec<K, V>, KafkaMessageSource<K, V>> {
 
 	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		this.target = new KafkaMessageSource<K, V>(consumerFactory, topics);
+		this.target = new KafkaMessageSource<>(consumerFactory, topics);
 	}
 
 	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory,
 			KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
 
-		this.target = new KafkaMessageSource<K, V>(consumerFactory, ackCallbackFactory, topics);
+		this.target = new KafkaMessageSource<>(consumerFactory, ackCallbackFactory, topics);
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setHeaderExpressions(Map<String, Expression> headerExpressions) {
+	// TODO: promote this to the super class - applies to all AbstractMessageSource
+	public KafkaInboundChannelAdapterSpec<K, V> headerExpressions(Map<String, Expression> headerExpressions) {
 		this.target.setHeaderExpressions(headerExpressions);
 		return this;
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setGroupId(String groupId) {
+	public KafkaInboundChannelAdapterSpec<K, V> groupId(String groupId) {
 		this.target.setGroupId(groupId);
 		return this;
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setClientId(String clientId) {
+	public KafkaInboundChannelAdapterSpec<K, V> clientId(String clientId) {
 		this.target.setClientId(clientId);
 		return this;
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setPollTimeout(long pollTimeout) {
+	public KafkaInboundChannelAdapterSpec<K, V> pollTimeout(long pollTimeout) {
 		this.target.setPollTimeout(pollTimeout);
 		return this;
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setMessageConverter(RecordMessageConverter messageConverter) {
+	public KafkaInboundChannelAdapterSpec<K, V> messageConverter(RecordMessageConverter messageConverter) {
 		this.target.setMessageConverter(messageConverter);
 		return this;
 	}
 
-	public KafkaInboundChannelAdapterSpec<K, V, S> setPayloadType(Type type) {
+	public KafkaInboundChannelAdapterSpec<K, V> payloadType(Type type) {
 		this.target.setPayloadType(type);
 		return this;
 	}

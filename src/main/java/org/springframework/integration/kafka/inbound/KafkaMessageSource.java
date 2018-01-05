@@ -321,7 +321,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 		private final Reset reset;
 
-		public KafkaAckInfo(Consumer<K, V> consumer, ConsumerRecord<K, V> record, Reset reset) {
+		KafkaAckInfo(Consumer<K, V> consumer, ConsumerRecord<K, V> record, Reset reset) {
 			this.consumer = consumer;
 			this.record = record;
 			this.reset = reset;
