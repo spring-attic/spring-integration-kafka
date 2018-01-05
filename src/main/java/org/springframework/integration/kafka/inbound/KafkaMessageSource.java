@@ -172,22 +172,24 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			record = this.recordIterator.next();
 		}
 		else {
-			try {
-				Set<TopicPartition> paused = this.consumer.paused();
-				if (paused.size() > 0) {
-					this.consumer.resume(paused);
+			synchronized (this.consumer) {
+				try {
+					Set<TopicPartition> paused = this.consumer.paused();
+					if (paused.size() > 0) {
+						this.consumer.resume(paused);
+					}
+					ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
+					this.consumer.pause(this.partitions);
+					if (records == null || records.count() == 0) {
+						this.recordIterator = null;
+						return null;
+					}
+					this.recordIterator = records.iterator();
+					record = this.recordIterator.next();
 				}
-				ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
-				this.consumer.pause(this.partitions);
-				if (records == null || records.count() == 0) {
-					this.recordIterator = null;
+				catch (WakeupException e) {
 					return null;
 				}
-				this.recordIterator = records.iterator();
-				record = this.recordIterator.next();
-			}
-			catch (WakeupException e) {
-				return null;
 			}
 		}
 		@SuppressWarnings("unchecked")
@@ -201,19 +203,21 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	protected void createConsumer() {
 		this.consumer = this.consumerFactory.createConsumer(this.groupId, this.clientId, null);
-		this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
+		synchronized (this.consumer) {
+			this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
 
-			@Override
-			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				KafkaMessageSource.this.partitions = Collections.emptyList();
-			}
+				@Override
+				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+					KafkaMessageSource.this.partitions = Collections.emptyList();
+				}
 
-			@Override
-			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				KafkaMessageSource.this.partitions = new ArrayList<>(partitions);
-			}
+				@Override
+				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+					KafkaMessageSource.this.partitions = new ArrayList<>(partitions);
+				}
 
-		});
+			});
+		}
 	}
 
 	public synchronized void resetIterator() {
@@ -225,7 +229,9 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		if (this.consumer != null) {
 			Consumer<K, V> consumer2 = this.consumer;
 			this.consumer = null;
-			consumer2.close(30, TimeUnit.SECONDS);
+			synchronized (consumer2) {
+				consumer2.close(30, TimeUnit.SECONDS);
+			}
 		}
 	}
 
@@ -265,28 +271,32 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		@Override
 		public void acknowledge(Status status) {
 			Assert.notNull(status, "'status' cannot be null");
-			try {
-				switch (status) {
-				case ACCEPT:
-				case REJECT:
-					this.ackInfo.getConsumer().commitSync(Collections.singletonMap(new TopicPartition(
+			synchronized (this.ackInfo.getConsumer()) {
+				try {
+					switch (status) {
+					case ACCEPT:
+					case REJECT:
+						this.ackInfo.getConsumer().commitSync(Collections.singletonMap(new TopicPartition(
 							this.ackInfo.getRecord().topic(), this.ackInfo.getRecord().partition()),
 							new OffsetAndMetadata(this.ackInfo.getRecord().offset() + 1)));
-					break;
-				case REQUEUE:
-					this.ackInfo.getConsumer().seek(
+						break;
+					case REQUEUE:
+						this.ackInfo.getConsumer().seek(
 							new TopicPartition(this.ackInfo.getRecord().topic(), this.ackInfo.getRecord().partition()),
 							this.ackInfo.getRecord().offset());
-					this.ackInfo.getReset().reset();
-					break;
-				default:
-					break;
+						this.ackInfo.getReset().reset();
+						break;
+					default:
+						break;
+					}
+				}
+				catch (WakeupException e) {
+					throw new IllegalStateException(e);
+				}
+				finally {
+					this.acknowledged = true;
 				}
 			}
-			catch (WakeupException e) {
-				throw new IllegalStateException(e);
-			}
-			this.acknowledged = true;
 		}
 
 		@Override
