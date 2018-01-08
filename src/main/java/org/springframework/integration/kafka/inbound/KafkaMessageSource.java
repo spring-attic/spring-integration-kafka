@@ -21,15 +21,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
@@ -40,6 +48,8 @@ import org.springframework.integration.support.AbstractIntegrationMessageBuilder
 import org.springframework.integration.support.AcknowledgmentCallback;
 import org.springframework.integration.support.AcknowledgmentCallbackFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -49,12 +59,12 @@ import org.springframework.util.Assert;
  * Polled message source for kafka. Only one thread can poll for data (or
  * acknowledge a message) at a time.
  * <p>
- * Since Kafka acknowledgments set a topic/partition offset, if applications
- * decide to defer acknowledgments across multiple polls, they should be careful
- * not to acknowledge messages out of order.
- * <p>
- * Also, if a message is requeued, all subsequent messages will be received
- * after the next poll.
+ * NOTE: If the application acknowledges messages out of order, the acks
+ * will be deferred until all messages prior to the offset are ack'd.
+ * If multiple records a retrieved and an earlier offset is requeud, records
+ * from the subsequence offsets will be redelivered - even if they were
+ * processed successfully. Applications should therefore implement
+ * idempotency.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -68,6 +78,12 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	private static final long DEFAULT_POLL_TIMEOUT = 50L;
 
+	/**
+	 * Exposes a {@link ProducerFactory} as a message header so that the application
+	 * can participate in a transaction.
+	 */
+	public static final String PRODUCER_FACTORY = "kafka_producerFactory";
+
 	private final ConsumerFactory<K, V> consumerFactory;
 
 	private final KafkaAckCallbackFactory<K, V> ackCallbackFactory;
@@ -75,6 +91,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	private final String[] topics;
 
 	private final Object consumerMonitor = new Object();
+
+	private final Map<TopicPartition, Set<KafkaAckInfo<K, V>>> inflightRecords = new HashMap<>();
 
 	private String groupId;
 
@@ -86,9 +104,9 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	private Type payloadType;
 
-	private volatile Consumer<K, V> consumer;
+	private ProducerFactory<K, V> producerFactory;
 
-	private volatile Iterator<ConsumerRecord<K, V>> recordIterator;
+	private volatile Consumer<K, V> consumer;
 
 	private volatile Collection<TopicPartition> partitions;
 
@@ -103,6 +121,12 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		this.consumerFactory = consumerFactory;
 		this.ackCallbackFactory = ackCallbackFactory;
 		this.topics = topics;
+		Object maxPoll = consumerFactory.getConfigurationProperties().get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG);
+		if (maxPoll == null || (maxPoll instanceof Number && ((Number) maxPoll).intValue() != 1)
+				|| (maxPoll instanceof String && Integer.parseInt((String) maxPoll) != 1)) {
+			this.logger.debug("It is advisable to set " + ConsumerConfig.MAX_POLL_RECORDS_CONFIG
+					+ " to 1 to avoid having to seek after each record");
+		}
 	}
 
 	protected String getGroupId() {
@@ -167,6 +191,19 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		this.payloadType = payloadType;
 	}
 
+	protected ProducerFactory<K, V> getTransactionalProducerFactory() {
+		return this.producerFactory;
+	}
+
+	/**
+	 * Set a transactional producer factory.
+	 * @param producerFactory the producer factory.
+	 */
+	public void setTransactionalProducerFactory(ProducerFactory<K, V> producerFactory) {
+		Assert.isTrue(producerFactory.transactionCapable(), "The producer factory must be transaction capable");
+		this.producerFactory = producerFactory;
+	}
+
 	@Override
 	public String getComponentType() {
 		return "kafka:message-source";
@@ -178,37 +215,42 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			createConsumer();
 		}
 		ConsumerRecord<K, V> record;
-		if (this.recordIterator != null && this.recordIterator.hasNext()) {
-			record = this.recordIterator.next();
-		}
-		else {
-			synchronized (this.consumerMonitor) {
-				try {
-					Set<TopicPartition> paused = this.consumer.paused();
-					if (paused.size() > 0) {
-						this.consumer.resume(paused);
-					}
-					ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
-					this.consumer.pause(this.partitions);
-					if (records == null || records.count() == 0) {
-						this.recordIterator = null;
-						return null;
-					}
-					this.recordIterator = records.iterator();
-					record = this.recordIterator.next();
-				}
-				catch (WakeupException e) {
-					return null;
-				}
+		TopicPartition topicPartition;
+		synchronized (this.consumerMonitor) {
+			Set<TopicPartition> paused = this.consumer.paused();
+			if (paused.size() > 0) {
+				this.consumer.resume(paused);
+			}
+			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
+			this.consumer.pause(this.partitions);
+			if (records == null || records.count() == 0) {
+				return null;
+			}
+			record = records.iterator().next();
+			topicPartition = new TopicPartition(record.topic(), record.partition());
+			if (records.count() > 1) {
+				this.consumer.seek(topicPartition, record.offset() + 1);
 			}
 		}
+		Producer<K, V> producer = null;
+		if (this.producerFactory != null) {
+			producer = this.producerFactory.createProducer();
+			producer.beginTransaction();
+		}
+		KafkaAckInfo<K, V> ackInfo = new KafkaAckInfo<K, V>(this.consumerMonitor, this.groupId, this.consumer, record,
+				topicPartition, producer, this.inflightRecords);
+		AcknowledgmentCallback ackCallback = this.ackCallbackFactory.createCallback(ackInfo);
+		this.inflightRecords.computeIfAbsent(topicPartition, tp -> new TreeSet<>()).add(ackInfo);
 		@SuppressWarnings("unchecked")
-		Message<Object> message = (Message<Object>) this.messageConverter.toMessage(record, null, null,
+		Message<Object> message = (Message<Object>) this.messageConverter.toMessage(record,
+				ackCallback instanceof Acknowledgment ? (Acknowledgment) ackCallback : null, this.consumer,
 				this.payloadType);
-		AcknowledgmentCallback ackCallback = this.ackCallbackFactory
-			.createCallback(new KafkaAckInfo<K, V>(this.consumerMonitor, this.consumer, record, this::resetIterator));
-		return getMessageBuilderFactory().fromMessage(message)
+		AbstractIntegrationMessageBuilder<Object> builder = getMessageBuilderFactory().fromMessage(message)
 				.setHeader(IntegrationMessageHeaderAccessor.ACKNOWLEDGMENT_CALLBACK, ackCallback);
+		if (this.producerFactory != null) {
+			builder.setHeader(PRODUCER_FACTORY, ackCallback);
+		}
+		return builder;
 	}
 
 	protected void createConsumer() {
@@ -228,10 +270,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 			});
 		}
-	}
-
-	public synchronized void resetIterator() {
-		this.recordIterator = null;
 	}
 
 	@Override
@@ -268,11 +306,16 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 * @param <V> the value type.
 	 *
 	 */
-	public static class KafkaAckCallback<K, V> implements AcknowledgmentCallback {
+	public static class KafkaAckCallback<K, V> implements AcknowledgmentCallback, Acknowledgment,
+			ProducerFactory<K, V> {
+
+		private final Log logger = LogFactory.getLog(getClass());
 
 		private final KafkaAckInfo<K, V> ackInfo;
 
 		private volatile boolean acknowledged;
+
+		private boolean autoAckEnabled = true;
 
 		public KafkaAckCallback(KafkaAckInfo<K, V> ackInfo) {
 			this.ackInfo = ackInfo;
@@ -281,19 +324,19 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		@Override
 		public void acknowledge(Status status) {
 			Assert.notNull(status, "'status' cannot be null");
+			if (this.acknowledged) {
+				throw new IllegalStateException("Already acknowledged");
+			}
 			synchronized (this.ackInfo.getConsumerMonitor()) {
 				try {
 					ConsumerRecord<K, V> record = this.ackInfo.getRecord();
 					switch (status) {
 					case ACCEPT:
 					case REJECT:
-						this.ackInfo.getConsumer().commitSync(Collections.singletonMap(new TopicPartition(
-							record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1)));
+						commitIfPossible(record);
 						break;
 					case REQUEUE:
-						this.ackInfo.getConsumer().seek(
-							new TopicPartition(record.topic(), record.partition()), record.offset());
-						this.ackInfo.getReset().reset();
+						rollback(record);
 						break;
 					default:
 						break;
@@ -304,13 +347,123 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 				}
 				finally {
 					this.acknowledged = true;
+					if (!this.ackInfo.isAckDeferred()) {
+						this.ackInfo.getOffsets().get(this.ackInfo.getTopicPartition()).remove(this.ackInfo);
+					}
 				}
 			}
+		}
+
+		private void rollback(ConsumerRecord<K, V> record) {
+			if (this.ackInfo.getProducer() != null) {
+				this.ackInfo.getProducer().abortTransaction();
+				this.ackInfo.getProducer().close();
+			}
+			this.ackInfo.getConsumer().seek(this.ackInfo.getTopicPartition(), record.offset());
+			Set<KafkaAckInfo<K, V>> inflight = this.ackInfo.getOffsets().get(this.ackInfo.getTopicPartition());
+			if (inflight.size() > 1) {
+				List<Long> rewound =
+						inflight.stream()
+							.filter(i -> i.getRecord().offset() > record.offset())
+							.map(i -> {
+								i.setRolledBack(true);
+								return i;
+							})
+							.map(i -> i.getRecord().offset())
+							.collect(Collectors.toList());
+				if (rewound.size() > 0 && this.logger.isWarnEnabled()) {
+					this.logger.warn("Rolled back " + record + " later in-flight offsets "
+							+ rewound + " will also be re-fetched");
+				}
+			}
+		}
+
+		private void commitIfPossible(ConsumerRecord<K, V> record) {
+			if (this.ackInfo.isRolledBack()) {
+				if (this.logger.isWarnEnabled()) {
+					this.logger.warn("Cannot send offset for " + record
+							+ " to transaction; an earlier offset was rolled back");
+				}
+			}
+			else {
+				Set<KafkaAckInfo<K, V>> candidates = this.ackInfo.getOffsets().get(this.ackInfo.getTopicPartition());
+				KafkaAckInfo<K, V> ackInfo = null;
+				if (candidates.iterator().next().equals(this.ackInfo)) {
+					// see if there are any pending acks for higher offsets
+					List<KafkaAckInfo<K, V>> toCommit = new ArrayList<>();
+					for (KafkaAckInfo<K, V> info : candidates) {
+						if (info != this.ackInfo) {
+							if (info.isAckDeferred()) {
+								toCommit.add(info);
+							}
+							else {
+								break;
+							}
+						}
+					}
+					if (toCommit.size() > 0) {
+						ackInfo = toCommit.get(toCommit.size() - 1);
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Committing pending offsets for " + record + " and all deferred to "
+									+ ackInfo.getRecord());
+						}
+						candidates.removeAll(toCommit);
+					}
+					else {
+						ackInfo = this.ackInfo;
+					}
+				}
+				else { // earlier offsets present
+					this.ackInfo.setAckDeferred(true);
+				}
+				if (ackInfo != null) {
+					if (ackInfo.getProducer() != null) {
+						ackInfo.getProducer().sendOffsetsToTransaction(
+								Collections.singletonMap(ackInfo.getTopicPartition(),
+										new OffsetAndMetadata(ackInfo.getRecord().offset() + 1)),
+								ackInfo.getGroupId());
+					}
+					else {
+						ackInfo.getConsumer().commitSync(Collections.singletonMap(ackInfo.getTopicPartition(),
+								new OffsetAndMetadata(ackInfo.getRecord().offset() + 1)));
+					}
+				}
+				else {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Deferring commit offset; earlier messages are in flight.");
+					}
+				}
+			}
+			if (this.ackInfo.getProducer() != null) {
+				this.ackInfo.getProducer().commitTransaction();
+				this.ackInfo.getProducer().close();
+			}
+		}
+
+		@Override
+		public Producer<K, V> createProducer() {
+			Assert.state(this.ackInfo.getProducer() != null, "There is no transactional producer here");
+			return this.ackInfo.getProducer();
 		}
 
 		@Override
 		public boolean isAcknowledged() {
 			return this.acknowledged;
+		}
+
+		@Override
+		public void acknowledge() {
+			acknowledge(Status.ACCEPT);
+		}
+
+		@Override
+		public void noAutoAck() {
+			this.autoAckEnabled = false;
+		}
+
+		@Override
+		public boolean isAutoAck() {
+			return this.autoAckEnabled;
 		}
 
 	}
@@ -322,25 +475,44 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 * @param <V> the value type.
 	 *
 	 */
-	public static class KafkaAckInfo<K, V> {
+	public static class KafkaAckInfo<K, V> implements Comparable<KafkaAckInfo<K, V>> {
 
 		private final Object consumerMonitor;
+
+		private final String groupId;
 
 		private final Consumer<K, V> consumer;
 
 		private final ConsumerRecord<K, V> record;
 
-		private final Reset reset;
+		private final TopicPartition topicPartition;
 
-		KafkaAckInfo(Object consumerMonitor, Consumer<K, V> consumer, ConsumerRecord<K, V> record, Reset reset) {
+		private final Producer<K, V> producer;
+
+		private final Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets;
+
+		private volatile boolean rolledBack;
+
+		private volatile boolean ackDeferred;
+
+		KafkaAckInfo(Object consumerMonitor, String groupId, Consumer<K, V> consumer, ConsumerRecord<K, V> record,
+				TopicPartition topicPartition, Producer<K, V> producer,
+				Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets) {
 			this.consumerMonitor = consumerMonitor;
+			this.groupId = groupId;
 			this.consumer = consumer;
 			this.record = record;
-			this.reset = reset;
+			this.topicPartition = topicPartition;
+			this.producer = producer;
+			this.offsets = offsets;
 		}
 
 		Object getConsumerMonitor() {
 			return this.consumerMonitor;
+		}
+
+		public String getGroupId() {
+			return this.groupId;
 		}
 
 		public Consumer<K, V> getConsumer() {
@@ -351,20 +523,44 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			return this.record;
 		}
 
-		public Reset getReset() {
-			return this.reset;
+		public TopicPartition getTopicPartition() {
+			return this.topicPartition;
 		}
 
-	}
+		public Producer<K, V> getProducer() {
+			return this.producer;
+		}
 
-	/**
-	 * Callback for resetting the iterator.
-	 *
-	 */
-	@FunctionalInterface
-	interface Reset {
+		public Map<TopicPartition, Set<KafkaAckInfo<K, V>>> getOffsets() {
+			return this.offsets;
+		}
 
-		void reset();
+		public boolean isRolledBack() {
+			return this.rolledBack;
+		}
+
+		public void setRolledBack(boolean rolledBack) {
+			this.rolledBack = rolledBack;
+		}
+
+		public boolean isAckDeferred() {
+			return this.ackDeferred;
+		}
+
+		public void setAckDeferred(boolean ackDeferred) {
+			this.ackDeferred = ackDeferred;
+		}
+
+		@Override
+		public int compareTo(KafkaAckInfo<K, V> other) {
+			return Long.compare(this.record.offset(), other.getRecord().offset());
+		}
+
+		@Override
+		public String toString() {
+			return "KafkaAckInfo [record=" + this.record + ", rolledBack=" + this.rolledBack + ", ackDeferred="
+					+ this.ackDeferred + "]";
+		}
 
 	}
 
