@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -48,11 +50,17 @@ import org.springframework.integration.support.AbstractIntegrationMessageBuilder
 import org.springframework.integration.support.AcknowledgmentCallback;
 import org.springframework.integration.support.AcknowledgmentCallbackFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.converter.KafkaMessageHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.transaction.support.ResourceHolderSynchronization;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 
 /**
@@ -210,7 +218,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	}
 
 	@Override
-	protected synchronized AbstractIntegrationMessageBuilder<Object> doReceive() {
+	protected synchronized Object doReceive() {
 		if (this.consumer == null) {
 			createConsumer();
 		}
@@ -233,24 +241,56 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			}
 		}
 		Producer<K, V> producer = null;
-		if (this.producerFactory != null) {
-			producer = this.producerFactory.createProducer();
-			producer.beginTransaction();
-		}
+		AtomicBoolean myTransaction = new AtomicBoolean();
+		AtomicReference<Producer<K, V>> producerRef = new AtomicReference<>();
 		KafkaAckInfo<K, V> ackInfo = new KafkaAckInfo<K, V>(this.consumerMonitor, this.groupId, this.consumer, record,
-				topicPartition, producer, this.inflightRecords);
+				topicPartition, producerRef, this.inflightRecords, myTransaction);
+		if (this.producerFactory != null) {
+			@SuppressWarnings("unchecked")
+			KafkaResourceHolder<K, V> holder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
+					.getResource(this.producerFactory);
+			if (holder == null) {
+				holder = createTransaction(ackInfo);
+				myTransaction.set(true);
+			}
+			producer = holder.getProducer();
+			producerRef.set(producer);
+		}
 		AcknowledgmentCallback ackCallback = this.ackCallbackFactory.createCallback(ackInfo);
 		this.inflightRecords.computeIfAbsent(topicPartition, tp -> new TreeSet<>()).add(ackInfo);
 		@SuppressWarnings("unchecked")
 		Message<Object> message = (Message<Object>) this.messageConverter.toMessage(record,
 				ackCallback instanceof Acknowledgment ? (Acknowledgment) ackCallback : null, this.consumer,
 				this.payloadType);
-		AbstractIntegrationMessageBuilder<Object> builder = getMessageBuilderFactory().fromMessage(message)
-				.setHeader(IntegrationMessageHeaderAccessor.ACKNOWLEDGMENT_CALLBACK, ackCallback);
-		if (this.producerFactory != null) {
-			builder.setHeader(PRODUCER_FACTORY, ackCallback);
+		if (message.getHeaders() instanceof KafkaMessageHeaders) {
+			Map<String, Object> rawHeaders = ((KafkaMessageHeaders) message.getHeaders()).getRawHeaders();
+			rawHeaders.put(IntegrationMessageHeaderAccessor.ACKNOWLEDGMENT_CALLBACK, ackCallback);
+			if (this.producerFactory != null) {
+				rawHeaders.put(PRODUCER_FACTORY, ackInfo);
+			}
+			return message;
 		}
-		return builder;
+		else {
+			AbstractIntegrationMessageBuilder<Object> builder = getMessageBuilderFactory().fromMessage(message)
+					.setHeader(IntegrationMessageHeaderAccessor.ACKNOWLEDGMENT_CALLBACK, ackCallback);
+			if (this.producerFactory != null) {
+				builder.setHeader(PRODUCER_FACTORY, ackInfo);
+			}
+			return builder;
+		}
+	}
+
+	private KafkaResourceHolder<K, V> createTransaction(KafkaAckInfo<K, V> ackInfo) {
+		Producer<K, V> producer = this.producerFactory.createProducer();
+		producer.beginTransaction();
+		KafkaResourceHolder<K, V> resourceHolder = new KafkaResourceHolder<K, V>(producer);
+		TransactionSynchronizationManager.bindResource(ackInfo, resourceHolder);
+		resourceHolder.setSynchronizedWithTransaction(true);
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager
+					.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder, ackInfo));
+		}
+		return resourceHolder;
 	}
 
 	protected void createConsumer() {
@@ -306,8 +346,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 * @param <V> the value type.
 	 *
 	 */
-	public static class KafkaAckCallback<K, V> implements AcknowledgmentCallback, Acknowledgment,
-			ProducerFactory<K, V> {
+	public static class KafkaAckCallback<K, V> implements AcknowledgmentCallback, Acknowledgment {
 
 		private final Log logger = LogFactory.getLog(getClass());
 
@@ -355,9 +394,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		}
 
 		private void rollback(ConsumerRecord<K, V> record) {
-			if (this.ackInfo.getProducer() != null) {
+			if (this.ackInfo.isMyTransaction()) {
 				this.ackInfo.getProducer().abortTransaction();
 				this.ackInfo.getProducer().close();
+				TransactionSynchronizationManager.unbindResource(this.ackInfo);
 			}
 			this.ackInfo.getConsumer().seek(this.ackInfo.getTopicPartition(), record.offset());
 			Set<KafkaAckInfo<K, V>> inflight = this.ackInfo.getOffsets().get(this.ackInfo.getTopicPartition());
@@ -434,16 +474,11 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 					}
 				}
 			}
-			if (this.ackInfo.getProducer() != null) {
+			if (this.ackInfo.isMyTransaction()) {
 				this.ackInfo.getProducer().commitTransaction();
 				this.ackInfo.getProducer().close();
+				TransactionSynchronizationManager.unbindResource(this.ackInfo);
 			}
-		}
-
-		@Override
-		public Producer<K, V> createProducer() {
-			Assert.state(this.ackInfo.getProducer() != null, "There is no transactional producer here");
-			return this.ackInfo.getProducer();
 		}
 
 		@Override
@@ -475,7 +510,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 * @param <V> the value type.
 	 *
 	 */
-	public static class KafkaAckInfo<K, V> implements Comparable<KafkaAckInfo<K, V>> {
+	public static class KafkaAckInfo<K, V> implements Comparable<KafkaAckInfo<K, V>>, ProducerFactory<K, V> {
 
 		private final Object consumerMonitor;
 
@@ -487,24 +522,27 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 		private final TopicPartition topicPartition;
 
-		private final Producer<K, V> producer;
+		private final AtomicReference<Producer<K, V>> producer;
 
 		private final Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets;
+
+		private final AtomicBoolean myTransaction;
 
 		private volatile boolean rolledBack;
 
 		private volatile boolean ackDeferred;
 
 		KafkaAckInfo(Object consumerMonitor, String groupId, Consumer<K, V> consumer, ConsumerRecord<K, V> record,
-				TopicPartition topicPartition, Producer<K, V> producer,
-				Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets) {
+				TopicPartition topicPartition, AtomicReference<Producer<K, V>> producerRef,
+				Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets, AtomicBoolean myTransaction) {
 			this.consumerMonitor = consumerMonitor;
 			this.groupId = groupId;
 			this.consumer = consumer;
 			this.record = record;
 			this.topicPartition = topicPartition;
-			this.producer = producer;
+			this.producer = producerRef;
 			this.offsets = offsets;
+			this.myTransaction = myTransaction;
 		}
 
 		Object getConsumerMonitor() {
@@ -528,7 +566,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		}
 
 		public Producer<K, V> getProducer() {
-			return this.producer;
+			return this.producer.get();
 		}
 
 		public Map<TopicPartition, Set<KafkaAckInfo<K, V>>> getOffsets() {
@@ -551,6 +589,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			this.ackDeferred = ackDeferred;
 		}
 
+		public boolean isMyTransaction() {
+			return this.myTransaction.get();
+		}
+
 		@Override
 		public int compareTo(KafkaAckInfo<K, V> other) {
 			return Long.compare(this.record.offset(), other.getRecord().offset());
@@ -559,7 +601,58 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		@Override
 		public String toString() {
 			return "KafkaAckInfo [record=" + this.record + ", rolledBack=" + this.rolledBack + ", ackDeferred="
-					+ this.ackDeferred + "]";
+					+ this.ackDeferred + ", myTransaction=" + this.myTransaction + "]";
+		}
+
+		@Override
+		public Producer<K, V> createProducer() {
+			Assert.state(this.producer.get() != null, "There is no transactional producer here");
+			return this.producer.get();
+		}
+
+		@Override
+		public boolean transactionCapable() {
+			return true;
+		}
+
+	}
+
+	/**
+	 * Callback for resource cleanup at the end of a non-native Kafka transaction (e.g. when participating in a
+	 * JtaTransactionManager transaction).
+	 * TODO: Make the class in PFU public
+	 * @see org.springframework.transaction.jta.JtaTransactionManager
+	 */
+	private static final class KafkaResourceSynchronization<K, V> extends
+			ResourceHolderSynchronization<KafkaResourceHolder<K, V>, Object> {
+
+		private final KafkaResourceHolder<K, V> resourceHolder;
+
+		KafkaResourceSynchronization(KafkaResourceHolder<K, V> resourceHolder, Object resourceKey) {
+			super(resourceHolder, resourceKey);
+			this.resourceHolder = resourceHolder;
+		}
+
+		@Override
+		protected boolean shouldReleaseBeforeCompletion() {
+			return false;
+		}
+
+		@Override
+		public void afterCompletion(int status) {
+			if (status == TransactionSynchronization.STATUS_COMMITTED) {
+				this.resourceHolder.commit();
+			}
+			else {
+				this.resourceHolder.rollback();
+			}
+
+			super.afterCompletion(status);
+		}
+
+		@Override
+		protected void releaseResource(KafkaResourceHolder<K, V> resourceHolder, Object resourceKey) {
+			ProducerFactoryUtils.releaseResources(resourceHolder);
 		}
 
 	}

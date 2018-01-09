@@ -29,7 +29,6 @@ import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +46,9 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.Test;
@@ -59,6 +60,7 @@ import org.springframework.integration.support.AcknowledgmentCallback;
 import org.springframework.integration.support.AcknowledgmentCallback.Status;
 import org.springframework.integration.support.StaticMessageHeaderAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -246,7 +248,7 @@ public class MessageSourceTests {
 		inOrder.verify(consumer).resume(anyCollection());
 		inOrder.verify(consumer).poll(anyLong());
 		inOrder.verify(consumer).pause(anyCollection());
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L)));
+		inOrder.verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L)));
 		inOrder.verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(6L)));
 		inOrder.verify(consumer).paused();
 		inOrder.verify(consumer).resume(anyCollection());
@@ -482,8 +484,11 @@ public class MessageSourceTests {
 		source.setTransactionalProducerFactory(pf);
 
 		Message<?> received = source.receive();
-		assertThat(received.getHeaders().get(KafkaMessageSource.PRODUCER_FACTORY, ProducerFactory.class)
-				.createProducer()).isNotNull();
+		ProducerFactory producerFactory = received.getHeaders().get(KafkaMessageSource.PRODUCER_FACTORY,
+				ProducerFactory.class);
+		assertThat(producerFactory).isNotNull();
+		KafkaTemplate template = new KafkaTemplate(producerFactory);
+		template.send("foo", "bar");
 		StaticMessageHeaderAccessor.getAcknowledgmentCallback(received)
 				.acknowledge(Status.ACCEPT);
 		received = source.receive();
@@ -508,6 +513,7 @@ public class MessageSourceTests {
 		inOrder.verify(consumer).pause(anyCollection());
 		inOrder.verify(consumer).seek(any(TopicPartition.class), eq(1L));
 		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).send(any(ProducerRecord.class), any(Callback.class));
 		inOrder.verify(producer).sendOffsetsToTransaction(
 				Collections.singletonMap(topicPartition, new OffsetAndMetadata(1L)), "group");
 		inOrder.verify(producer).commitTransaction();
