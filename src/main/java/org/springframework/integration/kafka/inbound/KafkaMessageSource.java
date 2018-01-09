@@ -69,8 +69,8 @@ import org.springframework.util.Assert;
  * <p>
  * NOTE: If the application acknowledges messages out of order, the acks
  * will be deferred until all messages prior to the offset are ack'd.
- * If multiple records a retrieved and an earlier offset is requeud, records
- * from the subsequence offsets will be redelivered - even if they were
+ * If multiple records a retrieved and an earlier offset is requeued, records
+ * from the subsequent offsets will be redelivered - even if they were
  * processed successfully. Applications should therefore implement
  * idempotency.
  *
@@ -132,8 +132,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		Object maxPoll = consumerFactory.getConfigurationProperties().get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG);
 		if (maxPoll == null || (maxPoll instanceof Number && ((Number) maxPoll).intValue() != 1)
 				|| (maxPoll instanceof String && Integer.parseInt((String) maxPoll) != 1)) {
-			this.logger.debug("It is advisable to set " + ConsumerConfig.MAX_POLL_RECORDS_CONFIG
+			if (this.logger.isWarnEnabled()) {
+				this.logger.warn("It is advisable to set " + ConsumerConfig.MAX_POLL_RECORDS_CONFIG
 					+ " to 1 to avoid having to seek after each record");
+			}
 		}
 	}
 
@@ -208,6 +210,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	 * @param producerFactory the producer factory.
 	 */
 	public void setTransactionalProducerFactory(ProducerFactory<K, V> producerFactory) {
+		Assert.notNull(producerFactory, "The producer factory cannot be null");
 		Assert.isTrue(producerFactory.transactionCapable(), "The producer factory must be transaction capable");
 		this.producerFactory = producerFactory;
 	}
@@ -405,9 +408,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 				List<Long> rewound =
 						inflight.stream()
 							.filter(i -> i.getRecord().offset() > record.offset())
-							.map(i -> {
+							.peek(i -> {
 								i.setRolledBack(true);
-								return i;
 							})
 							.map(i -> i.getRecord().offset())
 							.collect(Collectors.toList());
@@ -612,7 +614,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 		@Override
 		public boolean transactionCapable() {
-			return true;
+			return this.producer.get() != null;
 		}
 
 	}
