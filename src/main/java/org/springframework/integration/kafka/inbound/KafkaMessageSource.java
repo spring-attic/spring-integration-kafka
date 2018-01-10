@@ -246,8 +246,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		Producer<K, V> producer = null;
 		AtomicBoolean myTransaction = new AtomicBoolean();
 		AtomicReference<Producer<K, V>> producerRef = new AtomicReference<>();
-		KafkaAckInfo<K, V> ackInfo = new KafkaAckInfo<K, V>(this.consumerMonitor, this.groupId, this.consumer, record,
-				topicPartition, producerRef, this.inflightRecords, myTransaction);
+		KafkaAckInfo<K, V> ackInfo = new KafkaAckInfoImpl(record, topicPartition, producerRef, myTransaction);
 		if (this.producerFactory != null) {
 			@SuppressWarnings("unchecked")
 			KafkaResourceHolder<K, V> holder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
@@ -508,17 +507,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	/**
 	 * Information for building an KafkaAckCallback.
 	 *
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 *
 	 */
-	public static class KafkaAckInfo<K, V> implements Comparable<KafkaAckInfo<K, V>>, ProducerFactory<K, V> {
-
-		private final Object consumerMonitor;
-
-		private final String groupId;
-
-		private final Consumer<K, V> consumer;
+	public class KafkaAckInfoImpl implements KafkaAckInfo<K, V> {
 
 		private final ConsumerRecord<K, V> record;
 
@@ -526,71 +516,77 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 		private final AtomicReference<Producer<K, V>> producer;
 
-		private final Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets;
-
 		private final AtomicBoolean myTransaction;
 
 		private volatile boolean rolledBack;
 
 		private volatile boolean ackDeferred;
 
-		KafkaAckInfo(Object consumerMonitor, String groupId, Consumer<K, V> consumer, ConsumerRecord<K, V> record,
+		KafkaAckInfoImpl(ConsumerRecord<K, V> record,
 				TopicPartition topicPartition, AtomicReference<Producer<K, V>> producerRef,
-				Map<TopicPartition, Set<KafkaAckInfo<K, V>>> offsets, AtomicBoolean myTransaction) {
-			this.consumerMonitor = consumerMonitor;
-			this.groupId = groupId;
-			this.consumer = consumer;
+				AtomicBoolean myTransaction) {
 			this.record = record;
 			this.topicPartition = topicPartition;
 			this.producer = producerRef;
-			this.offsets = offsets;
 			this.myTransaction = myTransaction;
 		}
 
-		Object getConsumerMonitor() {
-			return this.consumerMonitor;
+		@Override
+		public Object getConsumerMonitor() {
+			return KafkaMessageSource.this.consumerMonitor;
 		}
 
+		@Override
 		public String getGroupId() {
-			return this.groupId;
+			return KafkaMessageSource.this.groupId;
 		}
 
+		@Override
 		public Consumer<K, V> getConsumer() {
-			return this.consumer;
+			return KafkaMessageSource.this.consumer;
 		}
 
+		@Override
 		public ConsumerRecord<K, V> getRecord() {
 			return this.record;
 		}
 
+		@Override
 		public TopicPartition getTopicPartition() {
 			return this.topicPartition;
 		}
 
+		@Override
 		public Producer<K, V> getProducer() {
 			return this.producer.get();
 		}
 
+		@Override
 		public Map<TopicPartition, Set<KafkaAckInfo<K, V>>> getOffsets() {
-			return this.offsets;
+			return KafkaMessageSource.this.inflightRecords;
 		}
 
+		@Override
 		public boolean isRolledBack() {
 			return this.rolledBack;
 		}
 
+		@Override
 		public void setRolledBack(boolean rolledBack) {
 			this.rolledBack = rolledBack;
 		}
 
+		@Override
 		public boolean isAckDeferred() {
 			return this.ackDeferred;
 		}
 
+		@Override
 		public void setAckDeferred(boolean ackDeferred) {
 			this.ackDeferred = ackDeferred;
 		}
 
+		@Override
 		public boolean isMyTransaction() {
 			return this.myTransaction.get();
 		}
@@ -616,6 +612,41 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		public boolean transactionCapable() {
 			return this.producer.get() != null;
 		}
+
+	}
+
+	/**
+	 * Information for building an KafkaAckCallback.
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 *
+	 */
+	public interface KafkaAckInfo<K, V> extends Comparable<KafkaAckInfo<K, V>>, ProducerFactory<K, V> {
+
+		Object getConsumerMonitor();
+
+		String getGroupId();
+
+		Consumer<K, V> getConsumer();
+
+		ConsumerRecord<K, V> getRecord();
+
+		TopicPartition getTopicPartition();
+
+		Producer<K, V> getProducer();
+
+		Map<TopicPartition, Set<KafkaAckInfo<K, V>>> getOffsets();
+
+		boolean isRolledBack();
+
+		void setRolledBack(boolean rolledBack);
+
+		boolean isAckDeferred();
+
+		void setAckDeferred(boolean ackDeferred);
+
+		boolean isMyTransaction();
 
 	}
 
