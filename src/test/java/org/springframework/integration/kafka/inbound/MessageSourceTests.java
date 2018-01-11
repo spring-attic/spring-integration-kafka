@@ -409,8 +409,8 @@ public class MessageSourceTests {
 		captor = ArgumentCaptor.forClass(String.class);
 		inOrder.verify(log2).warn(captor.capture());
 		assertThat(captor.getValue())
-			.contains("Cannot send offset for ConsumerRecord")
-			.contains("to transaction; an earlier offset was rolled back");
+			.contains("Cannot commit offset for ConsumerRecord")
+			.contains("; an earlier offset was rolled back");
 		inOrder.verify(consumer).paused();
 		inOrder.verify(consumer).resume(anyCollection());
 		inOrder.verify(consumer).poll(anyLong());

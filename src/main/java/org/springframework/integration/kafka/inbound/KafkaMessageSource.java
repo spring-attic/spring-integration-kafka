@@ -61,7 +61,7 @@ import org.springframework.util.Assert;
  * <p>
  * NOTE: If the application acknowledges messages out of order, the acks
  * will be deferred until all messages prior to the offset are ack'd.
- * If multiple records a retrieved and an earlier offset is requeued, records
+ * If multiple records are retrieved and an earlier offset is requeued, records
  * from the subsequent offsets will be redelivered - even if they were
  * processed successfully. Applications should therefore implement
  * idempotency.
@@ -355,8 +355,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		private void commitIfPossible(ConsumerRecord<K, V> record) {
 			if (this.ackInfo.isRolledBack()) {
 				if (this.logger.isWarnEnabled()) {
-					this.logger.warn("Cannot send offset for " + record
-							+ " to transaction; an earlier offset was rolled back");
+					this.logger.warn("Cannot commit offset for " + record
+							+ "; an earlier offset was rolled back");
 				}
 			}
 			else {
