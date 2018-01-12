@@ -96,6 +96,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	private Type payloadType;
 
+	private ConsumerRebalanceListener rebalanceListener;
+
 	private volatile Consumer<K, V> consumer;
 
 	private volatile Collection<TopicPartition> partitions;
@@ -184,6 +186,18 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 		this.payloadType = payloadType;
 	}
 
+	protected ConsumerRebalanceListener getRebalanceListener() {
+		return this.rebalanceListener;
+	}
+
+	/**
+	 * Set a rebalance listener.
+	 * @param rebalanceListener the rebalance listener.
+	 */
+	public void setRebalanceListener(ConsumerRebalanceListener rebalanceListener) {
+		this.rebalanceListener = rebalanceListener;
+	}
+
 	@Override
 	public String getComponentType() {
 		return "kafka:message-source";
@@ -237,11 +251,17 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.partitions = Collections.emptyList();
+					if (KafkaMessageSource.this.rebalanceListener != null) {
+						KafkaMessageSource.this.rebalanceListener.onPartitionsRevoked(partitions);
+					}
 				}
 
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.partitions = new ArrayList<>(partitions);
+					if (KafkaMessageSource.this.rebalanceListener != null) {
+						KafkaMessageSource.this.rebalanceListener.onPartitionsAssigned(partitions);
+					}
 				}
 
 			});
