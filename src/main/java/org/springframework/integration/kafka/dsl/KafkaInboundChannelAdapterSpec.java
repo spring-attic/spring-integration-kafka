@@ -80,4 +80,9 @@ public class KafkaInboundChannelAdapterSpec<K, V>
 		return this;
 	}
 
+	public KafkaInboundChannelAdapterSpec<K, V> rawMessageHeader(boolean rawMessageHeader) {
+		this.target.setRawMessageHeader(rawMessageHeader);
+		return this;
+	}
+
 }
