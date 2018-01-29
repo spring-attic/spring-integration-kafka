@@ -72,6 +72,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Mark Norkin
  * @since 3.0.1
  *
  */
@@ -108,7 +109,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	private volatile Consumer<K, V> consumer;
 
-	private volatile boolean running;
+	private boolean running;
 
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, String... topics) {
 		this(consumerFactory, new KafkaAckCallbackFactory<>(), topics);
@@ -272,6 +273,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 	protected synchronized Object doReceive() {
 		if (this.consumer == null) {
 			createConsumer();
+			this.running = true;
 		}
 		ConsumerRecord<K, V> record;
 		TopicPartition topicPartition;
@@ -333,7 +335,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 				}
 
 			});
-			this.running = true;
 		}
 	}
 
