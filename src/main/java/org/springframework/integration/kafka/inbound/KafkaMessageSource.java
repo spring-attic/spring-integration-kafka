@@ -260,12 +260,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	@Override
 	public synchronized void stop() {
-		synchronized (this.consumerMonitor) {
-			if (this.consumer != null) {
-				this.consumer.close(30, TimeUnit.SECONDS);
-				this.consumer = null;
-			}
-		}
+		stopConsumer();
 		this.running = false;
 	}
 
@@ -340,11 +335,14 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 
 	@Override
 	public synchronized void destroy() {
-		if (this.consumer != null) {
-			Consumer<K, V> consumer2 = this.consumer;
-			this.consumer = null;
-			synchronized (this.consumerMonitor) {
-				consumer2.close(30, TimeUnit.SECONDS);
+		stopConsumer();
+	}
+
+	private void stopConsumer() {
+		synchronized (this.consumerMonitor) {
+			if (this.consumer != null) {
+				this.consumer.close(30, TimeUnit.SECONDS);
+				this.consumer = null;
 			}
 		}
 	}
