@@ -288,6 +288,7 @@ public class KafkaProducerMessageHandlerTests {
 		handler.setBeanFactory(mock(BeanFactory.class));
 		QueueChannel replies = new QueueChannel();
 		handler.setOutputChannel(replies);
+		handler.setReplyTopic(topic6);
 		handler.afterPropertiesSet();
 
 		Message<?> message = MessageBuilder.withPayload("foo")
@@ -301,6 +302,9 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(key(2));
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("foo"));
+		Map<String, Object> headers = new HashMap<>();
+		new DefaultKafkaHeaderMapper().toHeaders(record.headers(), headers);
+		assertThat(headers.get(KafkaHeaders.REPLY_TOPIC)).isEqualTo(topic6.getBytes());
 		ProducerRecord<Integer, String> pr = new ProducerRecord<>(topic6, 0, 1, "FOO", record.headers());
 		template.send(pr);
 		Message<?> reply = replies.receive(30_000);

@@ -16,6 +16,7 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.expression.EvaluationContext;
@@ -105,6 +107,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	private String sendSuccessChannelName;
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
+
+	private byte[] replyTopic;
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
@@ -251,6 +255,11 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		this.messageConverter = messageConverter;
 	}
 
+	// TODO: expose the reply topic in Replying template.
+	public void setReplyTopic(String replyTopic) {
+		this.replyTopic = replyTopic.getBytes(StandardCharsets.UTF_8);
+	}
+
 	@Override
 	public String getComponentType() {
 		return "kafka:outbound-channel-adapter";
@@ -321,6 +330,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		MessageChannel metadataChannel;
 		if (this.isGateway) {
 			metadataChannel = getSendSuccessChannel();
+			producerRecord.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic));
 			gatewayFuture = ((ReplyingKafkaTemplate<K, V, Object>) this.kafkaTemplate).sendAndReceive(producerRecord);
 			sendFuture = gatewayFuture.getSendFuture();
 		}
