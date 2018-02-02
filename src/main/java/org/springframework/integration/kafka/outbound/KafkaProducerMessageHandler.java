@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2017 the original author or authors.
+ * Copyright 2013-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -28,24 +31,30 @@ import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.expression.ValueExpression;
-import org.springframework.integration.handler.AbstractMessageProducingHandler;
+import org.springframework.integration.handler.AbstractReplyProducingMessageHandler;
 import org.springframework.integration.kafka.support.KafkaSendFailureException;
 import org.springframework.integration.support.DefaultErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
+import org.springframework.kafka.requestreply.RequestReplyFuture;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * Kafka Message Handler.
@@ -61,11 +70,13 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  *
  * @since 0.5
  */
-public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingHandler {
+public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMessageHandler {
 
 	private static final long DEFAULT_SEND_TIMEOUT = 10000;
 
 	private final KafkaTemplate<K, V> kafkaTemplate;
+
+	private final boolean isGateway;
 
 	private EvaluationContext evaluationContext;
 
@@ -83,17 +94,25 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 
 	private KafkaHeaderMapper headerMapper;
 
+	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
+
 	private MessageChannel sendFailureChannel;
 
 	private String sendFailureChannelName;
+
+	private MessageChannel sendSuccessChannel;
+
+	private String sendSuccessChannelName;
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
 		this.kafkaTemplate = kafkaTemplate;
+		this.isGateway = kafkaTemplate instanceof ReplyingKafkaTemplate;
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
+			setAsync(true);
 		}
 	}
 
@@ -194,6 +213,24 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 	}
 
 	/**
+	 * Set the success channel.
+	 * @param sendSuccessChannel the Success channel.
+	 * @since 3.0.2
+	 */
+	public void setSendSuccessChannel(MessageChannel sendSuccessChannel) {
+		this.sendSuccessChannel = sendSuccessChannel;
+	}
+
+	/**
+	 * Set the Success channel name.
+	 * @param sendSuccessChannelName the Success channel name.
+	 * @since 3.0.2
+	 */
+	public void setSendSuccessChannelName(String sendSuccessChannelName) {
+		this.sendSuccessChannelName = sendSuccessChannelName;
+	}
+
+	/**
 	 * Set the error message strategy implementation to use when sending error messages after
 	 * send failures. Cannot be null.
 	 * @param errorMessageStrategy the implementation.
@@ -202,6 +239,21 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 	public void setErrorMessageStrategy(ErrorMessageStrategy errorMessageStrategy) {
 		Assert.notNull(errorMessageStrategy, "'errorMessageStrategy' cannot be null");
 		this.errorMessageStrategy = errorMessageStrategy;
+	}
+
+	/**
+	 * Set a message converter for gateway replies.
+	 * @param messageConverter the converter.
+	 * @since 3.0.2
+	 */
+	public void setMessageConverter(RecordMessageConverter messageConverter) {
+		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
+		this.messageConverter = messageConverter;
+	}
+
+	@Override
+	public String getComponentType() {
+		return "kafka:outbound-channel-adapter";
 	}
 
 	protected MessageChannel getSendFailureChannel() {
@@ -215,15 +267,25 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 		return null;
 	}
 
+	protected MessageChannel getSendSuccessChannel() {
+		if (this.sendSuccessChannel != null) {
+			return this.sendSuccessChannel;
+		}
+		else if (this.sendSuccessChannelName != null) {
+			this.sendSuccessChannel = getChannelResolver().resolveDestination(this.sendSuccessChannelName);
+			return this.sendSuccessChannel;
+		}
+		return null;
+	}
+
 	@Override
-	protected void onInit() throws Exception {
-		super.onInit();
+	protected void doInit() {
 		this.evaluationContext = ExpressionUtils.createStandardEvaluationContext(getBeanFactory());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void handleMessageInternal(final Message<?> message) throws Exception {
+	protected Object handleRequestMessage(final Message<?> message) {
 		String topic = this.topicExpression != null ?
 				this.topicExpression.getValue(this.evaluationContext, message, String.class)
 				: message.getHeaders().get(KafkaHeaders.TOPIC, String.class);
@@ -254,17 +316,48 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 		}
 		final ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partitionId, timestamp,
 				(K) messageKey, payload, headers);
-		ListenableFuture<SendResult<K, V>> future = this.kafkaTemplate.send(producerRecord);
-		if (getSendFailureChannel() != null || getOutputChannel() != null) {
+		ListenableFuture<SendResult<K, V>> sendFuture;
+		RequestReplyFuture<K, V, Object> gatewayFuture = null;
+		MessageChannel metadataChannel;
+		if (this.isGateway) {
+			metadataChannel = getSendSuccessChannel();
+			gatewayFuture = ((ReplyingKafkaTemplate<K, V, Object>) this.kafkaTemplate).sendAndReceive(producerRecord);
+			sendFuture = gatewayFuture.getSendFuture();
+		}
+		else {
+			sendFuture = this.kafkaTemplate.send(producerRecord);
+			// TODO: In 3.1, always use the success channel.
+			metadataChannel = getOutputChannel();
+			if (metadataChannel == null) {
+				metadataChannel = getSendSuccessChannel();
+			}
+		}
+		try {
+			processSendResult(message, producerRecord, sendFuture, metadataChannel);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new MessageHandlingException(message, e);
+		}
+		catch (ExecutionException e) {
+			// TODO: in 3.1 change this to e.getCause()
+			throw new MessageHandlingException(message, e);
+		}
+		return processReplyFuture(gatewayFuture);
+	}
+
+	public void processSendResult(final Message<?> message, final ProducerRecord<K, V> producerRecord,
+			ListenableFuture<SendResult<K, V>> future, MessageChannel metadataChannel)
+			throws InterruptedException, ExecutionException {
+		if (getSendFailureChannel() != null || metadataChannel != null) {
 			future.addCallback(new ListenableFutureCallback<SendResult<K, V>>() {
 
 				@Override
 				public void onSuccess(SendResult<K, V> result) {
-					if (getOutputChannel() != null) {
-						KafkaProducerMessageHandler.this.messagingTemplate.send(getOutputChannel(),
+					if (metadataChannel != null) {
+						KafkaProducerMessageHandler.this.messagingTemplate.send(metadataChannel,
 								getMessageBuilderFactory().fromMessage(message)
-										// TODO: change to constant when available
-										.setHeader("kafka_recordMetadata", result.getRecordMetadata()).build());
+										.setHeader(KafkaHeaders.RECORD_METADATA, result.getRecordMetadata()).build());
 					}
 				}
 
@@ -296,9 +389,41 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractMessageProducingH
 		}
 	}
 
-	@Override
-	public String getComponentType() {
-		return "kafka:outbound-channel-adapter";
+	private Future<?> processReplyFuture(RequestReplyFuture<?, ?, Object> future) {
+		if (future == null) {
+			return null;
+		}
+		return new ConvertingReplyFuture(future, this.messageConverter);
+	}
+
+	private static final class ConvertingReplyFuture extends SettableListenableFuture<Object> {
+
+		ConvertingReplyFuture(RequestReplyFuture<?, ?, Object> future, RecordMessageConverter messageConverter) {
+			addCallback(future, messageConverter);
+		}
+
+		public void addCallback(final RequestReplyFuture<?, ?, Object> future,
+				final RecordMessageConverter messageConverter) {
+			future.addCallback(new ListenableFutureCallback<ConsumerRecord<?, Object>>() {
+
+				@Override
+				public void onSuccess(ConsumerRecord<?, Object> result) {
+					try {
+						set(messageConverter.toMessage(result, null, null, null));
+					}
+					catch (Exception e) {
+						setException(e);
+					}
+				}
+
+				@Override
+				public void onFailure(Throwable ex) {
+					setException(ex);
+				}
+
+			});
+		}
+
 	}
 
 }
