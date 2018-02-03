@@ -118,9 +118,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		this.isGateway = kafkaTemplate instanceof ReplyingKafkaTemplate;
 		if (this.isGateway) {
 			setAsync(true);
-			// TODO: not safe to call a non-final setter from a CTOR
-			// In SI, make updateNotPropagatedHeaders protected final
-			setNotPropagatedHeaders(KafkaHeaders.TOPIC, KafkaHeaders.PARTITION_ID, KafkaHeaders.MESSAGE_KEY);
+			updateNotPropagatedHeaders(
+					new String[] { KafkaHeaders.TOPIC, KafkaHeaders.PARTITION_ID, KafkaHeaders.MESSAGE_KEY }, false);
 		}
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
