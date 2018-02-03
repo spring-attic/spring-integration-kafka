@@ -17,6 +17,7 @@
 package org.springframework.integration.kafka.outbound;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +47,7 @@ import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.converter.KafkaMessageHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -96,7 +98,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private KafkaHeaderMapper headerMapper;
 
-	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
+	private RecordMessageConverter replyMessageConverter = new MessagingMessageConverter();
 
 	private MessageChannel sendFailureChannel;
 
@@ -114,9 +116,14 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
 		this.kafkaTemplate = kafkaTemplate;
 		this.isGateway = kafkaTemplate instanceof ReplyingKafkaTemplate;
+		if (this.isGateway) {
+			setAsync(true);
+			// TODO: not safe to call a non-final setter from a CTOR
+			// In SI, make updateNotPropagatedHeaders protected final
+			setNotPropagatedHeaders(KafkaHeaders.TOPIC, KafkaHeaders.PARTITION_ID, KafkaHeaders.MESSAGE_KEY);
+		}
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
-			setAsync(true);
 		}
 	}
 
@@ -250,9 +257,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	 * @param messageConverter the converter.
 	 * @since 3.0.2
 	 */
-	public void setMessageConverter(RecordMessageConverter messageConverter) {
+	public void setReplyMessageConverter(RecordMessageConverter messageConverter) {
 		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
-		this.messageConverter = messageConverter;
+		this.replyMessageConverter = messageConverter;
 	}
 
 	// TODO: expose the reply topic in Replying template.
@@ -403,26 +410,43 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		if (future == null) {
 			return null;
 		}
-		return new ConvertingReplyFuture(future, this.messageConverter);
+		return new ConvertingReplyFuture(future);
 	}
 
-	private static final class ConvertingReplyFuture extends SettableListenableFuture<Object> {
+	private final class ConvertingReplyFuture extends SettableListenableFuture<Object> {
 
-		ConvertingReplyFuture(RequestReplyFuture<?, ?, Object> future, RecordMessageConverter messageConverter) {
-			addCallback(future, messageConverter);
+		ConvertingReplyFuture(RequestReplyFuture<?, ?, Object> future) {
+			addCallback(future);
 		}
 
-		public void addCallback(final RequestReplyFuture<?, ?, Object> future,
-				final RecordMessageConverter messageConverter) {
+		private void addCallback(final RequestReplyFuture<?, ?, Object> future) {
 			future.addCallback(new ListenableFutureCallback<ConsumerRecord<?, Object>>() {
 
 				@Override
 				public void onSuccess(ConsumerRecord<?, Object> result) {
 					try {
-						set(messageConverter.toMessage(result, null, null, null));
+						set(dontLeakHeaders(KafkaProducerMessageHandler.this.replyMessageConverter.toMessage(result,
+								null, null, null))); // TODO support reply payload type?
 					}
 					catch (Exception e) {
 						setException(e);
+					}
+				}
+
+				private Message<?> dontLeakHeaders(Message<?> message) {
+					if (message.getHeaders() instanceof KafkaMessageHeaders) {
+						Map<String, Object> headers = ((KafkaMessageHeaders) message.getHeaders()).getRawHeaders();
+						headers.remove(KafkaHeaders.CORRELATION_ID);
+						headers.remove(KafkaHeaders.REPLY_TOPIC);
+						headers.remove(KafkaHeaders.REPLY_PARTITION);
+						return message;
+					}
+					else {
+						return getMessageBuilderFactory().fromMessage(message)
+								.removeHeader(KafkaHeaders.CORRELATION_ID)
+								.removeHeader(KafkaHeaders.REPLY_TOPIC)
+								.removeHeader(KafkaHeaders.REPLY_PARTITION)
+								.build();
 					}
 				}
 

@@ -310,6 +310,8 @@ public class KafkaProducerMessageHandlerTests {
 		Message<?> reply = replies.receive(30_000);
 		assertThat(reply).isNotNull();
 		assertThat(reply.getPayload()).isEqualTo("FOO");
+		assertThat(reply.getHeaders().get(KafkaHeaders.TOPIC)).isNull();
+		assertThat(reply.getHeaders().get(KafkaHeaders.CORRELATION_ID)).isNull();
 		template.stop();
 		// discard from the test consumer
 		KafkaTestUtils.getSingleRecord(consumer, topic6);
