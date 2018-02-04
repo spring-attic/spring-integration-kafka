@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.util.Assert;
 
 /**
@@ -47,6 +48,7 @@ import org.springframework.util.Assert;
  *
  * @author Artem Bilan
  * @author Biju Kunjummen
+ * @author Gary Russell
  *
  * @since 3.0
  */
@@ -265,6 +267,50 @@ public class KafkaProducerMessageHandlerSpec<K, V, S extends KafkaProducerMessag
 	 */
 	public S headerMapper(KafkaHeaderMapper mapper) {
 		this.target.setHeaderMapper(mapper);
+		return _this();
+	}
+
+	/**
+	 * Set the channel to which successful send results are sent.
+	 * @param sendSuccessChannel the channel.
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public S sendSuccessChannel(MessageChannel sendSuccessChannel) {
+		this.target.setSendSuccessChannel(sendSuccessChannel);
+		return _this();
+	}
+
+	/**
+	 * Set the channel to which successful send results are sent.
+	 * @param sendSuccessChannel the channel name.
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public S sendSuccessChannel(String sendSuccessChannel) {
+		this.target.setSendSuccessChannelName(sendSuccessChannel);
+		return _this();
+	}
+
+	/**
+	 * Set the channel to which Failureful send results are sent.
+	 * @param sendFailureChannel the channel.
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public S sendFailureChannel(MessageChannel sendFailureChannel) {
+		this.target.setSendFailureChannel(sendFailureChannel);
+		return _this();
+	}
+
+	/**
+	 * Set the channel to which Failureful send results are sent.
+	 * @param sendFailureChannel the channel name.
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public S sendFailureChannel(String sendFailureChannel) {
+		this.target.setSendFailureChannelName(sendFailureChannel);
 		return _this();
 	}
 
