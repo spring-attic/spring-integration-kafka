@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.springframework.integration.dsl.ComponentsRegistration;
+import org.springframework.integration.dsl.IntegrationComponentSpec;
 import org.springframework.integration.dsl.MessageHandlerSpec;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -100,6 +101,13 @@ public class KafkaGatewayMessageHandlerSpec<K, V, R, S extends KafkaGatewayMessa
 
 	}
 
+	/**
+	 * An {@link IntegrationComponentSpec} implementation for the {@link KafkaTemplate}.
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the request value type.
+	 * @param <R> the reply value type.
+	 */
 	public static class ReplyingKafkaTemplateSpec<K, V, R> extends KafkaTemplateSpec<K, V> {
 
 		ReplyingKafkaTemplateSpec(ReplyingKafkaTemplate<K, V, R> kafkaTemplate) {

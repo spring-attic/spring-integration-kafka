@@ -290,7 +290,8 @@ public final class Kafka {
 	 * Create an initial {@link KafkaProducerMessageHandlerSpec}.
 	 * @param kafkaTemplate the {@link ReplyingKafkaTemplate} to use
 	 * @param <K> the Kafka message key type.
-	 * @param <V> the Kafka message value type.
+	 * @param <V> the Kafka message value type (request).
+	 * @param <R> the Kafka message value type (reply).
 	 * @param <S> the {@link KafkaGatewayMessageHandlerSpec} extension type.
 	 * @return the KafkaGatewayMessageHandlerSpec.
 	 */
@@ -303,8 +304,10 @@ public final class Kafka {
 	/**
 	 * Create an initial {@link KafkaProducerMessageHandlerSpec} with ProducerFactory.
 	 * @param producerFactory the {@link ProducerFactory} Java 8 Lambda.
+	 * @param replyContainer a listener container for replies.
 	 * @param <K> the Kafka message key type.
-	 * @param <V> the Kafka message value type.
+	 * @param <V> the Kafka message value type (request).
+	 * @param <R> the Kafka message value type (reply).
 	 * @return the KafkaGatewayMessageHandlerSpec.
 	 * @see <a href="https://kafka.apache.org/documentation.html#producerconfigs">Kafka Producer Configs</a>
 	 */
