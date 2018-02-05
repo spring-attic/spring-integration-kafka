@@ -17,7 +17,11 @@
 package org.springframework.integration.kafka.outbound;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +29,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -47,6 +52,7 @@ import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.converter.KafkaMessageHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -82,6 +88,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private final boolean isGateway;
 
+	private final Map<String, Set<Integer>> replyTopicsAndPartitions = new HashMap<>();
+
 	private EvaluationContext evaluationContext;
 
 	private volatile Expression topicExpression;
@@ -110,7 +118,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
-	private byte[] replyTopic;
+	private volatile boolean noOutputChannel;
 
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
@@ -123,6 +131,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		}
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
+		}
+		else {
+			this.headerMapper = new SimpleKafkaHeaderMapper();
 		}
 	}
 
@@ -261,11 +272,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		this.replyMessageConverter = messageConverter;
 	}
 
-	// TODO: expose the reply topic in Replying template.
-	public void setReplyTopic(String replyTopic) {
-		this.replyTopic = replyTopic.getBytes(StandardCharsets.UTF_8);
-	}
-
 	@Override
 	public String getComponentType() {
 		return "kafka:outbound-channel-adapter";
@@ -333,17 +339,22 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 				(K) messageKey, payload, headers);
 		ListenableFuture<SendResult<K, V>> sendFuture;
 		RequestReplyFuture<K, V, Object> gatewayFuture = null;
-		MessageChannel metadataChannel;
+		MessageChannel metadataChannel = null;
 		if (this.isGateway) {
 			metadataChannel = getSendSuccessChannel();
-			producerRecord.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic));
+			producerRecord.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, getReplyTopic(message)));
 			gatewayFuture = ((ReplyingKafkaTemplate<K, V, Object>) this.kafkaTemplate).sendAndReceive(producerRecord);
 			sendFuture = gatewayFuture.getSendFuture();
 		}
 		else {
 			sendFuture = this.kafkaTemplate.send(producerRecord);
 			// TODO: In 3.1, always use the success channel.
-			metadataChannel = getOutputChannel();
+			if (!this.noOutputChannel) {
+				metadataChannel = getOutputChannel();
+				if (metadataChannel == null) {
+					this.noOutputChannel = true;
+				}
+			}
 			if (metadataChannel == null) {
 				metadataChannel = getSendSuccessChannel();
 			}
@@ -360,6 +371,68 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 			throw new MessageHandlingException(message, e);
 		}
 		return processReplyFuture(gatewayFuture);
+	}
+
+	private byte[] getReplyTopic(final Message<?> message) {
+		if (this.replyTopicsAndPartitions.isEmpty()) {
+			determineValidReplyTopicsAndPartitions();
+		}
+		Object replyHeader = message.getHeaders().get(KafkaHeaders.REPLY_TOPIC);
+		byte[] replyTopic = null;
+		String topicToCheck = null;
+		if (replyHeader instanceof String) {
+			replyTopic = ((String) replyHeader).getBytes(StandardCharsets.UTF_8);
+			topicToCheck = (String) replyHeader;
+		}
+		else if (replyHeader instanceof byte[]) {
+			replyTopic = (byte[]) replyHeader;
+		}
+		else if (replyHeader != null) {
+			throw new IllegalStateException(KafkaHeaders.REPLY_TOPIC + " must be String or byte[]");
+		}
+		if (replyTopic == null) {
+			if (this.replyTopicsAndPartitions.size() == 1) {
+				replyTopic = this.replyTopicsAndPartitions.keySet().iterator().next().getBytes(StandardCharsets.UTF_8);
+			}
+			else {
+				throw new IllegalStateException("No reply topic header and no default reply topic is can be determined");
+			}
+		}
+		else {
+			if (topicToCheck == null) {
+				topicToCheck = new String(replyTopic, StandardCharsets.UTF_8);
+			}
+			if (!this.replyTopicsAndPartitions.keySet().contains(topicToCheck)) {
+				throw new IllegalStateException("The reply topic header ["
+						+ topicToCheck +
+						"] does not match any reply container topic: " + this.replyTopicsAndPartitions.keySet());
+			}
+		}
+		Integer replyPartition = message.getHeaders().get(KafkaHeaders.REPLY_PARTITION, Integer.class);
+		if (replyPartition != null) {
+			if (topicToCheck == null) {
+				topicToCheck = new String(replyTopic, StandardCharsets.UTF_8);
+			}
+			if (!this.replyTopicsAndPartitions.get(topicToCheck).contains(replyPartition)) {
+				throw new IllegalStateException("The reply partition header ["
+						+ replyPartition + "] does not match any reply container partition for topic ["
+						+ topicToCheck + "]: " + this.replyTopicsAndPartitions.get(topicToCheck));
+			}
+		}
+		return replyTopic;
+	}
+
+	private void determineValidReplyTopicsAndPartitions() {
+		ReplyingKafkaTemplate<?, ?, ?> rkt = (ReplyingKafkaTemplate<?, ?, ?>) kafkaTemplate;
+		Collection<TopicPartition> replyTopics = rkt.getAssignedReplyTopicPartitions();
+		Map<String, Set<Integer>> topicsAndPartitions = new HashMap<>();
+		if (replyTopics != null) {
+			replyTopics.forEach(tp -> {
+				topicsAndPartitions.computeIfAbsent(tp.topic(), (k) -> new TreeSet<>());
+				topicsAndPartitions.get(tp.topic()).add(tp.partition());
+			});
+			this.replyTopicsAndPartitions.putAll(topicsAndPartitions);
+		}
 	}
 
 	public void processSendResult(final Message<?> message, final ProducerRecord<K, V> producerRecord,

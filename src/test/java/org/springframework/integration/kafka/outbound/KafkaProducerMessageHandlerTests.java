@@ -17,19 +17,25 @@
 package org.springframework.integration.kafka.outbound;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -56,6 +62,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.PollableChannel;
 import org.springframework.messaging.support.ErrorMessage;
@@ -275,20 +282,34 @@ public class KafkaProducerMessageHandlerTests {
 	}
 
 	@Test
-	public void testOutboundGateway() {
+	public void testOutboundGateway() throws Exception {
 		ConsumerFactory<Integer, String> consumerFactory = new DefaultKafkaConsumerFactory<>(
 				KafkaTestUtils.consumerProps(topic5, "false", embeddedKafka));
 		ContainerProperties containerProperties = new ContainerProperties(topic6);
+		final CountDownLatch assigned = new CountDownLatch(1);
+		containerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				// empty
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				assigned.countDown();
+			}
+
+		});
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(consumerFactory, containerProperties);
 		ProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(producerFactory, container);
 		template.start();
+		assertThat(assigned.await(30, TimeUnit.SECONDS)).isTrue();
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
 		handler.setBeanFactory(mock(BeanFactory.class));
 		QueueChannel replies = new QueueChannel();
 		handler.setOutputChannel(replies);
-		handler.setReplyTopic(topic6);
 		handler.afterPropertiesSet();
 
 		Message<?> message = MessageBuilder.withPayload("foo")
@@ -312,6 +333,39 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(reply.getPayload()).isEqualTo("FOO");
 		assertThat(reply.getHeaders().get(KafkaHeaders.TOPIC)).isNull();
 		assertThat(reply.getHeaders().get(KafkaHeaders.CORRELATION_ID)).isNull();
+
+		message = MessageBuilder.withPayload("foo")
+				.setHeader(KafkaHeaders.TOPIC, topic5)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.setHeader(KafkaHeaders.PARTITION_ID, 1)
+				.setHeader(KafkaHeaders.REPLY_TOPIC, "bad")
+				.build();
+		try {
+			handler.handleMessage(message);
+			fail("Expected exception");
+		}
+		catch (MessageHandlingException e) {
+			assertThat(e.getCause().getMessage())
+					.isEqualTo("The reply topic header [bad] does not match any reply container topic: "
+							+ "[" + topic6 + "]");
+		}
+		message = MessageBuilder.withPayload("foo")
+				.setHeader(KafkaHeaders.TOPIC, topic5)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.setHeader(KafkaHeaders.PARTITION_ID, 1)
+				.setHeader(KafkaHeaders.REPLY_PARTITION, 999)
+				.build();
+		try {
+			handler.handleMessage(message);
+			fail("Expected exception");
+		}
+		catch (MessageHandlingException e) {
+			assertThat(e.getCause().getMessage())
+					.isEqualTo(
+							"The reply partition header [999] does not match any reply container partition for topic ["
+									+ topic6 + "]: [0, 1]");
+		}
+
 		template.stop();
 		// discard from the test consumer
 		KafkaTestUtils.getSingleRecord(consumer, topic6);
