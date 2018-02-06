@@ -52,8 +52,6 @@ import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessage
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -74,7 +72,6 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.PollableChannel;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.retry.support.RetryTemplate;
@@ -338,7 +335,8 @@ public class KafkaDslTests {
 		@Bean
 		public IntegrationFlow outboundGateFlow() {
 			return IntegrationFlows.from(Gate.class)
-					.handle(Kafka.outboundGateway(producerFactory(), replyContainer()))
+					.handle(Kafka.outboundGateway(producerFactory(), replyContainer())
+								.configureKafkaTemplate(t -> t.replyTimeout(30_000)))
 					.get();
 		}
 
@@ -361,19 +359,19 @@ public class KafkaDslTests {
 			return new KafkaMessageListenerContainer<>(consumerFactory(), containerProperties);
 		}
 
-		// TODO: change to inbound gateway when implemented
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory() {
-			ConcurrentKafkaListenerContainerFactory<Integer, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory());
-			factory.setReplyTemplate(new KafkaTemplate<Integer, String>(producerFactory()));
-			return factory;
+		public IntegrationFlow serverGateway() {
+			return IntegrationFlows
+					.from(Kafka.inboundGateway(consumerFactory(), containerProperties(),
+							producerFactory()))
+					.<String, String>transform(String::toUpperCase)
+					.get();
 		}
 
-		@KafkaListener(id = "gateServer", topics = TEST_TOPIC4)
-		@SendTo
-		public String listen(String in) {
-			return in.toUpperCase();
+		private ContainerProperties containerProperties() {
+			ContainerProperties containerProperties = new ContainerProperties(TEST_TOPIC4);
+			containerProperties.setGroupId("inGateGroup");
+			return containerProperties;
 		}
 
 	}

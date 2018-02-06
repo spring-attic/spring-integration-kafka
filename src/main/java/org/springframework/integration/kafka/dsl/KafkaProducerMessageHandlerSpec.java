@@ -24,7 +24,6 @@ import java.util.function.Function;
 import org.springframework.expression.Expression;
 import org.springframework.expression.common.LiteralExpression;
 import org.springframework.integration.dsl.ComponentsRegistration;
-import org.springframework.integration.dsl.IntegrationComponentSpec;
 import org.springframework.integration.dsl.MessageHandlerSpec;
 import org.springframework.integration.expression.FunctionExpression;
 import org.springframework.integration.expression.ValueExpression;
@@ -32,9 +31,6 @@ import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandle
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaderMapper;
-import org.springframework.kafka.support.LoggingProducerListener;
-import org.springframework.kafka.support.ProducerListener;
-import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.util.Assert;
@@ -333,7 +329,7 @@ public class KafkaProducerMessageHandlerSpec<K, V, S extends KafkaProducerMessag
 
 		/**
 		 * Configure a Kafka Template by invoking the {@link Consumer} callback, with a
-		 * {@link KafkaProducerMessageHandlerSpec.KafkaTemplateSpec} argument.
+		 * {@link KafkaTemplateSpec} argument.
 		 * @param configurer the configurer Java 8 Lambda.
 		 * @return the spec.
 		 */
@@ -347,60 +343,6 @@ public class KafkaProducerMessageHandlerSpec<K, V, S extends KafkaProducerMessag
 		@Override
 		public Map<Object, String> getComponentsToRegister() {
 			return Collections.singletonMap(this.kafkaTemplateSpec.get(), this.kafkaTemplateSpec.getId());
-		}
-
-	}
-
-	/**
-	 * An {@link IntegrationComponentSpec} implementation for the {@link KafkaTemplate}.
-	 *
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 */
-	public static class KafkaTemplateSpec<K, V>
-			extends IntegrationComponentSpec<KafkaTemplateSpec<K, V>, KafkaTemplate<K, V>> {
-
-		KafkaTemplateSpec(KafkaTemplate<K, V> kafkaTemplate) {
-			this.target = kafkaTemplate;
-		}
-
-		@Override
-		public KafkaTemplateSpec<K, V> id(String id) {
-			return super.id(id);
-		}
-
-		/**
-		 /**
-		 * Set the default topic for send methods where a topic is not
-		 * providing.
-		 * @param defaultTopic the topic.
-		 * @return the spec
-		 */
-		public KafkaTemplateSpec<K, V> defaultTopic(String defaultTopic) {
-			this.target.setDefaultTopic(defaultTopic);
-			return this;
-		}
-
-		/**
-		 * Set a {@link ProducerListener} which will be invoked when Kafka acknowledges
-		 * a send operation. By default a {@link LoggingProducerListener} is configured
-		 * which logs errors only.
-		 * @param producerListener the listener; may be {@code null}.
-		 * @return the spec
-		 */
-		public KafkaTemplateSpec<K, V> producerListener(ProducerListener<K, V> producerListener) {
-			this.target.setProducerListener(producerListener);
-			return this;
-		}
-
-		/**
-		 * Set the message converter to use.
-		 * @param messageConverter the message converter.
-		 * @return the spec
-		 */
-		public KafkaTemplateSpec<K, V> messageConverter(RecordMessageConverter messageConverter) {
-			this.target.setMessageConverter(messageConverter);
-			return this;
 		}
 
 	}

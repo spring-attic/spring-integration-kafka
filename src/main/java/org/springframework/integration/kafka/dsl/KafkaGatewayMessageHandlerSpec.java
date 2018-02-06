@@ -83,7 +83,7 @@ public class KafkaGatewayMessageHandlerSpec<K, V, R, S extends KafkaGatewayMessa
 
 		/**
 		 * Configure a Kafka Template by invoking the {@link Consumer} callback, with a
-		 * {@link KafkaProducerMessageHandlerSpec.KafkaTemplateSpec} argument.
+		 * {@link KafkaTemplateSpec} argument.
 		 * @param configurer the configurer Java 8 Lambda.
 		 * @return the spec.
 		 */

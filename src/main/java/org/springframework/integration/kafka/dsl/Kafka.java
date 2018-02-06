@@ -294,6 +294,7 @@ public final class Kafka {
 	 * @param <R> the Kafka message value type (reply).
 	 * @param <S> the {@link KafkaGatewayMessageHandlerSpec} extension type.
 	 * @return the KafkaGatewayMessageHandlerSpec.
+	 * @since 3.0.2
 	 */
 	public static <K, V, R, S extends KafkaGatewayMessageHandlerSpec<K, V, R, S>> KafkaGatewayMessageHandlerSpec<K, V, R, S>
 			outboundGateway(ReplyingKafkaTemplate<K, V, R> kafkaTemplate) {
@@ -309,13 +310,67 @@ public final class Kafka {
 	 * @param <V> the Kafka message value type (request).
 	 * @param <R> the Kafka message value type (reply).
 	 * @return the KafkaGatewayMessageHandlerSpec.
-	 * @see <a href="https://kafka.apache.org/documentation.html#producerconfigs">Kafka Producer Configs</a>
+	 * @since 3.0.2
 	 */
 	public static <K, V, R> KafkaGatewayMessageHandlerSpec.KafkaGatewayMessageHandlerTemplateSpec<K, V, R> outboundGateway(
 			ProducerFactory<K, V> producerFactory, GenericMessageListenerContainer<K, R> replyContainer) {
 
 		return new KafkaGatewayMessageHandlerSpec.KafkaGatewayMessageHandlerTemplateSpec<>(producerFactory,
 				replyContainer);
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundGatewaySpec} with the provided container and
+	 * template.
+	 * @param container the container.
+	 * @param template the template.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type (request).
+	 * @param <R> the Kafka message value type (reply).
+	 * @param <S> the {@link KafkaInboundGatewaySpec} extension type.
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public static <K, V, R, S extends KafkaInboundGatewaySpec<K, V, R, S>> KafkaInboundGatewaySpec<K, V, R, S>
+			inboundGateway(AbstractMessageListenerContainer<K, V> container, KafkaTemplate<K, R> template) {
+
+		return new KafkaInboundGatewaySpec<>(container, template);
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundGatewaySpec} with the provided consumer factory,
+	 * container properties and producer factory.
+	 * @param consumerFactory the onsumer factory.
+	 * @param containerProperties the container properties.
+	 * @param producerFactory the producer factory.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type (request).
+	 * @param <R> the Kafka message value type (reply).
+	 * @return the spec.
+	 * @since 3.0.2
+	 */
+	public static <K, V, R> KafkaInboundGatewaySpec.KafkaInboundGatewayListenerContainerSpec<K, V, R> inboundGateway(
+			ConsumerFactory<K, V> consumerFactory, ContainerProperties containerProperties,
+			ProducerFactory<K, R> producerFactory) {
+		return inboundGateway(
+				new KafkaMessageListenerContainerSpec<>(consumerFactory, containerProperties),
+				new KafkaTemplateSpec<>(producerFactory));
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundGatewaySpec} with the provided container and
+	 * template specs.
+	 * @param containerSpec the container spec.
+	 * @param templateSpec the template spec.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type (request).
+	 * @param <R> the Kafka message value type (reply).
+	 * @return the spec.
+	 */
+	public static <K, V, R> KafkaInboundGatewaySpec.KafkaInboundGatewayListenerContainerSpec<K, V, R> inboundGateway(
+			KafkaMessageListenerContainerSpec<K, V> containerSpec, KafkaTemplateSpec<K, R> templateSpec) {
+
+		return new KafkaInboundGatewaySpec.KafkaInboundGatewayListenerContainerSpec<>(containerSpec, templateSpec);
 	}
 
 	private static <K, V>
