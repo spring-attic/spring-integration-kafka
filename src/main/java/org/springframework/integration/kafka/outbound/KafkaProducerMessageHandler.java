@@ -274,7 +274,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	@Override
 	public String getComponentType() {
-		return "kafka:outbound-channel-adapter";
+		return this.isGateway ? "kafka:outbound-gateway" : "kafka:outbound-channel-adapter";
 	}
 
 	protected MessageChannel getSendFailureChannel() {
