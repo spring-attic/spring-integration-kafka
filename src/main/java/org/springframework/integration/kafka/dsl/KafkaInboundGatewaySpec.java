@@ -16,15 +16,13 @@
 
 package org.springframework.integration.kafka.dsl;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
 
 import org.springframework.integration.dsl.ComponentsRegistration;
-import org.springframework.integration.dsl.MessageProducerSpec;
 import org.springframework.integration.dsl.MessagingGatewaySpec;
 import org.springframework.integration.kafka.inbound.KafkaInboundGateway;
-import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.support.ObjectStringMapBuilder;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -34,7 +32,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
 /**
- * A {@link MessageProducerSpec} implementation for the {@link KafkaMessageDrivenChannelAdapter}.
+ * A {@link MessagingGatewaySpec} implementation for the {@link KafkaInboundGateway}.
  *
  * @param <K> the key type.
  * @param <V> the request value type.
@@ -137,7 +135,10 @@ public class KafkaInboundGatewaySpec<K, V, R, S extends KafkaInboundGatewaySpec<
 
 		@Override
 		public Map<Object, String> getComponentsToRegister() {
-			return Collections.singletonMap(this.containerSpec.getContainer(), this.containerSpec.getId());
+			return new ObjectStringMapBuilder()
+					.put(this.containerSpec.getContainer(), this.containerSpec.getId())
+					.put(this.templateSpec, this.templateSpec.getId())
+					.get();
 		}
 
 	}

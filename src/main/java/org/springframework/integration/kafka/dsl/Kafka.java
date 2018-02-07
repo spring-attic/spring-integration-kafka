@@ -340,7 +340,7 @@ public final class Kafka {
 	/**
 	 * Create an initial {@link KafkaInboundGatewaySpec} with the provided consumer factory,
 	 * container properties and producer factory.
-	 * @param consumerFactory the onsumer factory.
+	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 * @param producerFactory the producer factory.
 	 * @param <K> the Kafka message key type.
@@ -366,6 +366,7 @@ public final class Kafka {
 	 * @param <V> the Kafka message value type (request).
 	 * @param <R> the Kafka message value type (reply).
 	 * @return the spec.
+	 * @since 3.0.2
 	 */
 	public static <K, V, R> KafkaInboundGatewaySpec.KafkaInboundGatewayListenerContainerSpec<K, V, R> inboundGateway(
 			KafkaMessageListenerContainerSpec<K, V> containerSpec, KafkaTemplateSpec<K, R> templateSpec) {
