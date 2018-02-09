@@ -16,6 +16,7 @@
 
 package org.springframework.integration.kafka.outbound;
 
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -68,8 +69,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * Kafka Message Handler; when supplied with a {@link ReplyingKafkaTemplate}
- * the handler is used in an outbound gateway. When supplied with a simple
- * {@link KafkaTemplate} it used in an outbound channel adapter.
+ * it is used as the handler in an outbound gateway. When supplied with a simple
+ * {@link KafkaTemplate} it used as the handler in an outbound channel adapter.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -120,7 +121,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
 
-	private Class<?> replyPayloadType;
+	private Type replyPayloadType = Object.class;
 
 	private volatile boolean noOutputChannel;
 
@@ -284,7 +285,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	 * @since 3.0.2
 	 * @see #setReplyMessageConverter(RecordMessageConverter)
 	 */
-	public void setReplyPayloadType(Class<?> payloadType) {
+	public void setReplyPayloadType(Type payloadType) {
+		Assert.notNull(payloadType, "'payloadType' cannot be null");
 		this.replyPayloadType = payloadType;
 	}
 
