@@ -39,6 +39,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
  * @param <V> the value type.
  *
  * @author Artem Bilan
+ * @author Gary Russell
  * @since 3.0
  */
 public class KafkaMessageListenerContainerSpec<K, V>

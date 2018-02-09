@@ -67,7 +67,9 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
- * Kafka Message Handler.
+ * Kafka Message Handler; when supplied with a {@link ReplyingKafkaTemplate}
+ * the handler is used in an outbound gateway. When supplied with a simple
+ * {@link KafkaTemplate} it used in an outbound channel adapter.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -117,6 +119,8 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	private String sendSuccessChannelName;
 
 	private ErrorMessageStrategy errorMessageStrategy = new DefaultErrorMessageStrategy();
+
+	private Class<?> replyPayloadType;
 
 	private volatile boolean noOutputChannel;
 
@@ -266,10 +270,22 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	 * Set a message converter for gateway replies.
 	 * @param messageConverter the converter.
 	 * @since 3.0.2
+	 * @see #setReplyPayloadType(Class)
 	 */
 	public void setReplyMessageConverter(RecordMessageConverter messageConverter) {
 		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
 		this.replyMessageConverter = messageConverter;
+	}
+
+	/**
+	 * When using a type-aware message converter (such as {@code StringJsonMessageConverter},
+	 * set the payload type the converter should create. Defaults to {@link Object}.
+	 * @param payloadType the type.
+	 * @since 3.0.2
+	 * @see #setReplyMessageConverter(RecordMessageConverter)
+	 */
+	public void setReplyPayloadType(Class<?> payloadType) {
+		this.replyPayloadType = payloadType;
 	}
 
 	@Override
@@ -498,7 +514,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 				public void onSuccess(ConsumerRecord<?, Object> result) {
 					try {
 						set(dontLeakHeaders(KafkaProducerMessageHandler.this.replyMessageConverter.toMessage(result,
-								null, null, null))); // TODO support reply payload type?
+								null, null, KafkaProducerMessageHandler.this.replyPayloadType)));
 					}
 					catch (Exception e) {
 						setException(e);

@@ -36,6 +36,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -101,6 +102,11 @@ public class KafkaProducerMessageHandlerTests {
 				KafkaTestUtils.consumerProps("testOut", "true", embeddedKafka));
 		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
+	}
+
+	@AfterClass
+	public static void tearDown() {
+		consumer.close();
 	}
 
 	@Test

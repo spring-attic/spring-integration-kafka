@@ -44,10 +44,10 @@ import org.springframework.util.Assert;
  * @since 3.0.2
  *
  */
-public class KafkaGatewayMessageHandlerSpec<K, V, R, S extends KafkaGatewayMessageHandlerSpec<K, V, R, S>>
+public class KafkaOutboundGatewaySpec<K, V, R, S extends KafkaOutboundGatewaySpec<K, V, R, S>>
 		extends KafkaProducerMessageHandlerSpec<K, V, S> {
 
-	KafkaGatewayMessageHandlerSpec(ReplyingKafkaTemplate<K, V, R> kafkaTemplate) {
+	KafkaOutboundGatewaySpec(ReplyingKafkaTemplate<K, V, R> kafkaTemplate) {
 		super(kafkaTemplate);
 	}
 
@@ -69,7 +69,7 @@ public class KafkaGatewayMessageHandlerSpec<K, V, R, S extends KafkaGatewayMessa
 	 * @param <R> the reply value type.
 	 */
 	public static class KafkaGatewayMessageHandlerTemplateSpec<K, V, R>
-		extends KafkaGatewayMessageHandlerSpec<K, V, R, KafkaGatewayMessageHandlerTemplateSpec<K, V, R>>
+		extends KafkaOutboundGatewaySpec<K, V, R, KafkaGatewayMessageHandlerTemplateSpec<K, V, R>>
 			implements ComponentsRegistration {
 
 		private final ReplyingKafkaTemplateSpec<K, V, R> kafkaTemplateSpec;

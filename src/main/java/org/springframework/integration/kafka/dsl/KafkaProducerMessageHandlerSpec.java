@@ -289,7 +289,7 @@ public class KafkaProducerMessageHandlerSpec<K, V, S extends KafkaProducerMessag
 	}
 
 	/**
-	 * Set the channel to which Failureful send results are sent.
+	 * Set the channel to which failed send results are sent.
 	 * @param sendFailureChannel the channel.
 	 * @return the spec.
 	 * @since 3.0.2
@@ -300,7 +300,7 @@ public class KafkaProducerMessageHandlerSpec<K, V, S extends KafkaProducerMessag
 	}
 
 	/**
-	 * Set the channel to which Failureful send results are sent.
+	 * Set the channel to which failed send results are sent.
 	 * @param sendFailureChannel the channel name.
 	 * @return the spec.
 	 * @since 3.0.2

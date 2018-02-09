@@ -36,6 +36,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
  *
  * @author Artem Bilan
  * @author Nasko Vasilev
+ * @author Gary Russell
  *
  * @since 3.0
  */
@@ -292,14 +293,14 @@ public final class Kafka {
 	 * @param <K> the Kafka message key type.
 	 * @param <V> the Kafka message value type (request).
 	 * @param <R> the Kafka message value type (reply).
-	 * @param <S> the {@link KafkaGatewayMessageHandlerSpec} extension type.
+	 * @param <S> the {@link KafkaOutboundGatewaySpec} extension type.
 	 * @return the KafkaGatewayMessageHandlerSpec.
 	 * @since 3.0.2
 	 */
-	public static <K, V, R, S extends KafkaGatewayMessageHandlerSpec<K, V, R, S>> KafkaGatewayMessageHandlerSpec<K, V, R, S>
+	public static <K, V, R, S extends KafkaOutboundGatewaySpec<K, V, R, S>> KafkaOutboundGatewaySpec<K, V, R, S>
 			outboundGateway(ReplyingKafkaTemplate<K, V, R> kafkaTemplate) {
 
-		return new KafkaGatewayMessageHandlerSpec<>(kafkaTemplate);
+		return new KafkaOutboundGatewaySpec<>(kafkaTemplate);
 	}
 
 	/**
@@ -312,10 +313,10 @@ public final class Kafka {
 	 * @return the KafkaGatewayMessageHandlerSpec.
 	 * @since 3.0.2
 	 */
-	public static <K, V, R> KafkaGatewayMessageHandlerSpec.KafkaGatewayMessageHandlerTemplateSpec<K, V, R> outboundGateway(
+	public static <K, V, R> KafkaOutboundGatewaySpec.KafkaGatewayMessageHandlerTemplateSpec<K, V, R> outboundGateway(
 			ProducerFactory<K, V> producerFactory, GenericMessageListenerContainer<K, R> replyContainer) {
 
-		return new KafkaGatewayMessageHandlerSpec.KafkaGatewayMessageHandlerTemplateSpec<>(producerFactory,
+		return new KafkaOutboundGatewaySpec.KafkaGatewayMessageHandlerTemplateSpec<>(producerFactory,
 				replyContainer);
 	}
 
