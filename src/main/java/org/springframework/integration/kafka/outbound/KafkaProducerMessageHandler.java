@@ -35,7 +35,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
@@ -46,7 +45,6 @@ import org.springframework.integration.kafka.support.KafkaSendFailureException;
 import org.springframework.integration.support.DefaultErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
 import org.springframework.kafka.requestreply.RequestReplyFuture;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -131,7 +129,6 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private volatile boolean noOutputChannel;
 
-	@SuppressWarnings("unchecked")
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
 		this.kafkaTemplate = kafkaTemplate;
@@ -147,10 +144,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();
 		}
-		// TODO - add isTransactional() to KafkaTemplate
-		this.transactional = ((ProducerFactory<K, V>) new DirectFieldAccessor(kafkaTemplate)
-				.getPropertyValue("producerFactory"))
-						.transactionCapable();
+		this.transactional = kafkaTemplate.isTransactional();
 		if (this.transactional && this.isGateway) {
 			logger.warn("The KafkaTemplate is transactional; this gateway will only work if the consumer is "
 					+ "configured to read uncommitted records");
