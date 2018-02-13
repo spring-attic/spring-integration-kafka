@@ -101,6 +101,7 @@ public class InboundGatewayTests {
 		gateway.setRequestChannel(out);
 		gateway.setReplyChannel(reply);
 		gateway.setBeanFactory(mock(BeanFactory.class));
+		gateway.setReplyTimeout(30_000);
 		gateway.afterPropertiesSet();
 		gateway.setMessageConverter(new MessagingMessageConverter() {
 
@@ -120,7 +121,7 @@ public class InboundGatewayTests {
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		template.sendDefault(0, 1487694048607L, 1, "foo");
-		Message<?> received = out.receive(10_000);
+		Message<?> received = out.receive(30_000);
 		assertThat(received).isNotNull();
 
 		MessageHeaders headers = received.getHeaders();
@@ -185,13 +186,13 @@ public class InboundGatewayTests {
 			}
 
 		});
-		gateway.setReplyTimeout(10_000);
+		gateway.setReplyTimeout(30_000);
 		gateway.afterPropertiesSet();
 		gateway.start();
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		template.sendDefault(0, 1487694048607L, 1, "foo");
-		ErrorMessage em = (ErrorMessage) errors.receive(10_000);
+		ErrorMessage em = (ErrorMessage) errors.receive(30_000);
 		assertThat(em).isNotNull();
 		Message<?> failed = ((MessagingException) em.getPayload()).getFailedMessage();
 		assertThat(failed).isNotNull();
@@ -259,7 +260,7 @@ public class InboundGatewayTests {
 			}
 
 		});
-		gateway.setReplyTimeout(10_000);
+		gateway.setReplyTimeout(30_000);
 		RetryTemplate retryTemplate = new RetryTemplate();
 		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
 		retryPolicy.setMaxAttempts(2);
@@ -273,7 +274,7 @@ public class InboundGatewayTests {
 		ContainerTestUtils.waitForAssignment(container, 2);
 
 		template.sendDefault(0, 1487694048607L, 1, "foo");
-		ErrorMessage em = (ErrorMessage) errors.receive(10_000);
+		ErrorMessage em = (ErrorMessage) errors.receive(30_000);
 		assertThat(em).isNotNull();
 		Message<?> failed = ((MessagingException) em.getPayload()).getFailedMessage();
 		assertThat(failed).isNotNull();
