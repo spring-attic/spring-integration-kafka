@@ -35,6 +35,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.integration.MessageTimeoutException;
@@ -45,6 +46,7 @@ import org.springframework.integration.kafka.support.KafkaSendFailureException;
 import org.springframework.integration.support.DefaultErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
 import org.springframework.kafka.requestreply.RequestReplyFuture;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -62,6 +64,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.ErrorMessage;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -94,15 +97,17 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private final boolean isGateway;
 
+	private final boolean transactional;
+
 	private EvaluationContext evaluationContext;
 
-	private volatile Expression topicExpression;
+	private Expression topicExpression;
 
-	private volatile Expression messageKeyExpression;
+	private Expression messageKeyExpression;
 
-	private volatile Expression partitionIdExpression;
+	private Expression partitionIdExpression;
 
-	private volatile Expression timestampExpression;
+	private Expression timestampExpression;
 
 	private boolean sync;
 
@@ -126,6 +131,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	private volatile boolean noOutputChannel;
 
+	@SuppressWarnings("unchecked")
 	public KafkaProducerMessageHandler(final KafkaTemplate<K, V> kafkaTemplate) {
 		Assert.notNull(kafkaTemplate, "kafkaTemplate cannot be null");
 		this.kafkaTemplate = kafkaTemplate;
@@ -140,6 +146,14 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		}
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();
+		}
+		// TODO - add isTransactional() to KafkaTemplate
+		this.transactional = ((ProducerFactory<K, V>) new DirectFieldAccessor(kafkaTemplate)
+				.getPropertyValue("producerFactory"))
+						.transactionCapable();
+		if (this.transactional && this.isGateway) {
+			logger.warn("The KafkaTemplate is transactional; this gateway will only work if the consumer is "
+					+ "configured to read uncommitted records");
 		}
 	}
 
@@ -367,7 +381,14 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 			sendFuture = gatewayFuture.getSendFuture();
 		}
 		else {
-			sendFuture = this.kafkaTemplate.send(producerRecord);
+			if (this.transactional && !TransactionSynchronizationManager.isActualTransactionActive()) {
+				sendFuture = this.kafkaTemplate.executeInTransaction(t -> {
+					return t.send(producerRecord);
+				});
+			}
+			else {
+				sendFuture = this.kafkaTemplate.send(producerRecord);
+			}
 			// TODO: In 3.1, always use the success channel.
 			if (!this.noOutputChannel) {
 				metadataChannel = getOutputChannel();
