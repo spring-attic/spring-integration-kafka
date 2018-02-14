@@ -8,4 +8,4 @@ cache:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
 script:
-  - ./gradlew check --refresh-dependencies --no-daemon
+  - ./gradlew check --refresh-dependencies --no-daemon --debug -Dtest.single=InboundGatewayTests
