@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.context.ApplicationListener;
 import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.context.OrderlyShutdownCapable;
@@ -33,7 +32,6 @@ import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessage
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.integration.support.MessageBuilder;
-import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.MessageListener;
@@ -71,7 +69,7 @@ import org.springframework.util.Assert;
  *
  */
 public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSupport implements OrderlyShutdownCapable,
-		Pausable, ApplicationListener<ListenerContainerIdleEvent> {
+		Pausable {
 
 	private static final ThreadLocal<AttributeAccessor> attributesHolder = new ThreadLocal<>();
 
@@ -297,17 +295,12 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	@Override
 	public void pause() {
-		Assert.state(this.messageListenerContainer.getContainerProperties().getIdleEventInterval() != null,
-			"Cannot pause an adapter unless the listener container has an 'idleEventInterval' configured; "
-				+ "a paused adapter needs a 'ListenerContainerIdleEvent' to be resumed");
-		this.pausePending.set(true);
+		this.messageListenerContainer.pause();
 	}
 
 	@Override
 	public void resume() {
-		if (this.paused.getAndSet(false)) {
-			this.resumePending.set(true);
-		}
+		this.messageListenerContainer.resume();
 	}
 
 	@Override
@@ -319,21 +312,6 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	@Override
 	public int afterShutdown() {
 		return getPhase();
-	}
-
-	@Override
-	public void onApplicationEvent(ListenerContainerIdleEvent event) {
-		Consumer<?, ?> consumer = event.getConsumer();
-		pauseIfNecessary(consumer);
-		if (this.resumePending.getAndSet(false)) {
-			consumer.resume(consumer.paused());
-		}
-	}
-
-	private void pauseIfNecessary(Consumer<?, ?> consumer) {
-		if (this.pausePending.getAndSet(false) && !this.paused.getAndSet(true)) {
-			consumer.pause(consumer.assignment());
-		}
 	}
 
 	/**
@@ -399,7 +377,6 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
-			pauseIfNecessary(consumer);
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(record, acknowledgment, consumer);
@@ -477,7 +454,6 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 			public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment,
 					Consumer<?, ?> consumer) {
 
-			pauseIfNecessary(consumer);
 			Message<?> message = null;
 			try {
 				message = toMessagingMessage(records, acknowledgment, consumer);

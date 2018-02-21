@@ -60,7 +60,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -473,11 +472,6 @@ public class MessageDrivenAdapterTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		KafkaMessageDrivenChannelAdapter adapter = new KafkaMessageDrivenChannelAdapter(container);
-		container.setApplicationEventPublisher(e -> {
-			if (e instanceof ListenerContainerIdleEvent) {
-				adapter.onApplicationEvent((ListenerContainerIdleEvent) e);
-			}
-		});
 		QueueChannel outputChannel = new QueueChannel();
 		adapter.setOutputChannel(outputChannel);
 		adapter.afterPropertiesSet();
