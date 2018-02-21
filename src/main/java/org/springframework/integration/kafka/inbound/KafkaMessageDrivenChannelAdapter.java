@@ -17,7 +17,6 @@
 package org.springframework.integration.kafka.inbound;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -80,12 +79,6 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	private final IntegrationBatchMessageListener batchListener = new IntegrationBatchMessageListener();
 
 	private final ListenerMode mode;
-
-	private final AtomicBoolean pausePending = new AtomicBoolean();
-
-	private final AtomicBoolean resumePending = new AtomicBoolean();
-
-	private final AtomicBoolean paused = new AtomicBoolean();
 
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
