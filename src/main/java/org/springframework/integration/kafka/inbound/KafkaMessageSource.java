@@ -229,8 +229,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object>
 			}
 			if (this.logger.isWarnEnabled()) {
 				this.logger.warn("'" + ConsumerConfig.MAX_POLL_RECORDS_CONFIG
-					+ "' has been forced to from " + (maxPoll == null ? "unspecified" : maxPoll)
-					+ "to 1, to avoid having to seek after each record");
+						+ "' has been forced from " + (maxPoll == null ? "unspecified" : maxPoll)
+						+ " to 1, to avoid having to seek after each record");
 			}
 			Map<String, Object> configs = new HashMap<>(suppliedConsumerFactory.getConfigurationProperties());
 			configs.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
