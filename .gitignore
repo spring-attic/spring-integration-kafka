@@ -12,3 +12,4 @@ target
 /bin/
 /classes/
 /out/
+.DS_Store
