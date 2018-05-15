@@ -158,7 +158,7 @@ public class KafkaMessageDrivenChannelAdapterSpec<K, V, S extends KafkaMessageDr
 
 	@Override
 	public Map<Object, String> getComponentsToRegister() {
-		return Collections.singletonMap(this.container, getId());
+		return Collections.singletonMap(this.container, getId() == null ? null : getId() + ".container");
 	}
 
 	/**
