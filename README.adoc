@@ -165,7 +165,14 @@ An example of xml configuration variant is shown here:
             </constructor-arg>
         </bean>
     </constructor-arg>
-    <constructor-arg name="topics" value="foo" />
+    <constructor-arg>
+	    <bean
+		class="org.springframework.kafka.listener.config.ContainerProperties">
+		<constructor-arg
+		    name="topics"
+		    value="foo" />
+	    </bean>
+    </constructor-arg>
 </bean>
 ----
 
