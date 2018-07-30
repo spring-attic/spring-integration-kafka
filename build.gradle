@@ -54,10 +54,10 @@ compileTestKotlin {
 
 ext {
 	assertkVersion = '0.10'
-	jacksonVersion = '2.9.5'
+	jacksonVersion = '2.9.6'
 	log4jVersion = '2.11.0'
-	springIntegrationVersion = '5.1.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.2.0.BUILD-SNAPSHOT'
+	springIntegrationVersion = '5.1.0.M1'
+	springKafkaVersion = '2.2.0.M1'
 
 	idPrefix = 'kafka'
 
@@ -108,7 +108,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.8'
+	toolVersion = '8.11'
 }
 
 jacocoTestReport {
