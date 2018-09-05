@@ -27,6 +27,8 @@ import org.springframework.integration.support.ObjectStringMapBuilder;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerSeekAware;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
@@ -41,6 +43,7 @@ import org.springframework.util.Assert;
  * @param <S> the target {@link KafkaInboundGatewaySpec} implementation type.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @since 3.0.2
  */
@@ -88,6 +91,18 @@ public class KafkaInboundGatewaySpec<K, V, R, S extends KafkaInboundGatewaySpec<
 	 */
 	public S recoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.target.setRecoveryCallback(recoveryCallback);
+		return _this();
+	}
+
+	/**
+	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
+	 * {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * @return the spec
+	 * @since 3.0.4
+	 */
+	public S consumerSeekAware(ConsumerSeekAware consumerSeekAware) {
+		this.target.setConsumerSeekAware(consumerSeekAware);
 		return _this();
 	}
 

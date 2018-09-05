@@ -23,10 +23,13 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -43,6 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.support.Acknowledgment;
@@ -105,6 +109,7 @@ public class InboundGatewayTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setIdleEventInterval(100L);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -133,6 +138,29 @@ public class InboundGatewayTests {
 			}
 
 		});
+
+		final CountDownLatch registerSeekCallbackCalledLatch = new CountDownLatch(1);
+		final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
+		final CountDownLatch onIdleContainerCalledLatch = new CountDownLatch(1);
+
+		gateway.setConsumerSeekAware(new ConsumerSeekAware() {
+
+			@Override
+			public void registerSeekCallback(ConsumerSeekCallback callback) {
+				registerSeekCallbackCalledLatch.countDown();
+			}
+
+			@Override
+			public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				onPartitionsAssignedCalledLatch.countDown();
+			}
+
+			@Override
+			public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				onIdleContainerCalledLatch.countDown();
+			}
+
+		});
 		gateway.start();
 		ContainerTestUtils.waitForAssignment(container, 2);
 
@@ -154,6 +182,9 @@ public class InboundGatewayTests {
 		ConsumerRecord<Integer, String> record = KafkaTestUtils.getSingleRecord(consumer, topic2);
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("FOO"));
+		assertThat(registerSeekCallbackCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		gateway.stop();
 	}

@@ -58,6 +58,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
@@ -210,6 +211,10 @@ public class KafkaDslTests {
 		this.kafkaTemplateTopic1.send(TEST_TOPIC3, "foo");
 		assertThat(this.config.sourceFlowLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.fromSource).isEqualTo("foo");
+
+		assertThat(this.config.registerSeekCallbackCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -227,6 +232,12 @@ public class KafkaDslTests {
 
 		private final CountDownLatch replyContainerLatch = new CountDownLatch(1);
 
+		private final CountDownLatch registerSeekCallbackCalledLatch = new CountDownLatch(1);
+
+		private final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
+
+		private final CountDownLatch onIdleContainerCalledLatch = new CountDownLatch(1);
+
 		private Object fromSource;
 
 		@Bean
@@ -243,17 +254,41 @@ public class KafkaDslTests {
 		}
 
 		@Bean
+		public ConsumerSeekAware consumerSeekAware() {
+			return new ConsumerSeekAware() {
+
+				@Override
+				public void registerSeekCallback(ConsumerSeekCallback callback) {
+					ContextConfiguration.this.registerSeekCallbackCalledLatch.countDown();
+				}
+
+				@Override
+				public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+					ContextConfiguration.this.onPartitionsAssignedCalledLatch.countDown();
+				}
+
+				@Override
+				public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+					ContextConfiguration.this.onIdleContainerCalledLatch.countDown();
+				}
+
+			};
+		}
+
+		@Bean
 		public IntegrationFlow topic1ListenerFromKafkaFlow() {
 			return IntegrationFlows
 					.from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
 							KafkaMessageDrivenChannelAdapter.ListenerMode.record, TEST_TOPIC1)
 							.configureListenerContainer(c ->
 									c.ackMode(ContainerProperties.AckMode.MANUAL)
+											.idleEventInterval(100L)
 											.id("topic1ListenerContainer"))
 							.recoveryCallback(new ErrorMessageSendingRecoverer(errorChannel(),
 									new RawRecordHeaderErrorMessageStrategy()))
 							.retryTemplate(new RetryTemplate())
-							.filterInRetry(true))
+							.filterInRetry(true)
+							.consumerSeekAware(consumerSeekAware()))
 					.filter(Message.class, m ->
 									m.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, Integer.class) < 101,
 							f -> f.throwExceptionOnRejection(true))

@@ -17,10 +17,12 @@
 package org.springframework.integration.kafka.inbound;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
@@ -33,6 +35,7 @@ import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerAdapter;
@@ -89,6 +92,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private boolean filterInRetry;
+
+	private ConsumerSeekAware consumerSeekAware;
 
 	/**
 	 * Construct an instance with mode {@link ListenerMode#record}.
@@ -223,6 +228,17 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	public void setPayloadType(Class<?> payloadType) {
 		this.recordListener.setFallbackType(payloadType);
 		this.batchListener.setFallbackType(payloadType);
+	}
+
+	/**
+	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
+	 * The methods from this object are called from the internal
+	 * {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * @since 3.0.4
+	 */
+	public void setConsumerSeekAware(ConsumerSeekAware consumerSeekAware) {
+		this.consumerSeekAware = consumerSeekAware;
 	}
 
 	@Override
@@ -369,6 +385,27 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		}
 
 		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.registerSeekCallback(callback);
+			}
+		}
+
+		@Override
+		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onPartitionsAssigned(assignments, callback);
+			}
+		}
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onIdleContainer(assignments, callback);
+			}
+		}
+
+		@Override
 		public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 			Message<?> message = null;
 			try {
@@ -404,7 +441,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 					new AtomicInteger(((RetryContext) attributesHolder.get()).getRetryCount() + 1);
 			if (message.getHeaders() instanceof KafkaMessageHeaders) {
 				((KafkaMessageHeaders) message.getHeaders()).getRawHeaders()
-					.put(IntegrationMessageHeaderAccessor.DELIVERY_ATTEMPT, deliveryAttempt);
+						.put(IntegrationMessageHeaderAccessor.DELIVERY_ATTEMPT, deliveryAttempt);
 			}
 			else {
 				messageToReturn = MessageBuilder.fromMessage(message)
@@ -444,8 +481,29 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		}
 
 		@Override
-			public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment,
-					Consumer<?, ?> consumer) {
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.registerSeekCallback(callback);
+			}
+		}
+
+		@Override
+		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onPartitionsAssigned(assignments, callback);
+			}
+		}
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
+				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onIdleContainer(assignments, callback);
+			}
+		}
+
+		@Override
+		public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment,
+				Consumer<?, ?> consumer) {
 
 			Message<?> message = null;
 			try {

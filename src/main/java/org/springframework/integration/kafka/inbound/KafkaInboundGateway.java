@@ -16,10 +16,12 @@
 
 package org.springframework.integration.kafka.inbound;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
@@ -32,6 +34,7 @@ import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
@@ -58,6 +61,7 @@ import org.springframework.util.Assert;
  * @param <R> the reply value type.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @since 3.0.2
  *
@@ -75,6 +79,8 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
+
+	private ConsumerSeekAware consumerSeekAware;
 
 	/**
 	 * Construct an instance with the provided container.
@@ -131,6 +137,17 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 	 */
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
+	}
+
+	/**
+	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
+	 * The methods from this object are called from the internal
+	 * {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * @since 3.0.4
+	 */
+	public void setConsumerSeekAware(ConsumerSeekAware consumerSeekAware) {
+		this.consumerSeekAware = consumerSeekAware;
 	}
 
 	@Override
@@ -210,6 +227,27 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 
 		IntegrationRecordMessageListener() {
 			super(null, null);
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			if (KafkaInboundGateway.this.consumerSeekAware != null) {
+				KafkaInboundGateway.this.consumerSeekAware.registerSeekCallback(callback);
+			}
+		}
+
+		@Override
+		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaInboundGateway.this.consumerSeekAware != null) {
+				KafkaInboundGateway.this.consumerSeekAware.onPartitionsAssigned(assignments, callback);
+			}
+		}
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (KafkaInboundGateway.this.consumerSeekAware != null) {
+				KafkaInboundGateway.this.consumerSeekAware.onIdleContainer(assignments, callback);
+			}
 		}
 
 		@Override

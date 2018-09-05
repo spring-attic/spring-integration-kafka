@@ -25,7 +25,9 @@ import org.springframework.integration.dsl.MessageProducerSpec;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -153,6 +155,18 @@ public class KafkaMessageDrivenChannelAdapterSpec<K, V, S extends KafkaMessageDr
 	 */
 	public S filterInRetry(boolean filterInRetry) {
 		this.target.setFilterInRetry(filterInRetry);
+		return _this();
+	}
+
+	/**
+	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
+	 * {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * @return the spec
+	 * @since 3.0.4
+	 */
+	public S consumerSeekAware(ConsumerSeekAware consumerSeekAware) {
+		this.target.setConsumerSeekAware(consumerSeekAware);
 		return _this();
 	}
 
