@@ -48,6 +48,7 @@ import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
+import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.integration.test.util.TestUtils;
@@ -58,7 +59,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
@@ -175,6 +175,7 @@ public class KafkaDslTests {
 			assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 			assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048633L);
 			assertThat(headers.get("foo")).isEqualTo("bar");
+			assertThat(headers.get(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK)).isNotNull();
 		}
 
 		for (int i = 0; i < 100; i++) {
@@ -212,7 +213,6 @@ public class KafkaDslTests {
 		assertThat(this.config.sourceFlowLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.fromSource).isEqualTo("foo");
 
-		assertThat(this.config.registerSeekCallbackCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
@@ -231,8 +231,6 @@ public class KafkaDslTests {
 		private final CountDownLatch sourceFlowLatch = new CountDownLatch(1);
 
 		private final CountDownLatch replyContainerLatch = new CountDownLatch(1);
-
-		private final CountDownLatch registerSeekCallbackCalledLatch = new CountDownLatch(1);
 
 		private final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
 
@@ -254,28 +252,6 @@ public class KafkaDslTests {
 		}
 
 		@Bean
-		public ConsumerSeekAware consumerSeekAware() {
-			return new ConsumerSeekAware() {
-
-				@Override
-				public void registerSeekCallback(ConsumerSeekCallback callback) {
-					ContextConfiguration.this.registerSeekCallbackCalledLatch.countDown();
-				}
-
-				@Override
-				public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-					ContextConfiguration.this.onPartitionsAssignedCalledLatch.countDown();
-				}
-
-				@Override
-				public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-					ContextConfiguration.this.onIdleContainerCalledLatch.countDown();
-				}
-
-			};
-		}
-
-		@Bean
 		public IntegrationFlow topic1ListenerFromKafkaFlow() {
 			return IntegrationFlows
 					.from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
@@ -288,7 +264,11 @@ public class KafkaDslTests {
 									new RawRecordHeaderErrorMessageStrategy()))
 							.retryTemplate(new RetryTemplate())
 							.filterInRetry(true)
-							.consumerSeekAware(consumerSeekAware()))
+							.onPartitionsAssignedSeekCallback((map, callback) ->
+									ContextConfiguration.this.onPartitionsAssignedCalledLatch.countDown())
+							.onIdleSeekCallback((map, callback) ->
+									ContextConfiguration.this.onIdleContainerCalledLatch.countDown())
+							.additionalHeaders(true))
 					.filter(Message.class, m ->
 									m.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, Integer.class) < 101,
 							f -> f.throwExceptionOnRejection(true))

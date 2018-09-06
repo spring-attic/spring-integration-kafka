@@ -18,7 +18,10 @@ package org.springframework.integration.kafka.dsl;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.integration.dsl.ComponentsRegistration;
 import org.springframework.integration.dsl.MessagingGatewaySpec;
@@ -28,7 +31,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerSeekAware;
-import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
@@ -95,14 +97,41 @@ public class KafkaInboundGatewaySpec<K, V, R, S extends KafkaInboundGatewaySpec<
 	}
 
 	/**
-	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
-	 * {@link RecordMessagingMessageListenerAdapter} implementation.
-	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * Specify a {@link BiConsumer} for seeks management during
+	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onPartitionsAssigned(Map, ConsumerSeekAware.ConsumerSeekCallback)}
+	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
+	 * @param onPartitionsAssignedCallback the {@link BiConsumer} to use
 	 * @return the spec
 	 * @since 3.0.4
 	 */
-	public S consumerSeekAware(ConsumerSeekAware consumerSeekAware) {
-		this.target.setConsumerSeekAware(consumerSeekAware);
+	public S onPartitionsAssignedSeekCallback(
+			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onPartitionsAssignedCallback) {
+		this.target.setOnPartitionsAssignedSeekCallback(onPartitionsAssignedCallback);
+		return _this();
+	}
+
+	/**
+	 * Specify a {@link BiConsumer} for seeks management during
+	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onIdleContainer(Map, ConsumerSeekAware.ConsumerSeekCallback)}
+	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
+	 * @param onIdleSeekCallback the {@link BiConsumer} to use
+	 * @return the spec
+	 * @since 3.0.4
+	 */
+	public S onIdleSeekCallback(
+			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback) {
+		this.target.setOnIdleSeekCallback(onIdleSeekCallback);
+		return _this();
+	}
+
+	/**
+	 * Set a @code boolean} flag to indicate that request message should have extra headers.
+	 * @param setAdditionalHeaders {@code boolean} flag to add or not extra headers into the message to send.
+	 * @return the spec
+	 * @since 3.0.4
+	 */
+	public S additionalRequestHeaders(boolean setAdditionalHeaders) {
+		this.target.setAdditionalRequestHeaders(setAdditionalHeaders);
 		return _this();
 	}
 

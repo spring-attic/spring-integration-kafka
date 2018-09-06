@@ -19,6 +19,7 @@ package org.springframework.integration.kafka.inbound;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -29,12 +30,14 @@ import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.context.OrderlyShutdownCapable;
 import org.springframework.integration.endpoint.MessageProducerSupport;
 import org.springframework.integration.endpoint.Pausable;
+import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
@@ -75,6 +78,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	private static final ThreadLocal<AttributeAccessor> attributesHolder = new ThreadLocal<>();
 
+	private static final ThreadLocal<ConsumerSeekAware.ConsumerSeekCallback> seekCallbackHolder = new ThreadLocal<>();
+
 	private final AbstractMessageListenerContainer<K, V> messageListenerContainer;
 
 	private final IntegrationRecordMessageListener recordListener = new IntegrationRecordMessageListener();
@@ -93,7 +98,13 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 	private boolean filterInRetry;
 
-	private ConsumerSeekAware consumerSeekAware;
+	private BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onPartitionsAssignedSeekCallback;
+
+	private BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback;
+
+	private boolean setAdditionalHeaders;
+
+	private volatile ConsumerSeekAware.ConsumerSeekCallback seekCallback;
 
 	/**
 	 * Construct an instance with mode {@link ListenerMode#record}.
@@ -231,14 +242,41 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 	}
 
 	/**
-	 * Specify a {@link ConsumerSeekAware} for seeks management from target application.
-	 * The methods from this object are called from the internal
-	 * {@link RecordMessagingMessageListenerAdapter} implementation.
-	 * @param consumerSeekAware the {@link ConsumerSeekAware} to use
+	 * Specify a {@link BiConsumer} for seeks management during
+	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onPartitionsAssigned(Map, ConsumerSeekAware.ConsumerSeekCallback)}
+	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
+	 * This is called from the internal {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param onPartitionsAssignedCallback the {@link BiConsumer} to use
 	 * @since 3.0.4
+	 * @see ConsumerSeekAware
 	 */
-	public void setConsumerSeekAware(ConsumerSeekAware consumerSeekAware) {
-		this.consumerSeekAware = consumerSeekAware;
+	public void setOnPartitionsAssignedSeekCallback(
+			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onPartitionsAssignedCallback) {
+		this.onPartitionsAssignedSeekCallback = onPartitionsAssignedCallback;
+	}
+
+	/**
+	 * Specify a {@link BiConsumer} for seeks management during
+	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onIdleContainer(Map, ConsumerSeekAware.ConsumerSeekCallback)}
+	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
+	 * This is called from the internal {@link RecordMessagingMessageListenerAdapter} implementation.
+	 * @param onIdleSeekCallback the {@link BiConsumer} to use
+	 * @since 3.0.4
+	 * @see ConsumerSeekAware
+	 */
+	public void setOnIdleSeekCallback(
+			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback) {
+		this.onIdleSeekCallback = onIdleSeekCallback;
+	}
+
+	/**
+	 * Set a @code boolean} flag to indicate that message to send should have extra headers.
+	 * @param setAdditionalHeaders {@code boolean} flag to add or not extra headers into the message to send.
+	 * @since 3.0.4
+	 * @see IntegrationKafkaHeaders
+	 */
+	public void setAdditionalHeaders(boolean setAdditionalHeaders) {
+		this.setAdditionalHeaders = setAdditionalHeaders;
 	}
 
 	@Override
@@ -358,6 +396,54 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		}
 	}
 
+	private void registerSeekCallbackIfNecessary(ConsumerSeekAware.ConsumerSeekCallback callback) {
+		if (this.setAdditionalHeaders) {
+			if (this.messageListenerContainer instanceof ConcurrentMessageListenerContainer) {
+
+				seekCallbackHolder.set(callback);
+			}
+			else {
+				this.seekCallback = callback;
+			}
+		}
+	}
+
+	private void sendMessageIfAny(Message<?> message, Object kafkaConsumedObject) {
+		if (message != null) {
+			message = setAdditionalHeadersIfAny(message);
+			try {
+				sendMessage(message);
+			}
+			finally {
+				if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
+					attributesHolder.remove();
+				}
+			}
+		}
+		else {
+			KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
+					+ kafkaConsumedObject);
+		}
+	}
+
+	private Message<?> setAdditionalHeadersIfAny(Message<?> message) {
+		if (this.setAdditionalHeaders) {
+			ConsumerSeekAware.ConsumerSeekCallback consumerSeekCallback = this.seekCallback;
+			if (consumerSeekCallback == null) {
+				consumerSeekCallback = seekCallbackHolder.get();
+			}
+
+			if (consumerSeekCallback != null) {
+				message = getMessageBuilderFactory()
+						.fromMessage(message)
+						.setHeader(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK, consumerSeekCallback)
+						.build();
+			}
+		}
+
+		return message;
+	}
+
 	/**
 	 * The listener mode for the container, record or batch.
 	 * @since 1.2
@@ -386,22 +472,20 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.registerSeekCallback(callback);
-			}
+			registerSeekCallbackIfNecessary(callback);
 		}
 
 		@Override
 		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onPartitionsAssigned(assignments, callback);
+			if (KafkaMessageDrivenChannelAdapter.this.onPartitionsAssignedSeekCallback != null) {
+				KafkaMessageDrivenChannelAdapter.this.onPartitionsAssignedSeekCallback.accept(assignments, callback);
 			}
 		}
 
 		@Override
 		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onIdleContainer(assignments, callback);
+			if (KafkaMessageDrivenChannelAdapter.this.onIdleSeekCallback != null) {
+				KafkaMessageDrivenChannelAdapter.this.onIdleSeekCallback.accept(assignments, callback);
 			}
 		}
 
@@ -419,20 +503,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 				RuntimeException exception = new ConversionException("Failed to convert to message for: " + record, e);
 				sendErrorMessageIfNecessary(null, exception);
 			}
-			if (message != null) {
-				try {
-					sendMessage(message);
-				}
-				finally {
-					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
-						attributesHolder.remove();
-					}
-				}
-			}
-			else {
-				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
-						+ record);
-			}
+
+			sendMessageIfAny(message, record);
 		}
 
 		private Message<?> addDeliveryAttemptHeader(Message<?> message) {
@@ -482,22 +554,20 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.registerSeekCallback(callback);
-			}
+			registerSeekCallbackIfNecessary(callback);
 		}
 
 		@Override
 		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onPartitionsAssigned(assignments, callback);
+			if (KafkaMessageDrivenChannelAdapter.this.onPartitionsAssignedSeekCallback != null) {
+				KafkaMessageDrivenChannelAdapter.this.onPartitionsAssignedSeekCallback.accept(assignments, callback);
 			}
 		}
 
 		@Override
 		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.consumerSeekAware != null) {
-				KafkaMessageDrivenChannelAdapter.this.consumerSeekAware.onIdleContainer(assignments, callback);
+			if (KafkaMessageDrivenChannelAdapter.this.onIdleSeekCallback != null) {
+				KafkaMessageDrivenChannelAdapter.this.onIdleSeekCallback.accept(assignments, callback);
 			}
 		}
 
@@ -516,20 +586,8 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 					getMessagingTemplate().send(getErrorChannel(), new ErrorMessage(exception));
 				}
 			}
-			if (message != null) {
-				try {
-					sendMessage(message);
-				}
-				finally {
-					if (KafkaMessageDrivenChannelAdapter.this.retryTemplate == null) {
-						attributesHolder.remove();
-					}
-				}
-			}
-			else {
-				KafkaMessageDrivenChannelAdapter.this.logger.debug("Converter returned a null message for: "
-						+ records);
-			}
+
+			sendMessageIfAny(message, records);
 		}
 
 		@Override
