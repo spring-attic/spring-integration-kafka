@@ -110,31 +110,6 @@ public class KafkaInboundGatewaySpec<K, V, R, S extends KafkaInboundGatewaySpec<
 		return _this();
 	}
 
-	/**
-	 * Specify a {@link BiConsumer} for seeks management during
-	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onIdleContainer(Map, ConsumerSeekAware.ConsumerSeekCallback)}
-	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
-	 * @param onIdleSeekCallback the {@link BiConsumer} to use
-	 * @return the spec
-	 * @since 3.0.4
-	 */
-	public S onIdleSeekCallback(
-			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback) {
-		this.target.setOnIdleSeekCallback(onIdleSeekCallback);
-		return _this();
-	}
-
-	/**
-	 * Set a @code boolean} flag to indicate that request message should have extra headers.
-	 * @param setAdditionalHeaders {@code boolean} flag to add or not extra headers into the message to send.
-	 * @return the spec
-	 * @since 3.0.4
-	 */
-	public S additionalRequestHeaders(boolean setAdditionalHeaders) {
-		this.target.setAdditionalRequestHeaders(setAdditionalHeaders);
-		return _this();
-	}
-
 	@Override
 	public Map<Object, String> getComponentsToRegister() {
 		return Collections.singletonMap(this.container, getId() == null ? null : getId() + ".container");

@@ -48,7 +48,6 @@ import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
-import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.integration.test.util.TestUtils;
@@ -175,7 +174,6 @@ public class KafkaDslTests {
 			assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 			assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048633L);
 			assertThat(headers.get("foo")).isEqualTo("bar");
-			assertThat(headers.get(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK)).isNotNull();
 		}
 
 		for (int i = 0; i < 100; i++) {
@@ -214,7 +212,6 @@ public class KafkaDslTests {
 		assertThat(this.config.fromSource).isEqualTo("foo");
 
 		assertThat(this.config.onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.config.onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -233,8 +230,6 @@ public class KafkaDslTests {
 		private final CountDownLatch replyContainerLatch = new CountDownLatch(1);
 
 		private final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
-
-		private final CountDownLatch onIdleContainerCalledLatch = new CountDownLatch(1);
 
 		private Object fromSource;
 
@@ -265,10 +260,7 @@ public class KafkaDslTests {
 							.retryTemplate(new RetryTemplate())
 							.filterInRetry(true)
 							.onPartitionsAssignedSeekCallback((map, callback) ->
-									ContextConfiguration.this.onPartitionsAssignedCalledLatch.countDown())
-							.onIdleSeekCallback((map, callback) ->
-									ContextConfiguration.this.onIdleContainerCalledLatch.countDown())
-							.additionalHeaders(true))
+									ContextConfiguration.this.onPartitionsAssignedCalledLatch.countDown()))
 					.filter(Message.class, m ->
 									m.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, Integer.class) < 101,
 							f -> f.throwExceptionOnRejection(true))

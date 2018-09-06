@@ -28,7 +28,6 @@ import org.springframework.core.AttributeAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.context.OrderlyShutdownCapable;
 import org.springframework.integration.gateway.MessagingGatewaySupport;
-import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.AbstractIntegrationMessageBuilder;
 import org.springframework.integration.support.ErrorMessageStrategy;
@@ -36,7 +35,6 @@ import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
@@ -73,8 +71,6 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 
 	private static final ThreadLocal<AttributeAccessor> attributesHolder = new ThreadLocal<>();
 
-	private static final ThreadLocal<ConsumerSeekAware.ConsumerSeekCallback> seekCallbackHolder = new ThreadLocal<>();
-
 	private final IntegrationRecordMessageListener listener = new IntegrationRecordMessageListener();
 
 	private final AbstractMessageListenerContainer<K, V> messageListenerContainer;
@@ -86,12 +82,6 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onPartitionsAssignedSeekCallback;
-
-	private BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback;
-
-	private boolean setAdditionalHeaders;
-
-	private volatile ConsumerSeekAware.ConsumerSeekCallback seekCallback;
 
 	/**
 	 * Construct an instance with the provided container.
@@ -163,31 +153,6 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onPartitionsAssignedCallback) {
 		this.onPartitionsAssignedSeekCallback = onPartitionsAssignedCallback;
 	}
-
-	/**
-	 * Specify a {@link BiConsumer} for seeks management during
-	 * {@link ConsumerSeekAware.ConsumerSeekCallback#onIdleContainer(Map, ConsumerSeekAware.ConsumerSeekCallback)}
-	 * call from the {@link org.springframework.kafka.listener.KafkaMessageListenerContainer}.
-	 * This is called from the internal {@link RecordMessagingMessageListenerAdapter} implementation.
-	 * @param onIdleSeekCallback the {@link BiConsumer} to use
-	 * @since 3.0.4
-	 * @see ConsumerSeekAware
-	 */
-	public void setOnIdleSeekCallback(
-			BiConsumer<Map<TopicPartition, Long>, ConsumerSeekAware.ConsumerSeekCallback> onIdleSeekCallback) {
-		this.onIdleSeekCallback = onIdleSeekCallback;
-	}
-
-	/**
-	 * Set a @code boolean} flag to indicate that request message should have extra headers.
-	 * @param setAdditionalHeaders {@code boolean} flag to add or not extra headers into the message to send.
-	 * @since 3.0.4
-	 * @see IntegrationKafkaHeaders
-	 */
-	public void setAdditionalRequestHeaders(boolean setAdditionalHeaders) {
-		this.setAdditionalHeaders = setAdditionalHeaders;
-	}
-
 
 	@Override
 	protected void onInit() throws Exception {
@@ -261,36 +226,6 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 		}
 	}
 
-	private void registerSeekCallbackIfNecessary(ConsumerSeekAware.ConsumerSeekCallback callback) {
-		if (this.setAdditionalHeaders) {
-			if (this.messageListenerContainer instanceof ConcurrentMessageListenerContainer) {
-
-				seekCallbackHolder.set(callback);
-			}
-			else {
-				this.seekCallback = callback;
-			}
-		}
-	}
-
-	private Message<?> setAdditionalHeadersIfAny(Message<?> message) {
-		if (this.setAdditionalHeaders) {
-			ConsumerSeekAware.ConsumerSeekCallback consumerSeekCallback = this.seekCallback;
-			if (consumerSeekCallback == null) {
-				consumerSeekCallback = seekCallbackHolder.get();
-			}
-
-			if (consumerSeekCallback != null) {
-				message = getMessageBuilderFactory()
-						.fromMessage(message)
-						.setHeader(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK, consumerSeekCallback)
-						.build();
-			}
-		}
-
-		return message;
-	}
-
 	private class IntegrationRecordMessageListener extends RecordMessagingMessageListenerAdapter<K, V>
 			implements RetryListener {
 
@@ -299,21 +234,9 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 		}
 
 		@Override
-		public void registerSeekCallback(ConsumerSeekCallback callback) {
-			registerSeekCallbackIfNecessary(callback);
-		}
-
-		@Override
 		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 			if (KafkaInboundGateway.this.onPartitionsAssignedSeekCallback != null) {
 				KafkaInboundGateway.this.onPartitionsAssignedSeekCallback.accept(assignments, callback);
-			}
-		}
-
-		@Override
-		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-			if (KafkaInboundGateway.this.onIdleSeekCallback != null) {
-				KafkaInboundGateway.this.onIdleSeekCallback.accept(assignments, callback);
 			}
 		}
 
@@ -334,7 +257,6 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 				}
 			}
 			if (message != null) {
-				message = setAdditionalHeadersIfAny(message);
 				try {
 					Message<?> reply = sendAndReceiveMessage(message);
 					if (reply != null) {

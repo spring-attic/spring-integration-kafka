@@ -53,7 +53,6 @@ import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter.ListenerMode;
-import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -312,11 +311,8 @@ public class MessageDrivenAdapterTests {
 		adapter.setOutputChannel(out);
 
 		final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
-		final CountDownLatch onIdleContainerCalledLatch = new CountDownLatch(1);
 
 		adapter.setOnPartitionsAssignedSeekCallback((map, consumer) -> onPartitionsAssignedCalledLatch.countDown());
-		adapter.setOnIdleSeekCallback((map, consumer) -> onIdleContainerCalledLatch.countDown());
-		adapter.setAdditionalHeaders(true);
 
 		adapter.afterPropertiesSet();
 		adapter.setBatchMessageConverter(new BatchMessagingMessageConverter() {
@@ -356,10 +352,8 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP))
 				.isEqualTo(Arrays.asList(1487694048607L, 1487694048608L));
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
-		assertThat(headers.get(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK)).isNotNull();
 
 		assertThat(onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		adapter.setMessageConverter(new BatchMessageConverter() {
 

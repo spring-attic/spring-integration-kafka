@@ -37,7 +37,6 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer;
-import org.springframework.integration.kafka.support.IntegrationKafkaHeaders;
 import org.springframework.integration.kafka.support.RawRecordHeaderErrorMessageStrategy;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.integration.test.rule.Log4j2LevelAdjuster;
@@ -139,11 +138,8 @@ public class InboundGatewayTests {
 		});
 
 		CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
-		CountDownLatch onIdleContainerCalledLatch = new CountDownLatch(1);
 
 		gateway.setOnPartitionsAssignedSeekCallback((map, seekConsumer) -> onPartitionsAssignedCalledLatch.countDown());
-		gateway.setOnIdleSeekCallback((map, seekConsumer) -> onIdleContainerCalledLatch.countDown());
-		gateway.setAdditionalRequestHeaders(true);
 
 		gateway.start();
 		ContainerTestUtils.waitForAssignment(container, 2);
@@ -161,7 +157,6 @@ public class InboundGatewayTests {
 		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 		assertThat(headers.get(KafkaHeaders.REPLY_TOPIC)).isEqualTo(topic2);
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
-		assertThat(headers.get(IntegrationKafkaHeaders.CONSUMER_SEEK_CALLBACK)).isNotNull();
 
 		reply.send(MessageBuilder.withPayload("FOO").copyHeaders(headers).build());
 
@@ -169,7 +164,6 @@ public class InboundGatewayTests {
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("FOO"));
 		assertThat(onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(onIdleContainerCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		gateway.stop();
 	}
