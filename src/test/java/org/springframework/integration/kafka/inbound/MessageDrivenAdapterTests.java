@@ -299,12 +299,18 @@ public class MessageDrivenAdapterTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
+		containerProps.setIdleEventInterval(100L);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		KafkaMessageDrivenChannelAdapter<Integer, String> adapter = new KafkaMessageDrivenChannelAdapter<>(container,
 				ListenerMode.batch);
 		QueueChannel out = new QueueChannel();
 		adapter.setOutputChannel(out);
+
+		final CountDownLatch onPartitionsAssignedCalledLatch = new CountDownLatch(1);
+
+		adapter.setOnPartitionsAssignedSeekCallback((map, consumer) -> onPartitionsAssignedCalledLatch.countDown());
+
 		adapter.afterPropertiesSet();
 		adapter.setBatchMessageConverter(new BatchMessagingMessageConverter() {
 
@@ -343,6 +349,8 @@ public class MessageDrivenAdapterTests {
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP))
 				.isEqualTo(Arrays.asList(1487694048607L, 1487694048608L));
 		assertThat(headers.get("testHeader")).isEqualTo("testValue");
+
+		assertThat(onPartitionsAssignedCalledLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		adapter.setMessageConverter(new BatchMessageConverter() {
 
