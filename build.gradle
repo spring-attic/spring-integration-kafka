@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.2.51'
+	ext.kotlinVersion = '1.2.70'
 	dependencies {
 		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
 		classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
@@ -11,7 +11,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.6.1'
+	id 'org.sonarqube' version '2.6.2'
 	id 'checkstyle'
 }
 
@@ -53,11 +53,11 @@ compileTestKotlin {
 }
 
 ext {
-	assertkVersion = '0.10'
+	assertkVersion = '0.12'
 	jacksonVersion = '2.9.6'
 	log4jVersion = '2.11.0'
-	springIntegrationVersion = '5.1.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.2.0.M2'
+	springIntegrationVersion = '5.1.0.RC1'
+	springKafkaVersion = '2.2.0.RC1'
 
 	idPrefix = 'kafka'
 
@@ -82,9 +82,7 @@ dependencies {
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
-	testCompile("com.willowtreeapps.assertk:assertk:$assertkVersion") {
-		exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
-	}
+	testCompile("com.willowtreeapps.assertk:assertk-jvm:$assertkVersion")
 	testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
 
 	testRuntime "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
@@ -108,7 +106,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.11'
+	toolVersion = '8.12'
 }
 
 jacocoTestReport {
