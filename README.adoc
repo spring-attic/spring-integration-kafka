@@ -29,6 +29,11 @@ In order to install this into your local maven cache:
 
 Documentation for this extension is contained in a chapter of the https://docs.spring.io/spring-kafka/reference/html/_spring_integration.html[Spring for Apache Kafka Reference Manual]
 
+== Migrating from 3.0 to 3.1
+
+Producer record metadata for sends performed on the outbound channel adapter are now sent only to the `successChannel`.
+With earlier versions, it was sent to the `outputChannel` if no `successChannel` was provided.
+
 == Contributing
 
 http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
