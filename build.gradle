@@ -54,10 +54,10 @@ compileTestKotlin {
 
 ext {
 	assertkVersion = '0.12'
-	jacksonVersion = '2.9.6'
+	jacksonVersion = '2.9.7'
 	log4jVersion = '2.11.1'
 	springIntegrationVersion = '5.1.0.RELEASE'
-	springKafkaVersion = '2.2.0.RELEASE'
+	springKafkaVersion = '2.2.1.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -73,7 +73,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.9"
+	toolVersion = "0.8.2"
 }
 
 dependencies {
