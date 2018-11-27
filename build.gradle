@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.2.41'
+	ext.kotlinVersion = '1.2.71'
 	repositories {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
@@ -16,7 +16,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.6.1'
+	id 'org.sonarqube' version '2.6.2'
 	id 'checkstyle'
 }
 
@@ -70,12 +70,12 @@ compileTestKotlin {
 }
 
 ext {
-	assertkVersion = '0.10'
-	jacksonVersion = '2.9.5'
-	log4jVersion = '2.10.0'
+	assertkVersion = '0.12'
+	jacksonVersion = '2.9.7'
+	log4jVersion = '2.11.1'
 	slf4jVersion = '1.7.25'
-	springIntegrationVersion = '5.0.5.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.1.5.RELEASE'
+	springIntegrationVersion = '5.0.9.RELEASE'
+	springKafkaVersion = '2.1.11.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -91,7 +91,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.7.9"
+	toolVersion = "0.8.2"
 }
 
 dependencies {
@@ -100,11 +100,9 @@ dependencies {
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
-	testCompile("com.willowtreeapps.assertk:assertk:$assertkVersion") {
-		exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
-	}
-	testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
+	testCompile("com.willowtreeapps.assertk:assertk-jvm:$assertkVersion")
 
+	testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
 	testRuntime "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
 	testRuntime "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
 	testRuntime "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
