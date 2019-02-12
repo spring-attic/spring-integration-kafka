@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="http://www.springframework.org/schema/integration/kafka"
+			xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+			xmlns:tool="http://www.springframework.org/schema/tool"
+			xmlns:integration="http://www.springframework.org/schema/integration"
+			targetNamespace="http://www.springframework.org/schema/integration/kafka"
+			elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+	<xsd:import namespace="http://www.springframework.org/schema/beans"/>
+	<xsd:import namespace="http://www.springframework.org/schema/tool"/>
+	<xsd:import namespace="http://www.springframework.org/schema/integration"
+				schemaLocation="http://www.springframework.org/schema/integration/spring-integration.xsd"/>
+
+	<xsd:annotation>
+		<xsd:documentation><![CDATA[
+			Defines the configuration elements for the Spring Integration
+			Kafka Adapters.
+		]]></xsd:documentation>
+	</xsd:annotation>
+
+	<xsd:element name="outbound-channel-adapter">
+		<xsd:annotation>
+			<xsd:documentation>
+				Defines the Consumer Endpoint for the KafkaProducerMessageHandler
+				that writes the contents of the Message to kafka broker.
+			</xsd:documentation>
+		</xsd:annotation>
+
+		<xsd:complexType>
+			<xsd:all>
+				<xsd:element ref="integration:poller" minOccurs="0" maxOccurs="1" />
+				<xsd:element name="request-handler-advice-chain" type="integration:handlerAdviceChainType"
+							 minOccurs="0" maxOccurs="1" />
+			</xsd:all>
+			<xsd:attributeGroup ref="integration:channelAdapterAttributes"/>
+			<xsd:attribute name="kafka-template" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the KafkaTemplate used to publish messages.
+					]]></xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.kafka.core.KafkaTemplate" />
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="topic" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the name of the Kafka topic.
+								This attribute is mutually exclusive with 'topic-expression' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="topic-expression" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the expression to determine the name of the Kafka topic
+								against the Message at runtime.
+								This attribute is mutually exclusive with 'topic' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="message-key" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the Key for the Kafka message.
+								This attribute is mutually exclusive with 'message-key-expression' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="message-key-expression" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the expression to determine the Key for Kafka message
+								against the Message at runtime.
+								This attribute is mutually exclusive with 'message-key' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="partition-id" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the target partition for the Kafka message.
+								This attribute is mutually exclusive with 'partition-id-expression' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="partition-id-expression" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the expression to determine the partition for Kafka message
+								against the Message at runtime.
+								This attribute is mutually exclusive with 'partition-id' attribute.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="timestamp-expression" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+								Specifies the expression to determine the timestamp for a Kafka record
+								against the Message at runtime.
+					]]></xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="sync">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+						Specifies whether to block the sending thread until the producer
+						callback has been invoked, indicating the broker has accepted the
+						message (or an exception thrown if the send fails). Default: false.
+					]]></xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:union memberTypes="xsd:boolean xsd:string"/>
+				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="send-timeout">
+				<xsd:annotation>
+					<xsd:documentation>
+						Specifies a timeout in milliseconds for how long the 'KafkaProducerMessageHandler'
+						should wait wait for send operation results. Defaults to 10 seconds.
+						The timeout is applied only in 'sync' mode.
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:union memberTypes="xsd:int xsd:string"/>
+				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="send-timeout-expression">
+				<xsd:annotation>
+					<xsd:documentation>
+						Specifies an expression that is evaluated to determine a timeout in milliseconds
+						for how long the 'KafkaProducerMessageHandler'
+						should wait wait for send operation results. Defaults to 10 seconds.
+						The timeout is applied only in 'sync' mode.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="order">
+				<xsd:annotation>
+					<xsd:documentation>
+						Specifies the order for invocation when this endpoint is connected as a
+						subscriber to a SubscribableChannel.
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:union memberTypes="xsd:int xsd:string"/>
+				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="send-failure-channel" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+						Specifies the channel to which an ErrorMessage for a failed send will be sent.
+					]]></xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.messaging.MessageChannel" />
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="send-success-channel" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation><![CDATA[
+						Specifies the channel to which message with a payload of type
+						'org.apache.kafka.clients.producer.RecordMetadata' will be sent
+						after a successful send.
+					]]></xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.messaging.MessageChannel" />
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attributeGroup ref="errorMessageStrategyGroup" />
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:element name="message-driven-channel-adapter">
+		<xsd:annotation>
+			<xsd:documentation>
+				Defines the Message Producing Endpoint for the KafkaMessageDrivenChannelAdapter.
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:complexType>
+			<xsd:attributeGroup ref="integration:channelAdapterAttributes"/>
+			<xsd:attribute name="send-timeout" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						Maximum amount of time in milliseconds to wait when sending a message to the channel
+						if such channel may block. For example, a Queue Channel can block until space is available
+						if its maximum capacity has been reached.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="error-channel" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						Message Channel to which error Messages should be sent.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.messaging.MessageChannel"/>
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="listener-container" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						An 'org.springframework.kafka.listener.AbstractMessageListenerContainer' bean reference.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.kafka.listener.AbstractMessageListenerContainer"/>
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="message-converter" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						An 'org.springframework.kafka.support.converter.MessageConverter' bean reference.
+						if mode = 'record' must be a 'RecordMessageConverter'; if mode = 'batch' must be
+						a `BatchMessageConverter`. Defaults to the default implementation for each mode.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.kafka.support.converter.MessageConverter"/>
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="mode" default="record">
+				<xsd:annotation>
+					<xsd:documentation>
+						'record' or 'batch' - default 'record' - one converted ConsumerRecord per message, when
+						'batch' then the payload is a collection of converted ConsumerRecords.
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:union memberTypes="listenerMode xsd:string"/>
+				</xsd:simpleType>
+			</xsd:attribute>
+			<xsd:attribute name="payload-type" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						Set the payload type to convert to when using a type-aware message converter such as the
+						StringJsonMessageConverter. Fully qualified class name; defaults to 'java.lang.Object'.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="retry-template" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						A retry template for retrying deliveries; an 'error-channel' is not allowed
+						when a retry template is provided; configure a 'recovery-callback' such as an
+						'ErrorMessageSendingRecoverer' when using a retry template.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.retry.support.RetryTemplate" />
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="recovery-callback" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						Used in conjunction with a 'retry-template'; in most cases this will be
+						an 'ErrorMessageSendingRecoverer'. Omitting this element will cause an
+						exception to be thrown to the listener container after retries are exhausted.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="org.springframework.retry.RecoveryCallback" />
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attributeGroup ref="errorMessageStrategyGroup" />
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:simpleType name="listenerMode">
+		<xsd:restriction base="xsd:token">
+			<xsd:enumeration value="record" />
+			<xsd:enumeration value="batch" />
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<xsd:attributeGroup name="errorMessageStrategyGroup">
+		<xsd:attribute name="error-message-strategy" type="xsd:string">
+			<xsd:annotation>
+				<xsd:documentation><![CDATA[
+					Specifies the Strategy for building an ErrorMessage.
+				]]></xsd:documentation>
+				<xsd:appinfo>
+					<tool:annotation kind="ref">
+						<tool:expected-type type="org.springframework.integration.support.ErrorMessageStrategy" />
+					</tool:annotation>
+				</xsd:appinfo>
+			</xsd:annotation>
+		</xsd:attribute>
+	</xsd:attributeGroup>
+
+</xsd:schema>
