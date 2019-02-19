@@ -11,8 +11,9 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.6.2'
+	id 'org.sonarqube' version '2.7'
 	id 'checkstyle'
+	id 'org.ajoberstar.grgit' version '3.0.0'
 }
 
 description = 'Spring Integration Kafka Support'
@@ -56,8 +57,8 @@ ext {
 	assertkVersion = '0.13'
 	jacksonVersion = '2.9.8'
 	log4jVersion = '2.11.2'
-	springIntegrationVersion = '5.1.3.RELEASE'
-	springKafkaVersion = '2.2.4.RELEASE'
+	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.3.0.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
@@ -68,6 +69,8 @@ ext {
 	linkScmConnection = 'https://github.com/spring-projects/spring-integration-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-integration-kafka.git'
 
+	modifiedFiles =
+			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
 }
 
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
@@ -108,6 +111,37 @@ checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
 	toolVersion = '8.12'
 }
+
+task updateCopyrights {
+	onlyIf { !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
+	inputs.files(modifiedFiles)
+	outputs.dir('build')
+
+	doLast {
+		def now = Calendar.instance.get(Calendar.YEAR) as String
+		inputs.files.each { file ->
+			def line
+			file.withReader { reader ->
+				while (line = reader.readLine()) {
+					def matcher = line =~ /Copyright (20\d\d)-?(20\d\d)?/
+					if (matcher.count) {
+						def beginningYear = matcher[0][1]
+						if (now != beginningYear && now != matcher[0][2]) {
+							def years = "$beginningYear-$now"
+							def sourceCode = file.text
+							sourceCode = sourceCode.replaceFirst(/20\d\d(-20\d\d)?/, years)
+							file.write(sourceCode)
+							println "Copyright updated for file: $file"
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+compileKotlin.dependsOn updateCopyrights
 
 jacocoTestReport {
 	reports {
