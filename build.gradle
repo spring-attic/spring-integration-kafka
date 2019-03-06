@@ -34,11 +34,11 @@ sourceSets {
 group = 'org.springframework.integration'
 
 repositories {
-	maven { url 'http://repo.spring.io/libs-milestone' }
+	maven { url 'https://repo.spring.io/libs-milestone' }
 	if (version.endsWith('BUILD-SNAPSHOT')) {
 		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
-	maven { url 'http://repo.spring.io/libs-staging-local' }
+	maven { url 'https://repo.spring.io/libs-staging-local' }
 }
 
 compileJava {
