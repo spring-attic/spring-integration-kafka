@@ -27,7 +27,7 @@ In order to install this into your local maven cache:
 
 == Documentation
 
-Documentation for this extension is contained in a chapter of the https://docs.spring.io/spring-kafka/reference/html/_spring_integration.html[Spring for Apache Kafka Reference Manual]
+Documentation for this extension is contained in a chapter of the https://docs.spring.io/spring-kafka/reference/html/#spring-integration[Spring for Apache Kafka Reference Manual]
 
 == Migrating from 3.0 to 3.1
 
