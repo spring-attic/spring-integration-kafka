@@ -36,4 +36,4 @@ With earlier versions, it was sent to the `outputChannel` if no `successChannel`
 
 == Contributing
 
-https://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
+https://help.github.com/en/articles/creating-a-pull-request[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
