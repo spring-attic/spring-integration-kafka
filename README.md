@@ -3,7 +3,7 @@ Spring Integration Kafka Adapter
 
 The *Spring Integration Kafka Adapter* provides client components for Apache Kafka. Apache Kafka is a distributed publish-subscribe messaging system
 that is designed for high throughput (terabytes of data) and low latency (miliseconds). For more information on Kafka
-and its design goals, see [Kafka main page](http://kafka.apache.org/).
+and its design goals, see [Kafka main page](https://kafka.apache.org/).
 
 In particular, Spring Integration Kafka provides:
 
@@ -194,7 +194,7 @@ also available in a package called avro under serializer.
 
 #### Tuning Producer Properties
 
-Kafka Producer API provides several [Producer Configs] (http://kafka.apache.org/documentation.html#producerconfigs) to fine-tune producers.
+Kafka Producer API provides several [Producer Configs] (https://kafka.apache.org/documentation.html#producerconfigs) to fine-tune producers.
 To specify those properties, `producer-context` element supports optional `producer-properties` attribute that can reference the Spring properties bean.
 These properties will be applied to all Producer Configurations within the producer context. For example:
 
@@ -447,7 +447,7 @@ If your use case does not require ordering of messages during consumption, then 
 payload to a standard SI transformer and just get a full dump of the actual payload sent by Kafka.
 
 #### Tuning Consumer Properties
-Kafka Consumer API provides several [Consumer Configs] (http://kafka.apache.org/documentation.html#consumerconfigs) to fine tune consumers.
+Kafka Consumer API provides several [Consumer Configs] (https://kafka.apache.org/documentation.html#consumerconfigs) to fine tune consumers.
 To specify those properties, `consumer-context` element supports optional `consumer-properties` attribute that can reference the spring properties bean.
 This properties will be applied to all Consumer Configurations within the consumer context. For Eg:
 
