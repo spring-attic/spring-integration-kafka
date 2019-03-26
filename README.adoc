@@ -6,14 +6,14 @@ The *Spring Integration Kafka* extension project provides inbound and outbound c
 Apache Kafka is a distributed publish-subscribe messaging system
 that is designed for high throughput (terabytes of data) and low latency (milliseconds). For more information on Kafka
 and its design goals, see the
-http://kafka.apache.org/[Kafka main page].
+https://kafka.apache.org/[Kafka main page].
 
 This 2.0 version is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java `Producer` and
 `Consumer` clients provided by Kafka 0.9.x.x.
 
 That project is currently at Release Candidate 1 and its
-http://docs.spring.io/spring-kafka/docs/1.0.0.RC1/reference/htmlsingle/[documentation is here].
+https://docs.spring.io/spring-kafka/docs/1.0.0.RC1/reference/htmlsingle/[documentation is here].
 
 == Quick Start
 
@@ -159,4 +159,4 @@ Since messages can't have `null` payloads, when such a value is received, it is 
 
 ## Contributing
 
-http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
+https://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
