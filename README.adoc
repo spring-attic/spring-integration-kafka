@@ -4,7 +4,7 @@ image::https://build.spring.io/plugins/servlet/buildStatusImage/INTEXT-KAFKA[]
 
 The *Spring Integration Kafka* extension project provides inbound and outbound channel adapters for Apache Kafka.
 Apache Kafka is a distributed publish-subscribe messaging system that is designed for high throughput (terabytes of data) and low latency (milliseconds).
-For more information on Kafka and its design goals, see the http://kafka.apache.org/[Kafka main page].
+For more information on Kafka and its design goals, see the https://kafka.apache.org/[Kafka main page].
 
 Starting from _version 2.0_ version this project is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java `Producer` and
@@ -206,4 +206,4 @@ Since messages can't have `null` payloads, when such a value is received, it is 
 
 ## Contributing
 
-http://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
+https://help.github.com/send-pull-requests[Pull requests] are welcome. Please see the https://github.com/spring-projects/spring-integration/blob/master/CONTRIBUTING.adoc[contributor guidelines] for details.
