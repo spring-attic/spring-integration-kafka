@@ -196,7 +196,7 @@ public class KafkaProducerMessageHandlerTests {
 	}
 
 	@Test
-	public void testOutboundWithTimestamp() {
+	public void testOutboundWithTimestamp() throws Exception {
 		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
@@ -227,7 +227,7 @@ public class KafkaProducerMessageHandlerTests {
 	}
 
 	@Test
-	public void testOutboundWithTimestampExpression() {
+	public void testOutboundWithTimestampExpression() throws Exception {
 		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
@@ -266,7 +266,7 @@ public class KafkaProducerMessageHandlerTests {
 	}
 
 	@Test
-	public void testOutboundWithAsyncResults() {
+	public void testOutboundWithAsyncResults() throws Exception {
 		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
@@ -349,7 +349,8 @@ public class KafkaProducerMessageHandlerTests {
 
 		DefaultKafkaProducerFactory<Integer, String> producerFactory = new DefaultKafkaProducerFactory<>(
 				KafkaTestUtils.producerProps(embeddedKafka));
-		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(producerFactory, container);
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(producerFactory,
+				container);
 		template.start();
 		assertThat(assigned.await(30, TimeUnit.SECONDS)).isTrue();
 		KafkaProducerMessageHandler<Integer, String> handler = new KafkaProducerMessageHandler<>(template);
@@ -466,7 +467,7 @@ public class KafkaProducerMessageHandlerTests {
 			}
 		}).given(mockConsumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(mockConsumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
+		willReturn(mockConsumer).given(cf).createConsumer("group", "", null, null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
