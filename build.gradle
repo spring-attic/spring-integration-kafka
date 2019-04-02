@@ -11,7 +11,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.6.2'
+	id 'org.sonarqube' version '2.7'
 	id 'checkstyle'
 }
 
@@ -37,7 +37,7 @@ repositories {
 	if (version.endsWith('BUILD-SNAPSHOT')) {
 		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
-	maven { url 'https://repo.spring.io/libs-staging-local' }
+//	maven { url 'https://repo.spring.io/libs-staging-local' }
 }
 
 compileJava {
@@ -57,7 +57,7 @@ ext {
 	jacksonVersion = '2.9.8'
 	log4jVersion = '2.11.2'
 	springIntegrationVersion = '5.1.4.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.2.5.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.2.5.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -106,7 +106,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.12'
+	toolVersion = '8.18'
 }
 
 jacocoTestReport {
