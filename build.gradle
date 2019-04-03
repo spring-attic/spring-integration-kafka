@@ -56,7 +56,7 @@ compileTestKotlin {
 ext {
 	assertkVersion = '0.13'
 	jacksonVersion = '2.9.8'
-	junitJupiterVersion = '5.4.0'
+	junitJupiterVersion = '5.5.0-M1'
 	junitPlatformVersion = '1.4.0'
 	log4jVersion = '2.11.2'
 	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
@@ -116,6 +116,7 @@ test {
 		append = false
 		destinationFile = file("$buildDir/jacoco.exec")
 	}
+	useJUnitPlatform()
 }
 
 checkstyle {

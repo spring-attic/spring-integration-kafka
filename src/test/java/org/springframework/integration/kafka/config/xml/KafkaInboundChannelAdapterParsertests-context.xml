@@ -26,6 +26,7 @@
 			id="adapter2"
 			consumer-factory="consumerFactory"
 			topics="topic1, topic2"
+			group-id="group"
 			channel="inbound">
 		<int:poller fixed-delay="5000"/>
 	</int-kafka:inbound-channel-adapter>

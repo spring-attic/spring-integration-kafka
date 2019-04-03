@@ -9,7 +9,7 @@
 	<xsd:import namespace="http://www.springframework.org/schema/beans"/>
 	<xsd:import namespace="http://www.springframework.org/schema/tool"/>
 	<xsd:import namespace="http://www.springframework.org/schema/integration"
-				schemaLocation="https://www.springframework.org/schema/integration/spring-integration-5.1.xsd"/>
+				schemaLocation="https://www.springframework.org/schema/integration/spring-integration.xsd"/>
 
 	<xsd:annotation>
 		<xsd:documentation><![CDATA[
@@ -251,7 +251,7 @@
 	<xsd:element name="message-driven-channel-adapter">
 		<xsd:annotation>
 			<xsd:documentation>
-				Defines the Message Producing Endpoint for the KafkaInboundGateway.
+				Defines the Message Producing Endpoint for the KafkaMessageDrivenChannelAdapter.
 			</xsd:documentation>
 		</xsd:annotation>
 		<xsd:complexType>
