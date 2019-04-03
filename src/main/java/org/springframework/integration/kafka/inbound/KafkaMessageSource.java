@@ -50,6 +50,7 @@ import org.springframework.integration.endpoint.AbstractMessageSource;
 import org.springframework.integration.support.AbstractIntegrationMessageBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.KafkaMessageHeaders;
@@ -89,8 +90,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	private final Supplier<Duration> minTimeoutProvider =
 			() -> Duration.ofMillis(Math.max(this.pollTimeout.toMillis() * 20, MIN_ASSIGN_TIMEOUT));
 
-	private final Log logger = LogFactory.getLog(getClass());
-
 	private final ConsumerFactory<K, V> consumerFactory;
 
 	private final KafkaAckCallbackFactory<K, V> ackCallbackFactory;
@@ -113,6 +112,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	private ConsumerRebalanceListener rebalanceListener;
 
+	private ConsumerAwareRebalanceListener consumerAwareRebalanceListener;
+
 	private boolean rawMessageHeader;
 
 	private Duration commitTimeout;
@@ -134,6 +135,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
+		Assert.isTrue(topics != null && topics.length > 0, "At least one topic is required");
 		this.consumerFactory = fixOrRejectConsumerFactory(consumerFactory);
 		this.ackCallbackFactory = ackCallbackFactory;
 		this.topics = topics;
@@ -212,6 +214,9 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 */
 	public void setRebalanceListener(ConsumerRebalanceListener rebalanceListener) {
 		this.rebalanceListener = rebalanceListener;
+		if (rebalanceListener instanceof ConsumerAwareRebalanceListener) {
+			this.consumerAwareRebalanceListener = (ConsumerAwareRebalanceListener) rebalanceListener;
+		}
 	}
 
 	@Override
@@ -337,6 +342,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	protected void createConsumer() {
 		synchronized (this.consumerMonitor) {
 			this.consumer = this.consumerFactory.createConsumer(this.groupId, this.clientId, null);
+			boolean isConsumerAware = this.consumerAwareRebalanceListener != null;
 			this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
 
 				@Override
@@ -344,7 +350,11 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
 						KafkaMessageSource.this.logger.info("Partitions revoked: " + partitions);
 					}
-					if (KafkaMessageSource.this.rebalanceListener != null) {
+					if (isConsumerAware) {
+						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsRevokedAfterCommit(
+								KafkaMessageSource.this.consumer, partitions);
+					}
+					else if (KafkaMessageSource.this.rebalanceListener != null) {
 						KafkaMessageSource.this.rebalanceListener.onPartitionsRevoked(partitions);
 					}
 				}
@@ -355,7 +365,11 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
 						KafkaMessageSource.this.logger.info("Partitions assigned: " + partitions);
 					}
-					if (KafkaMessageSource.this.rebalanceListener != null) {
+					if (isConsumerAware) {
+						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsAssigned(
+								KafkaMessageSource.this.consumer, partitions);
+					}
+					else if (KafkaMessageSource.this.rebalanceListener != null) {
 						KafkaMessageSource.this.rebalanceListener.onPartitionsAssigned(partitions);
 					}
 				}

@@ -56,6 +56,8 @@ compileTestKotlin {
 ext {
 	assertkVersion = '0.13'
 	jacksonVersion = '2.9.8'
+	junitJupiterVersion = '5.4.0'
+	junitPlatformVersion = '1.4.0'
 	log4jVersion = '2.11.2'
 	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
 	springKafkaVersion = '2.3.0.BUILD-SNAPSHOT'
@@ -88,6 +90,15 @@ dependencies {
 	testCompile "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
 	testCompile "org.jetbrains.kotlin:kotlin-reflect"
 	testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+	testCompile "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+	testRuntime "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+	testRuntime "org.junit.platform:junit-platform-launcher:$junitPlatformVersion"
+
+	// To support JUnit 4 tests
+	testRuntime "org.junit.vintage:junit-vintage-engine:$junitJupiterVersion"
+
+	// To avoid compiler warnings about @API annotations in JUnit code
+	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
 	testRuntime "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
 	testRuntime "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
