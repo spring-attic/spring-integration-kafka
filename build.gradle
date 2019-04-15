@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.3.21'
+	ext.kotlinVersion = '1.3.30'
 	dependencies {
 		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
 		classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
@@ -13,7 +13,7 @@ plugins {
 	id 'jacoco'
 	id 'org.sonarqube' version '2.7'
 	id 'checkstyle'
-	id 'org.ajoberstar.grgit' version '3.0.0'
+	id 'org.ajoberstar.grgit' version '3.1.1'
 }
 
 description = 'Spring Integration Kafka Support'
@@ -38,7 +38,7 @@ repositories {
 	if (version.endsWith('BUILD-SNAPSHOT')) {
 		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
-	maven { url 'https://repo.spring.io/libs-staging-local' }
+//	maven { url 'https://repo.spring.io/libs-staging-local' }
 }
 
 compileJava {
@@ -56,11 +56,11 @@ compileTestKotlin {
 ext {
 	assertkVersion = '0.13'
 	jacksonVersion = '2.9.8'
-	junitJupiterVersion = '5.5.0-M1'
-	junitPlatformVersion = '1.4.0'
+	junitJupiterVersion = '5.4.2'
+	junitPlatformVersion = '1.4.2'
 	log4jVersion = '2.11.2'
-	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.0.BUILD-SNAPSHOT'
+	springIntegrationVersion = '5.2.0.M1'
+	springKafkaVersion = '2.3.0.M1'
 
 	idPrefix = 'kafka'
 
@@ -78,7 +78,7 @@ ext {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.8.2"
+	toolVersion = "0.8.3"
 }
 
 dependencies {
@@ -121,7 +121,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
-	toolVersion = '8.18'
+	toolVersion = '8.19'
 }
 
 task updateCopyrights {
