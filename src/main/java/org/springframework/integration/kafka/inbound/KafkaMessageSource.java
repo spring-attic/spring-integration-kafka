@@ -80,6 +80,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Mark Norkin
  * @author Artem Bilan
+ * @author Anshul Mehra
  *
  * @since 3.0.1
  *
@@ -120,8 +121,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	private boolean rawMessageHeader;
 
 	private boolean running;
-
-	private boolean assigned;
 
 	private Duration assignTimeout = this.minTimeoutProvider.get();
 
@@ -325,7 +324,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		ConsumerRecord<K, V> record;
 		TopicPartition topicPartition;
 		synchronized (this.consumerMonitor) {
-			ConsumerRecords<K, V> records = this.consumer.poll(this.assigned ? this.pollTimeout : this.assignTimeout);
+			ConsumerRecords<K, V> records = this.consumer.poll(this.assignedPartitions.isEmpty() ? this.assignTimeout : this.pollTimeout);
 			if (records == null || records.count() == 0) {
 				return null;
 			}
@@ -376,7 +375,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.assignedPartitions = new ArrayList<>(partitions);
-					KafkaMessageSource.this.assigned = true;
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
 						KafkaMessageSource.this.logger.info("Partitions assigned: " + partitions);
 					}
@@ -399,7 +397,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 			if (this.consumer != null) {
 				this.consumer.close();
 				this.consumer = null;
-				this.assigned = false;
+				this.assignedPartitions.clear();
 			}
 		}
 	}
