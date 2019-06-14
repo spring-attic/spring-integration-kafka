@@ -11,7 +11,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.7'
+	id 'org.sonarqube' version '2.7.1'
 	id 'checkstyle'
 	id 'org.ajoberstar.grgit' version '3.1.1'
 }
@@ -54,13 +54,13 @@ compileTestKotlin {
 }
 
 ext {
-	assertkVersion = '0.14'
+	assertkVersion = '0.17'
 	jacksonVersion = '2.9.8'
 	junitJupiterVersion = '5.4.2'
 	junitPlatformVersion = '1.4.2'
 	log4jVersion = '2.11.2'
-	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.0.M2'
+	springIntegrationVersion = '5.2.0.M3'
+	springKafkaVersion = '2.3.0.M3'
 
 	idPrefix = 'kafka'
 
