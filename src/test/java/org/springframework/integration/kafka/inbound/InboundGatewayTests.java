@@ -60,7 +60,10 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.ErrorMessage;
+import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
 import org.springframework.retry.backoff.NoBackOffPolicy;
+import org.springframework.retry.listener.RetryListenerSupport;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -86,9 +89,11 @@ public class InboundGatewayTests {
 
 	private static String topic6 = "testTopic6";
 
+	private static String topic7 = "testTopic7";
+
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafka =
-			new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4, topic5, topic6);
+			new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4, topic5, topic6, topic7);
 
 	@Rule
 	public Log4j2LevelAdjuster adjuster = Log4j2LevelAdjuster.trace().categories("org.apache.kafka.clients",
@@ -330,6 +335,61 @@ public class InboundGatewayTests {
 		ConsumerRecord<Integer, String> record = KafkaTestUtils.getSingleRecord(consumer, topic6);
 		assertThat(record).has(partition(1));
 		assertThat(record).has(value("ERROR"));
+
+		gateway.stop();
+	}
+
+	@Test
+	public void testInboundRetryErrorRecoverWithoutRecocveryCallback() throws Exception {
+		EmbeddedKafkaBroker embeddedKafka = InboundGatewayTests.embeddedKafka.getEmbeddedKafka();
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("replyHandler4", "false", embeddedKafka);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		ConsumerFactory<Integer, String> cf2 = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf2.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic7);
+
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test4", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic7);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic7);
+		KafkaInboundGateway<Integer, String, String> gateway = new KafkaInboundGateway<>(container, template);
+		MessageChannel out = new DirectChannel() {
+
+			@Override
+			protected boolean doSend(Message<?> message, long timeout) {
+				throw new RuntimeException("intended");
+			}
+
+		};
+		gateway.setRequestChannel(out);
+		gateway.setBeanFactory(mock(BeanFactory.class));
+		gateway.setReplyTimeout(30_000);
+		RetryTemplate retryTemplate = new RetryTemplate();
+		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
+		retryPolicy.setMaxAttempts(5);
+		retryTemplate.setRetryPolicy(retryPolicy);
+		retryTemplate.setBackOffPolicy(new NoBackOffPolicy());
+		final CountDownLatch retryCountLatch = new CountDownLatch(retryPolicy.getMaxAttempts());
+		retryTemplate.registerListener(new RetryListenerSupport() {
+			@Override
+			public <T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback, Throwable throwable) {
+				retryCountLatch.countDown();
+			}
+		});
+		gateway.setRetryTemplate(retryTemplate);
+		gateway.afterPropertiesSet();
+		gateway.start();
+		ContainerTestUtils.waitForAssignment(container, 2);
+
+		template.sendDefault(0, 1487694048607L, 1, "foo");
+
+		assertThat(retryCountLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		gateway.stop();
 	}
