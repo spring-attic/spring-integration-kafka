@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Urs Keller
  *
  */
 public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSupport implements OrderlyShutdownCapable,
@@ -449,7 +450,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+			if (KafkaMessageDrivenChannelAdapter.this.retryTemplate != null) {
 				attributesHolder.set(context);
 			}
 			return true;
@@ -458,6 +459,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
+
 			attributesHolder.remove();
 		}
 
@@ -504,7 +506,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+			if (KafkaMessageDrivenChannelAdapter.this.retryTemplate != null) {
 				attributesHolder.set(context);
 			}
 			return true;
@@ -513,6 +515,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 		@Override
 		public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback,
 				Throwable throwable) {
+
 			attributesHolder.remove();
 		}
 
