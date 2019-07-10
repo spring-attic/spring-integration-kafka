@@ -471,7 +471,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+			if (KafkaMessageDrivenChannelAdapter.this.retryTemplate != null) {
 				attributesHolder.set(context);
 			}
 			return true;
@@ -526,7 +526,7 @@ public class KafkaMessageDrivenChannelAdapter<K, V> extends MessageProducerSuppo
 
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
-			if (KafkaMessageDrivenChannelAdapter.this.recoveryCallback != null) {
+			if (KafkaMessageDrivenChannelAdapter.this.retryTemplate != null) {
 				attributesHolder.set(context);
 			}
 			return true;

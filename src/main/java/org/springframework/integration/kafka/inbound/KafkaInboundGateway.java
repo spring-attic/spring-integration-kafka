@@ -345,7 +345,7 @@ public class KafkaInboundGateway<K, V, R> extends MessagingGatewaySupport implem
 
 		@Override
 		public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
-			if (KafkaInboundGateway.this.recoveryCallback != null) {
+			if (KafkaInboundGateway.this.retryTemplate != null) {
 				attributesHolder.set(context);
 			}
 			return true;
