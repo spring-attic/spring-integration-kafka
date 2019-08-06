@@ -74,8 +74,8 @@ ext {
 	jacksonVersion = '2.9.7'
 	log4jVersion = '2.11.1'
 	slf4jVersion = '1.7.25'
-	springIntegrationVersion = '5.0.13.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.1.12.RELEASE'
+	springIntegrationVersion = '5.0.13.RELEASE'
+	springKafkaVersion = '2.1.13.RELEASE'
 
 	idPrefix = 'kafka'
 
