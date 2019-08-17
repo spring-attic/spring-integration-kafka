@@ -16,6 +16,8 @@
 
 package org.springframework.integration.kafka.dsl;
 
+import java.util.regex.Pattern;
+
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 
 import org.springframework.integration.dsl.MessageSourceSpec;
@@ -31,6 +33,7 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Anshul Mehra
  *
  * @since 3.0.1
  *
@@ -39,13 +42,31 @@ public class KafkaInboundChannelAdapterSpec<K, V>
 		extends MessageSourceSpec<KafkaInboundChannelAdapterSpec<K, V>, KafkaMessageSource<K, V>> {
 
 	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, String... topics) {
-		this.target = new KafkaMessageSource<>(consumerFactory, allowMultiFetch, topics);
+		KafkaMessageSource<K, V> source = new KafkaMessageSource<>(consumerFactory, allowMultiFetch);
+		source.setTopics(topics);
+		this.target = source;
 	}
 
 	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory,
 			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch, String... topics) {
 
-		this.target = new KafkaMessageSource<>(consumerFactory, ackCallbackFactory, allowMultiFetch, topics);
+		KafkaMessageSource<K, V> source = new KafkaMessageSource<>(consumerFactory, ackCallbackFactory, allowMultiFetch);
+		source.setTopics(topics);
+		this.target = source;
+	}
+
+	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, Pattern topicPattern) {
+		KafkaMessageSource<K, V> source = new KafkaMessageSource<>(consumerFactory, allowMultiFetch);
+		source.setTopicPattern(topicPattern);
+		this.target = source;
+	}
+
+	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch, Pattern topicPattern) {
+
+		KafkaMessageSource<K, V> source = new KafkaMessageSource<>(consumerFactory, ackCallbackFactory, allowMultiFetch);
+		source.setTopicPattern(topicPattern);
+		this.target = source;
 	}
 
 	public KafkaInboundChannelAdapterSpec<K, V> groupId(String groupId) {

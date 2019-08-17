@@ -30,6 +30,7 @@ import org.springframework.util.StringUtils;
  * Parser for the inbound channel adapter.
  *
  * @author Gary Russell
+ * @author Anshul Mehra
  * @since 3.2
  *
  */
@@ -52,13 +53,21 @@ public class KafkaInboundChannelAdapterParser extends AbstractPollingInboundChan
 		if (StringUtils.hasText(attribute)) {
 			builder.addConstructorArgValue(attribute);
 		}
-		builder.addConstructorArgValue(element.getAttribute("topics"));
+
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "client-id");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "group-id");
 		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(builder, element, "message-converter");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "payload-type");
 		IntegrationNamespaceUtils.setValueIfAttributeDefined(builder, element, "raw-header", "rawMessageHeader");
 		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(builder, element, "rebalance-listener");
+
+		attribute = element.getAttribute("topics");
+		if (StringUtils.hasText(attribute)) {
+			builder.addPropertyValue("topics", element.getAttribute("topics"));
+		}
+		else {
+			builder.addPropertyValue("topicPattern", element.getAttribute("topicPattern"));
+		}
 		return builder.getBeanDefinition();
 	}
 

@@ -41,6 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -48,7 +51,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.Test;
@@ -111,7 +116,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory);
+		source.setTopics("foo");
 		source.setRawMessageHeader(true);
 
 		Message<?> received = source.receive();
@@ -205,7 +211,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory);
+		source.setTopics("foo");
 
 		Message<?> received1 = source.receive();
 		consumer.paused(); // need some other interaction with mock between polls for InOrder
@@ -279,7 +286,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory);
+		source.setTopics("foo");
 		source.setCommitTimeout(Duration.ofSeconds(30));
 
 		Message<?> received = source.receive();
@@ -347,7 +355,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory);
+		source.setTopics("foo");
 
 		Message<?> received1 = source.receive();
 		consumer.paused(); // need some other interaction with mock between polls for InOrder
@@ -406,18 +415,20 @@ public class MessageSourceTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	public void testMaxPollRecords() {
-		KafkaMessageSource source = new KafkaMessageSource(new DefaultKafkaConsumerFactory<>(Collections.emptyMap()),
-				"topic");
+		KafkaMessageSource source = new KafkaMessageSource(new DefaultKafkaConsumerFactory<>(Collections.emptyMap()));
+		source.setTopics("topic");
 		assertThat((TestUtils.getPropertyValue(source, "consumerFactory.configs", Map.class)
 				.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG))).isEqualTo(1);
 		source = new KafkaMessageSource(new DefaultKafkaConsumerFactory<>(
-				Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)), "topic");
+				Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)));
+		source.setTopics("topic");
 		assertThat((TestUtils.getPropertyValue(source, "consumerFactory.configs", Map.class)
 				.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG))).isEqualTo(1);
 		try {
 			new KafkaMessageSource((new DefaultKafkaConsumerFactory(Collections.emptyMap()) {
 
-			}), "topic");
+			}));
+
 			fail("Expected exception");
 		}
 		catch (IllegalArgumentException e) {
@@ -451,7 +462,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory);
+		source.setTopics("foo");
 		source.setRawMessageHeader(true);
 
 		Message<?> received = source.receive();
@@ -513,7 +525,8 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 4)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, true, "foo");
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, true);
+		source.setTopics("foo");
 		source.setRawMessageHeader(true);
 
 		Message<?> received = source.receive();
@@ -549,6 +562,66 @@ public class MessageSourceTests {
 		inOrder.verify(consumer).poll(any(Duration.class));
 		inOrder.verify(consumer).close();
 		inOrder.verifyNoMoreInteractions();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testTopicPatternBasedMessageSource() {
+		MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+		TopicPartition topicPartition1 = new TopicPartition("abc_foo", 0);
+		TopicPartition topicPartition2 = new TopicPartition("abc_foo", 1);
+		TopicPartition topicPartition3 = new TopicPartition("def_foo", 0);
+		TopicPartition topicPartition4 = new TopicPartition("def_foo", 1);
+		List<TopicPartition> topicPartitions = Arrays
+				.asList(topicPartition1, topicPartition2, topicPartition3, topicPartition4);
+
+		Map<TopicPartition, Long> beginningOffsets = topicPartitions.stream().collect(Collectors
+				.toMap(Function.identity(), tp -> 0L));
+		consumer.updateBeginningOffsets(beginningOffsets);
+
+		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
+		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
+				.getConfigurationProperties();
+		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
+		KafkaMessageSource<String, String> source = new KafkaMessageSource<>(consumerFactory);
+		source.setTopicPattern(Pattern.compile("[a-zA-Z0-9_]*?foo"));
+		source.setRawMessageHeader(true);
+		source.start();
+		// force consumer creation
+		source.receive();
+
+		consumer.rebalance(topicPartitions);
+
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("abc_foo", 0, 0, null, "a");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("abc_foo", 0, 1, null, "b");
+		ConsumerRecord<String, String> record3 = new ConsumerRecord<>("abc_foo", 1, 0, null, "c");
+		ConsumerRecord<String, String> record4 = new ConsumerRecord<>("def_foo", 1, 0, null, "d");
+		ConsumerRecord<String, String> record5 = new ConsumerRecord<>("def_foo", 0, 0, null, "e");
+		Arrays.asList(record1, record2, record3, record4, record5)
+				.forEach(consumer::addRecord);
+
+		Message<?> received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record1);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record2);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record3);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record4);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record5);
+
+		source.destroy();
 	}
 
 }

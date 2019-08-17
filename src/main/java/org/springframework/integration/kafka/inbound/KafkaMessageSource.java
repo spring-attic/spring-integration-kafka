@@ -30,6 +30,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -107,7 +108,9 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	private final KafkaAckCallbackFactory<K, V> ackCallbackFactory;
 
-	private final String[] topics;
+	private Pattern topicPattern;
+
+	private String[] topics;
 
 	private final Object consumerMonitor = new Object();
 
@@ -152,11 +155,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * records per poll will be disabled.
 	 *
 	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean, String...)
+	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean)
 	 */
-	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		this(consumerFactory, new KafkaAckCallbackFactory<>(), false, topics);
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory) {
+		this(consumerFactory, new KafkaAckCallbackFactory<>(), false);
 	}
 
 	/**
@@ -172,11 +174,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param allowMultiFetch true to allow {@code max.poll.records > 1}.
-	 * @param topics the topics.
 	 * @since 3.2
 	 */
-	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, String... topics) {
-		this(consumerFactory, new KafkaAckCallbackFactory<>(), allowMultiFetch, topics);
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch) {
+		this(consumerFactory, new KafkaAckCallbackFactory<>(), allowMultiFetch);
 	}
 
 	/**
@@ -185,13 +186,12 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param ackCallbackFactory the ack callback factory.
-	 * @param topics the topics.
-	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean, String...)
+	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean)
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
-			KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory) {
 
-		this(consumerFactory, ackCallbackFactory, false, topics);
+		this(consumerFactory, ackCallbackFactory, false);
 	}
 
 	/**
@@ -208,18 +208,43 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * @param consumerFactory the consumer factory.
 	 * @param ackCallbackFactory the ack callback factory.
 	 * @param allowMultiFetch true to allow {@code max.poll.records > 1}.
-	 * @param topics the topics.
 	 * @since 3.2
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
-			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch, String... topics) {
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch) {
 
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
-		Assert.isTrue(topics != null && topics.length > 0, "At least one topic is required");
 		this.consumerFactory = fixOrRejectConsumerFactory(consumerFactory, allowMultiFetch);
 		this.ackCallbackFactory = ackCallbackFactory;
+	}
+
+	protected String[] getTopics() {
+		return this.topics;
+	}
+
+	/**
+	 * Set the topic(s).
+	 * @param topics the topics.
+	 */
+	public void setTopics(String... topics) {
+		Assert.isTrue(topics != null && topics.length > 0, "At least one topic is required");
+		this.topicPattern = null;
 		this.topics = topics;
+	}
+
+	protected Pattern getTopicPattern() {
+		return this.topicPattern;
+	}
+
+	/**
+	 * Set the topic pattern.
+	 * @param topicPattern the topic pattern.
+	 */
+	public void setTopicPattern(Pattern topicPattern) {
+		Assert.notNull(topicPattern, "'topicPattern' must not be null");
+		this.topics = null;
+		this.topicPattern = topicPattern;
 	}
 
 	protected String getGroupId() {
@@ -412,6 +437,11 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	}
 
 	@Override
+	protected void onInit() {
+		Assert.isTrue(!(this.topics == null && this.topicPattern == null), "Either 'topics' or 'topicPattern' must be provided");
+	}
+
+	@Override
 	protected synchronized Object doReceive() {
 		if (this.consumer == null) {
 			createConsumer();
@@ -489,20 +519,23 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		synchronized (this.consumerMonitor) {
 			this.consumer = this.consumerFactory.createConsumer(this.groupId, this.clientId, null);
 			boolean isConsumerAware = this.consumerAwareRebalanceListener != null;
-			this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
+			ConsumerRebalanceListener rebalanceCallback = new ConsumerRebalanceListener() {
 
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.assignedPartitions.clear();
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
-						KafkaMessageSource.this.logger.info("Partitions revoked: " + partitions);
+						KafkaMessageSource.this.logger
+								.info("Partitions revoked: " + partitions);
 					}
 					if (isConsumerAware) {
-						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsRevokedAfterCommit(
-								KafkaMessageSource.this.consumer, partitions);
+						KafkaMessageSource.this.consumerAwareRebalanceListener
+								.onPartitionsRevokedAfterCommit(
+										KafkaMessageSource.this.consumer, partitions);
 					}
 					else if (KafkaMessageSource.this.rebalanceListener != null) {
-						KafkaMessageSource.this.rebalanceListener.onPartitionsRevoked(partitions);
+						KafkaMessageSource.this.rebalanceListener
+								.onPartitionsRevoked(partitions);
 					}
 				}
 
@@ -510,18 +543,28 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.assignedPartitions = new ArrayList<>(partitions);
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
-						KafkaMessageSource.this.logger.info("Partitions assigned: " + partitions);
+						KafkaMessageSource.this.logger
+								.info("Partitions assigned: " + partitions);
 					}
 					if (isConsumerAware) {
-						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsAssigned(
-								KafkaMessageSource.this.consumer, partitions);
+						KafkaMessageSource.this.consumerAwareRebalanceListener
+								.onPartitionsAssigned(
+										KafkaMessageSource.this.consumer, partitions);
 					}
 					else if (KafkaMessageSource.this.rebalanceListener != null) {
-						KafkaMessageSource.this.rebalanceListener.onPartitionsAssigned(partitions);
+						KafkaMessageSource.this.rebalanceListener
+								.onPartitionsAssigned(partitions);
 					}
 				}
 
-			});
+			};
+
+			if (this.topicPattern != null) {
+				this.consumer.subscribe(this.topicPattern, rebalanceCallback);
+			}
+			else {
+				this.consumer.subscribe(Arrays.asList(this.topics), rebalanceCallback);
+			}
 		}
 	}
 

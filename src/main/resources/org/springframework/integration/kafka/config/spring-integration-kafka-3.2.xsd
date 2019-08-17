@@ -176,6 +176,18 @@
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
+			<xsd:attribute name="topicPattern">
+				<xsd:annotation>
+					<xsd:documentation>
+						The topic pattern.
+					</xsd:documentation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type type="java.util.regex.Pattern"/>
+						</tool:annotation>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:attribute>
 			<xsd:attribute name="group-id" use="required" type="xsd:string">
 				<xsd:annotation>
 					<xsd:documentation>

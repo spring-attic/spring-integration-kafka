@@ -59,7 +59,8 @@ public class MessageSourceIntegrationTests {
 		consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> consumerFactory = new DefaultKafkaConsumerFactory<>(consumerProps);
-		KafkaMessageSource<Integer, String> source = new KafkaMessageSource<>(consumerFactory, TOPIC1);
+		KafkaMessageSource<Integer, String> source = new KafkaMessageSource<>(consumerFactory);
+		source.setTopics(TOPIC1);
 		final CountDownLatch assigned = new CountDownLatch(1);
 		source.setRebalanceListener(new ConsumerRebalanceListener() {
 
