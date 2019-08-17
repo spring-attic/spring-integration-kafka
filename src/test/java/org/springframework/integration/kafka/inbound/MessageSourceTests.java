@@ -553,4 +553,64 @@ public class MessageSourceTests {
 		inOrder.verifyNoMoreInteractions();
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testTopicPatternBasedMessageSource() {
+		MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+		TopicPartition topicPartition1 = new TopicPartition("abc_foo", 0);
+		TopicPartition topicPartition2 = new TopicPartition("abc_foo", 1);
+		TopicPartition topicPartition3 = new TopicPartition("def_foo", 0);
+		TopicPartition topicPartition4 = new TopicPartition("def_foo", 1);
+		List<TopicPartition> topicPartitions = Arrays
+				.asList(topicPartition1, topicPartition2, topicPartition3, topicPartition4);
+
+		Map<TopicPartition, Long> beginningOffsets = topicPartitions.stream().collect(Collectors
+				.toMap(Function.identity(), tp -> 0L));
+		consumer.updateBeginningOffsets(beginningOffsets);
+
+		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
+		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
+				.getConfigurationProperties();
+		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
+		KafkaMessageSource<String, String> source = new KafkaMessageSource<>(consumerFactory);
+		source.setTopicPattern(Pattern.compile("[a-zA-Z0-9_]*?foo"));
+		source.setRawMessageHeader(true);
+		source.start();
+		// force consumer creation
+		source.receive();
+
+		consumer.rebalance(topicPartitions);
+
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("abc_foo", 0, 0, null, "a");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("abc_foo", 0, 1, null, "b");
+		ConsumerRecord<String, String> record3 = new ConsumerRecord<>("abc_foo", 1, 0, null, "c");
+		ConsumerRecord<String, String> record4 = new ConsumerRecord<>("def_foo", 1, 0, null, "d");
+		ConsumerRecord<String, String> record5 = new ConsumerRecord<>("def_foo", 0, 0, null, "e");
+		Arrays.asList(record1, record2, record3, record4, record5)
+				.forEach(consumer::addRecord);
+
+		Message<?> received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record1);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record2);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record3);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record4);
+		received = source.receive();
+		assertThat(received).isNotNull();
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isInstanceOf(ConsumerRecord.class);
+		assertThat(received.getHeaders().get(KafkaHeaders.RAW_DATA)).isEqualTo(record5);
+
+		source.destroy();
+	}
+
 }
