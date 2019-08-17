@@ -211,6 +211,78 @@ public final class Kafka {
 	}
 
 	/**
+	 * Create an initial {@link KafkaInboundChannelAdapterSpec} with the consumer factory and
+	 * topic pattern.
+	 * @param consumerFactory the consumer factory.
+	 * @param topicPattern the topic pattern.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type.
+	 * @return the spec.
+	 * @since 3.2.0
+	 */
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
+			ConsumerFactory<K, V> consumerFactory, Pattern topicPattern) {
+
+		return inboundChannelAdapter(consumerFactory, false, topicPattern);
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundChannelAdapterSpec} with the consumer factory and
+	 * topic pattern.
+	 * @param consumerFactory the consumer factory.
+	 * @param allowMultiFetch true to fetch multiple records on each poll.
+	 * @param topicPattern the topic pattern.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type.
+	 * @return the spec.
+	 * @since 3.2
+	 */
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
+			ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, Pattern topicPattern) {
+
+		return new KafkaInboundChannelAdapterSpec<>(consumerFactory, allowMultiFetch, topicPattern);
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundChannelAdapterSpec} with the consumer factory and
+	 * topic pattern with a custom ack callback factory.
+	 * @param consumerFactory the consumer factory.
+	 * @param ackCallbackFactory the callback factory.
+	 * @param topicPattern the topic pattern.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type.
+	 * @return the spec.
+	 * @since 3.0.1
+	 */
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
+			ConsumerFactory<K, V> consumerFactory,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory, Pattern topicPattern) {
+
+		return inboundChannelAdapter(consumerFactory, ackCallbackFactory, false, topicPattern);
+	}
+
+	/**
+	 * Create an initial {@link KafkaInboundChannelAdapterSpec} with the consumer factory and
+	 * topic pattern with a custom ack callback factory.
+	 * @param consumerFactory the consumer factory.
+	 * @param ackCallbackFactory the callback factory.
+	 * @param allowMultiFetch true to fetch multiple records on each poll.
+	 * @param topicPattern the topic pattern.
+	 * @param <K> the Kafka message key type.
+	 * @param <V> the Kafka message value type.
+	 * @return the spec.
+	 * @since 3.0.1
+	 */
+	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
+			ConsumerFactory<K, V> consumerFactory,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory,
+			boolean allowMultiFetch,
+			Pattern topicPattern) {
+
+		return new KafkaInboundChannelAdapterSpec<>(consumerFactory, ackCallbackFactory, allowMultiFetch, topicPattern);
+	}
+
+	/**
 	 * Create an initial {@link KafkaMessageDrivenChannelAdapterSpec}. If the listener
 	 * container is not already a bean it will be registered in the application context.
 	 * If the adapter spec has an {@code id}, the bean name will be that id appended with

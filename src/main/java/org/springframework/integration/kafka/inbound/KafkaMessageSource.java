@@ -30,6 +30,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -539,20 +540,23 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		synchronized (this.consumerMonitor) {
 			this.consumer = this.consumerFactory.createConsumer(this.groupId, this.clientId, null);
 			boolean isConsumerAware = this.consumerAwareRebalanceListener != null;
-			this.consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
+			ConsumerRebalanceListener rebalanceCallback = new ConsumerRebalanceListener() {
 
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.assignedPartitions.clear();
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
-						KafkaMessageSource.this.logger.info("Partitions revoked: " + partitions);
+						KafkaMessageSource.this.logger
+								.info("Partitions revoked: " + partitions);
 					}
 					if (isConsumerAware) {
-						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsRevokedAfterCommit(
-								KafkaMessageSource.this.consumer, partitions);
+						KafkaMessageSource.this.consumerAwareRebalanceListener
+								.onPartitionsRevokedAfterCommit(
+										KafkaMessageSource.this.consumer, partitions);
 					}
 					else if (KafkaMessageSource.this.rebalanceListener != null) {
-						KafkaMessageSource.this.rebalanceListener.onPartitionsRevoked(partitions);
+						KafkaMessageSource.this.rebalanceListener
+								.onPartitionsRevoked(partitions);
 					}
 				}
 
@@ -560,18 +564,28 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					KafkaMessageSource.this.assignedPartitions = new ArrayList<>(partitions);
 					if (KafkaMessageSource.this.logger.isInfoEnabled()) {
-						KafkaMessageSource.this.logger.info("Partitions assigned: " + partitions);
+						KafkaMessageSource.this.logger
+								.info("Partitions assigned: " + partitions);
 					}
 					if (isConsumerAware) {
-						KafkaMessageSource.this.consumerAwareRebalanceListener.onPartitionsAssigned(
-								KafkaMessageSource.this.consumer, partitions);
+						KafkaMessageSource.this.consumerAwareRebalanceListener
+								.onPartitionsAssigned(
+										KafkaMessageSource.this.consumer, partitions);
 					}
 					else if (KafkaMessageSource.this.rebalanceListener != null) {
-						KafkaMessageSource.this.rebalanceListener.onPartitionsAssigned(partitions);
+						KafkaMessageSource.this.rebalanceListener
+								.onPartitionsAssigned(partitions);
 					}
 				}
 
-			});
+			};
+
+			if (this.topicPattern != null) {
+				this.consumer.subscribe(this.topicPattern, rebalanceCallback);
+			}
+			else {
+				this.consumer.subscribe(Arrays.asList(this.topics), rebalanceCallback);
+			}
 		}
 	}
 
