@@ -52,6 +52,7 @@ import org.springframework.integration.support.AbstractIntegrationMessageBuilder
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
+import org.springframework.kafka.listener.ConsumerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.KafkaMessageHeaders;
@@ -60,6 +61,7 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Polled message source for kafka. Only one thread can poll for data (or
@@ -90,8 +92,6 @@ import org.springframework.util.Assert;
  */
 public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> implements Pausable {
 
-	private static final long DEFAULT_POLL_TIMEOUT = 50L;
-
 	private static final long MIN_ASSIGN_TIMEOUT = 2000L;
 
 	/**
@@ -119,7 +119,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	private String clientId = "message.source";
 
-	private Duration pollTimeout = Duration.ofMillis(DEFAULT_POLL_TIMEOUT);
+	private Duration pollTimeout;
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
@@ -135,7 +135,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	private boolean running;
 
-	private Duration assignTimeout = this.minTimeoutProvider.get();
+	private Duration assignTimeout;
 
 	private volatile Consumer<K, V> consumer;
 
@@ -152,11 +152,11 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * records per poll will be disabled.
 	 *
 	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean, String...)
+	 * @param consumerProperties the consumer properties.
+	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
 	 */
-	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		this(consumerFactory, new KafkaAckCallbackFactory<>(), false, topics);
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, ConsumerProperties consumerProperties) {
+		this(consumerFactory, consumerProperties, new KafkaAckCallbackFactory<>(), false);
 	}
 
 	/**
@@ -171,12 +171,14 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * the records from the previous poll are consumed.
 	 *
 	 * @param consumerFactory the consumer factory.
+	 * @param consumerProperties the consumer properties.
 	 * @param allowMultiFetch true to allow {@code max.poll.records > 1}.
-	 * @param topics the topics.
 	 * @since 3.2
 	 */
-	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, String... topics) {
-		this(consumerFactory, new KafkaAckCallbackFactory<>(), allowMultiFetch, topics);
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
+			ConsumerProperties consumerProperties,
+			boolean allowMultiFetch) {
+		this(consumerFactory, consumerProperties, new KafkaAckCallbackFactory<>(), allowMultiFetch);
 	}
 
 	/**
@@ -184,14 +186,15 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * records per poll will be disabled.
 	 *
 	 * @param consumerFactory the consumer factory.
+	 * @param consumerProperties the consumer properties.
 	 * @param ackCallbackFactory the ack callback factory.
-	 * @param topics the topics.
-	 * @see #KafkaMessageSource(ConsumerFactory, KafkaAckCallbackFactory, boolean, String...)
+	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
-			KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
+			ConsumerProperties consumerProperties,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory) {
 
-		this(consumerFactory, ackCallbackFactory, false, topics);
+		this(consumerFactory, consumerProperties, ackCallbackFactory, false);
 	}
 
 	/**
@@ -206,57 +209,48 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * the records from the previous poll are consumed.
 	 *
 	 * @param consumerFactory the consumer factory.
+	 * @param consumerProperties the consumer properties.
 	 * @param ackCallbackFactory the ack callback factory.
 	 * @param allowMultiFetch true to allow {@code max.poll.records > 1}.
-	 * @param topics the topics.
 	 * @since 3.2
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
-			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch, String... topics) {
+			ConsumerProperties consumerProperties,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory,
+			boolean allowMultiFetch) {
 
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
-		Assert.isTrue(topics != null && topics.length > 0, "At least one topic is required");
+		Assert.isTrue(consumerProperties.getTopics() != null && consumerProperties.getTopics().length > 0, "At least one topic is required");
 		this.consumerFactory = fixOrRejectConsumerFactory(consumerFactory, allowMultiFetch);
 		this.ackCallbackFactory = ackCallbackFactory;
-		this.topics = topics;
+		this.topics = consumerProperties.getTopics();
+		this.groupId = consumerProperties.getGroupId();
+		if (StringUtils.hasText(consumerProperties.getClientId())) {
+			this.clientId = consumerProperties.getClientId();
+		}
+		this.pollTimeout = Duration.ofMillis(consumerProperties.getPollTimeout());
+		this.assignTimeout = this.minTimeoutProvider.get();
+		this.commitTimeout = consumerProperties.getSyncCommitTimeout();
+		this.ackCallbackFactory.setCommitTimeout(consumerProperties.getSyncCommitTimeout());
+		if (consumerProperties.getConsumerRebalanceListener() instanceof ConsumerAwareRebalanceListener) {
+			this.consumerAwareRebalanceListener = (ConsumerAwareRebalanceListener) consumerProperties.getConsumerRebalanceListener();
+		}
+		else {
+			this.rebalanceListener = consumerProperties.getConsumerRebalanceListener();
+		}
 	}
 
 	protected String getGroupId() {
 		return this.groupId;
 	}
 
-	/**
-	 * Set the group.id property for the consumer.
-	 * @param groupId the group id.
-	 */
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
-	}
-
 	protected String getClientId() {
 		return this.clientId;
 	}
 
-	/**
-	 * Set the client.id property for the consumer.
-	 * @param clientId the client id.
-	 */
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-
 	protected long getPollTimeout() {
 		return this.pollTimeout.toMillis();
-	}
-
-	/**
-	 * Set the pollTimeout for the poll() operations; default 50ms.
-	 * @param pollTimeout the poll timeout.
-	 */
-	public void setPollTimeout(long pollTimeout) {
-		this.pollTimeout = Duration.ofMillis(pollTimeout);
-		this.assignTimeout = this.minTimeoutProvider.get();
 	}
 
 	protected RecordMessageConverter getMessageConverter() {
@@ -289,17 +283,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		return this.rebalanceListener;
 	}
 
-	/**
-	 * Set a rebalance listener.
-	 * @param rebalanceListener the rebalance listener.
-	 */
-	public void setRebalanceListener(ConsumerRebalanceListener rebalanceListener) {
-		this.rebalanceListener = rebalanceListener;
-		if (rebalanceListener instanceof ConsumerAwareRebalanceListener) {
-			this.consumerAwareRebalanceListener = (ConsumerAwareRebalanceListener) rebalanceListener;
-		}
-	}
-
 	@Override
 	public String getComponentType() {
 		return "kafka:message-source";
@@ -322,16 +305,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	protected Duration getCommitTimeout() {
 		return this.commitTimeout;
-	}
-
-	/**
-	 * Set the timeout for commits.
-	 * @param commitTimeout the timeout.
-	 * @since 3.2
-	 */
-	public void setCommitTimeout(Duration commitTimeout) {
-		this.commitTimeout = commitTimeout;
-		this.ackCallbackFactory.setCommitTimeout(commitTimeout);
 	}
 
 	private ConsumerFactory<K, V> fixOrRejectConsumerFactory(ConsumerFactory<K, V> suppliedConsumerFactory,

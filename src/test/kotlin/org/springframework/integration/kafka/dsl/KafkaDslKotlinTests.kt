@@ -57,10 +57,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.listener.ContainerProperties
-import org.springframework.kafka.listener.GenericMessageListenerContainer
-import org.springframework.kafka.listener.KafkaMessageListenerContainer
-import org.springframework.kafka.listener.MessageListenerContainer
+import org.springframework.kafka.listener.*
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper
@@ -320,7 +317,7 @@ class KafkaDslKotlinTests {
         @Bean
         fun sourceFlow() =
                 IntegrationFlows
-                        .from(Kafka.inboundChannelAdapter(consumerFactory(), TEST_TOPIC3)) { e -> e.poller(Pollers.fixedDelay(100)) }
+                        .from(Kafka.inboundChannelAdapter(consumerFactory(), ConsumerProperties(TEST_TOPIC3))) { e -> e.poller(Pollers.fixedDelay(100)) }
                         .handle({ p ->
                             this.fromSource = p.getPayload()
                             this.sourceFlowLatch.countDown()
