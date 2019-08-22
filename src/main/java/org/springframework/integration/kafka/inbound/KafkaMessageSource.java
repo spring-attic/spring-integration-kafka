@@ -152,7 +152,37 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * records per poll will be disabled.
 	 *
 	 * @param consumerFactory the consumer factory.
+	 * @param topics the topics.
+	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
+	 */
+	@Deprecated
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, String... topics) {
+		this(consumerFactory, new ConsumerProperties(topics), new KafkaAckCallbackFactory<>(), false);
+	}
+
+	/**
+	 * Construct an instance with the supplied parameters. Fetching multiple
+	 * records per poll will be disabled.
+	 *
+	 * @param consumerFactory the consumer factory.
+	 * @param ackCallbackFactory the ack callback factory.
+	 * @param topics the topics.
+	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
+	 */
+	@Deprecated
+	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory, String... topics) {
+
+		this(consumerFactory, new ConsumerProperties(topics), ackCallbackFactory, false);
+	}
+
+	/**
+	 * Construct an instance with the supplied parameters. Fetching multiple
+	 * records per poll will be disabled.
+	 *
+	 * @param consumerFactory the consumer factory.
 	 * @param consumerProperties the consumer properties.
+	 * @since 3.2
 	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, ConsumerProperties consumerProperties) {
@@ -188,6 +218,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * @param consumerFactory the consumer factory.
 	 * @param consumerProperties the consumer properties.
 	 * @param ackCallbackFactory the ack callback factory.
+	 * @since 3.2
 	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
 	 */
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
@@ -245,12 +276,43 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		return this.groupId;
 	}
 
+	/**
+	 * Set the group.id property for the consumer.
+	 * @param groupId the group id.
+	 * @see ConsumerProperties
+	 */
+	@Deprecated
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
 	protected String getClientId() {
 		return this.clientId;
 	}
 
+	/**
+	 * Set the client.id property for the consumer.
+	 * @param clientId the client id.
+	 * @see ConsumerProperties
+	 */
+	@Deprecated
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
 	protected long getPollTimeout() {
 		return this.pollTimeout.toMillis();
+	}
+
+	/**
+	 * Set the pollTimeout for the poll() operations; default 50ms.
+	 * @param pollTimeout the poll timeout.
+	 * @see ConsumerProperties
+	 */
+	@Deprecated
+	public void setPollTimeout(long pollTimeout) {
+		this.pollTimeout = Duration.ofMillis(pollTimeout);
+		this.assignTimeout = this.minTimeoutProvider.get();
 	}
 
 	protected RecordMessageConverter getMessageConverter() {
@@ -281,6 +343,19 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	protected ConsumerRebalanceListener getRebalanceListener() {
 		return this.rebalanceListener;
+	}
+
+	/**
+	 * Set a rebalance listener.
+	 * @param rebalanceListener the rebalance listener.
+	 * @see ConsumerProperties
+	 */
+	@Deprecated
+	public void setRebalanceListener(ConsumerRebalanceListener rebalanceListener) {
+		this.rebalanceListener = rebalanceListener;
+		if (rebalanceListener instanceof ConsumerAwareRebalanceListener) {
+			this.consumerAwareRebalanceListener = (ConsumerAwareRebalanceListener) rebalanceListener;
+		}
 	}
 
 	@Override

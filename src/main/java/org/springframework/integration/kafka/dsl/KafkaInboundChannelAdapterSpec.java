@@ -16,6 +16,8 @@
 
 package org.springframework.integration.kafka.dsl;
 
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+
 import org.springframework.integration.dsl.MessageSourceSpec;
 import org.springframework.integration.kafka.inbound.KafkaMessageSource;
 import org.springframework.integration.kafka.inbound.KafkaMessageSource.KafkaAckCallbackFactory;
@@ -38,6 +40,18 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 public class KafkaInboundChannelAdapterSpec<K, V>
 		extends MessageSourceSpec<KafkaInboundChannelAdapterSpec<K, V>, KafkaMessageSource<K, V>> {
 
+	@Deprecated
+	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory, boolean allowMultiFetch, String... topics) {
+		this.target = new KafkaMessageSource<>(consumerFactory, new ConsumerProperties(topics), allowMultiFetch);
+	}
+
+	@Deprecated
+	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory,
+			KafkaAckCallbackFactory<K, V> ackCallbackFactory, boolean allowMultiFetch, String... topics) {
+
+		this.target = new KafkaMessageSource<>(consumerFactory, new ConsumerProperties(topics), ackCallbackFactory, allowMultiFetch);
+	}
+
 	KafkaInboundChannelAdapterSpec(ConsumerFactory<K, V> consumerFactory,
 			ConsumerProperties consumerProperties, boolean allowMultiFetch) {
 		this.target = new KafkaMessageSource<>(consumerFactory, consumerProperties, allowMultiFetch);
@@ -50,6 +64,24 @@ public class KafkaInboundChannelAdapterSpec<K, V>
 		this.target = new KafkaMessageSource<>(consumerFactory, consumerProperties, ackCallbackFactory, allowMultiFetch);
 	}
 
+	@Deprecated
+	public KafkaInboundChannelAdapterSpec<K, V> groupId(String groupId) {
+		this.target.setGroupId(groupId);
+		return this;
+	}
+
+	@Deprecated
+	public KafkaInboundChannelAdapterSpec<K, V> clientId(String clientId) {
+		this.target.setClientId(clientId);
+		return this;
+	}
+
+	@Deprecated
+	public KafkaInboundChannelAdapterSpec<K, V> pollTimeout(long pollTimeout) {
+		this.target.setPollTimeout(pollTimeout);
+		return this;
+	}
+
 	public KafkaInboundChannelAdapterSpec<K, V> messageConverter(RecordMessageConverter messageConverter) {
 		this.target.setMessageConverter(messageConverter);
 		return this;
@@ -57,6 +89,12 @@ public class KafkaInboundChannelAdapterSpec<K, V>
 
 	public KafkaInboundChannelAdapterSpec<K, V> payloadType(Class<?> type) {
 		this.target.setPayloadType(type);
+		return this;
+	}
+
+	@Deprecated
+	public KafkaInboundChannelAdapterSpec<K, V> rebalanceListener(ConsumerRebalanceListener rebalanceListener) {
+		this.target.setRebalanceListener(rebalanceListener);
 		return this;
 	}
 
