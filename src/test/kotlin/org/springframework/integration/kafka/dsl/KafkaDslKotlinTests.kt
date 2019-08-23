@@ -17,15 +17,12 @@
 package org.springframework.integration.kafka.dsl
 
 import assertk.assertThat
-import assertk.assertions.contains
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isSameAs
 import assertk.assertions.isTrue
-import assertk.catch
-import kafka.tools.ConsoleProducer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -44,7 +41,6 @@ import org.springframework.integration.config.EnableIntegration
 import org.springframework.integration.dsl.IntegrationFlow
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.Pollers
-import org.springframework.integration.expression.ValueExpression
 import org.springframework.integration.handler.advice.ErrorMessageSendingRecoverer
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler
@@ -57,7 +53,11 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.listener.*
+import org.springframework.kafka.listener.ConsumerProperties
+import org.springframework.kafka.listener.ContainerProperties
+import org.springframework.kafka.listener.GenericMessageListenerContainer
+import org.springframework.kafka.listener.KafkaMessageListenerContainer
+import org.springframework.kafka.listener.MessageListenerContainer
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper

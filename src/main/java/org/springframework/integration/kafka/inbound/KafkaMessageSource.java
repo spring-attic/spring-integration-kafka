@@ -150,10 +150,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	/**
 	 * Construct an instance with the supplied parameters. Fetching multiple
 	 * records per poll will be disabled.
-	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
 	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
+	 * @deprecated in favor of {@link #KafkaMessageSource(ConsumerFactory, ConsumerProperties)}
 	 */
 	@Deprecated
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory, String... topics) {
@@ -163,11 +163,12 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	/**
 	 * Construct an instance with the supplied parameters. Fetching multiple
 	 * records per poll will be disabled.
-	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param ackCallbackFactory the ack callback factory.
 	 * @param topics the topics.
 	 * @see #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)
+	 * @deprecated in favor of
+	 * {@link #KafkaMessageSource(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory)}
 	 */
 	@Deprecated
 	public KafkaMessageSource(ConsumerFactory<K, V> consumerFactory,
@@ -179,7 +180,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	/**
 	 * Construct an instance with the supplied parameters. Fetching multiple
 	 * records per poll will be disabled.
-	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param consumerProperties the consumer properties.
 	 * @since 3.2
@@ -199,7 +199,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * within {@code max.poll.interval.ms}. When false, you must call {@link #receive()}
 	 * within {@code max.poll.interval.ms}. {@link #pause()} will not take effect until
 	 * the records from the previous poll are consumed.
-	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param consumerProperties the consumer properties.
 	 * @param allowMultiFetch true to allow {@code max.poll.records > 1}.
@@ -214,7 +213,6 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	/**
 	 * Construct an instance with the supplied parameters. Fetching multiple
 	 * records per poll will be disabled.
-	 *
 	 * @param consumerFactory the consumer factory.
 	 * @param consumerProperties the consumer properties.
 	 * @param ackCallbackFactory the ack callback factory.
@@ -280,6 +278,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * Set the group.id property for the consumer.
 	 * @param groupId the group id.
 	 * @see ConsumerProperties
+	 * @deprecated in favor of using {@link ConsumerProperties}
 	 */
 	@Deprecated
 	public void setGroupId(String groupId) {
@@ -294,6 +293,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * Set the client.id property for the consumer.
 	 * @param clientId the client id.
 	 * @see ConsumerProperties
+	 * @deprecated in favor of using {@link ConsumerProperties}
 	 */
 	@Deprecated
 	public void setClientId(String clientId) {
@@ -305,9 +305,10 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	}
 
 	/**
-	 * Set the pollTimeout for the poll() operations; default 50ms.
+	 * Set the pollTimeout for the poll() operations.
 	 * @param pollTimeout the poll timeout.
 	 * @see ConsumerProperties
+	 * @deprecated in favor of using {@link ConsumerProperties}
 	 */
 	@Deprecated
 	public void setPollTimeout(long pollTimeout) {
@@ -349,6 +350,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 	 * Set a rebalance listener.
 	 * @param rebalanceListener the rebalance listener.
 	 * @see ConsumerProperties
+	 * @deprecated in favor of using {@link ConsumerProperties}
 	 */
 	@Deprecated
 	public void setRebalanceListener(ConsumerRebalanceListener rebalanceListener) {

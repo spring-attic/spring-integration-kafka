@@ -81,6 +81,7 @@ public final class Kafka {
 	 * @param <V> the Kafka message value type.
 	 * @return the spec.
 	 * @since 3.0.1
+	 * @deprecated in favor of {@link #inboundChannelAdapter(ConsumerFactory, ConsumerProperties)}
 	 */
 	@Deprecated
 	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
@@ -99,6 +100,8 @@ public final class Kafka {
 	 * @param <V> the Kafka message value type.
 	 * @return the spec.
 	 * @since 3.0.1
+	 * @deprecated in favor of
+	 * {@link #inboundChannelAdapter(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory)}
 	 */
 	@Deprecated
 	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
@@ -119,6 +122,8 @@ public final class Kafka {
 	 * @param <V> the Kafka message value type.
 	 * @return the spec.
 	 * @since 3.0.1
+	 * @deprecated in favor of
+	 * {@link #inboundChannelAdapter(ConsumerFactory, ConsumerProperties, KafkaAckCallbackFactory, boolean)}
 	 */
 	@Deprecated
 	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
@@ -158,7 +163,9 @@ public final class Kafka {
 	 * @since 3.2
 	 */
 	public static <K, V> KafkaInboundChannelAdapterSpec<K, V> inboundChannelAdapter(
-			ConsumerFactory<K, V> consumerFactory, ConsumerProperties consumerProperties, boolean allowMultiFetch) {
+			ConsumerFactory<K, V> consumerFactory,
+			ConsumerProperties consumerProperties,
+			boolean allowMultiFetch) {
 
 		return new KafkaInboundChannelAdapterSpec<>(consumerFactory, consumerProperties, allowMultiFetch);
 	}
