@@ -16,6 +16,22 @@
 
 package org.springframework.integration.kafka.inbound;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -31,7 +47,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -44,12 +59,9 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
-import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InOrder;
-import org.mockito.MockitoAnnotations;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
@@ -64,27 +76,6 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.BDDMockito.willReturn;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 
 
 /**
@@ -741,23 +732,23 @@ public class MessageSourceTests {
 		List<TopicPartition> topicPartitions = Arrays.asList(beginning, end, timestamp,
 				negativeOffset, negativeRelativeToCurrent, positiveRelativeToCurrent);
 
-		doAnswer(invocation -> {
-			assertEquals(topicPartitions, invocation.getArgument(0));
+		willAnswer(invocation -> {
+			assertThat((List) invocation.getArgument(0)).isEqualTo(topicPartitions);
 			return null;
-		}).when(consumer).assign(anyCollection());
+		}).given(consumer).assign(anyCollection());
 
-		doAnswer(invocation -> {
-			assertEquals(Collections.singleton(beginning), invocation.getArgument(0));
+		willAnswer(invocation -> {
+			assertThat((Set) invocation.getArgument(0)).isEqualTo(Collections.singleton(beginning));
 			return null;
-		}).when(consumer).seekToBeginning(anyCollection());
+		}).given(consumer).seekToBeginning(anyCollection());
 
-		doAnswer(invocation -> {
-			assertEquals(Collections.singleton(end), invocation.getArgument(0));
+		willAnswer(invocation -> {
+			assertThat((Set) invocation.getArgument(0)).isEqualTo(Collections.singleton(end));
 			return null;
-		}).doAnswer(invocation -> {
-			assertEquals(Collections.singleton(negativeOffset), invocation.getArgument(0));
+		}).willAnswer(invocation -> {
+			assertThat((Set) invocation.getArgument(0)).isEqualTo(Collections.singleton(negativeOffset));
 			return null;
-		}).when(consumer).seekToEnd(anyCollection());
+		}).given(consumer).seekToEnd(anyCollection());
 
 		willReturn(5L).given(consumer).position(negativeRelativeToCurrent);
 		willDoNothing().given(consumer).seek(negativeRelativeToCurrent, 4L);
@@ -765,15 +756,15 @@ public class MessageSourceTests {
 		willReturn(4L).given(consumer).position(positiveRelativeToCurrent);
 		willDoNothing().given(consumer).seek(positiveRelativeToCurrent, 5L);
 
-		doAnswer(invocation -> {
-			assertEquals(topicPartitions, invocation.getArgument(0));
+		willAnswer(invocation -> {
+			assertThat((List) invocation.getArgument(0)).isEqualTo(topicPartitions);
 			return null;
-		}).when(consumer).pause(anyCollection());
+		}).given(consumer).pause(anyCollection());
 
-		doAnswer(invocation -> {
-			assertEquals(topicPartitions, invocation.getArgument(0));
+		willAnswer(invocation -> {
+			assertThat((List) invocation.getArgument(0)).isEqualTo(topicPartitions);
 			return null;
-		}).when(consumer).resume(anyCollection());
+		}).given(consumer).resume(anyCollection());
 
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
