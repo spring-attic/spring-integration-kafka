@@ -16,20 +16,6 @@
 
 package org.springframework.integration.kafka.inbound;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.BDDMockito.willReturn;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -40,10 +26,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -56,9 +44,12 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InOrder;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
@@ -67,10 +58,33 @@ import org.springframework.integration.acks.AcknowledgmentCallback;
 import org.springframework.integration.test.util.TestUtils;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 
 
 /**
@@ -80,6 +94,102 @@ import org.springframework.messaging.Message;
  *
  */
 public class MessageSourceTests {
+
+	@Test
+	public void testIllegalArgs() {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		assertThatThrownBy(() -> new KafkaMessageSource(consumerFactory, new ConsumerProperties((Pattern) null)))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("topics, topicPattern, or topicPartitions must be provided");
+	}
+
+	@Test
+	public void testConsumerAwareRebalanceListener() {
+		Consumer consumer = mock(Consumer.class);
+		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		List<TopicPartition> assigned = Collections.singletonList(topicPartition);
+		AtomicReference<ConsumerRebalanceListener> listener = new AtomicReference<>();
+		willAnswer(i -> {
+			listener.set(i.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(anyCollection(), any(ConsumerRebalanceListener.class));
+
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
+				.getConfigurationProperties();
+		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
+		ConsumerProperties consumerProperties = new ConsumerProperties("foo");
+		AtomicBoolean partitionsAssignedCalled = new AtomicBoolean();
+		AtomicReference<Consumer> partitionsAssignedConsumer = new AtomicReference<>();
+		AtomicBoolean partitionsRevokedCalled = new AtomicBoolean();
+		AtomicReference<Consumer> partitionsRevokedConsumer = new AtomicReference<>();
+		consumerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
+			@Override
+			public void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+				partitionsRevokedCalled.getAndSet(true);
+				partitionsRevokedConsumer.set(consumer);
+			}
+
+			@Override
+			public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+				partitionsAssignedCalled.getAndSet(true);
+				partitionsAssignedConsumer.set(consumer);
+			}
+		});
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, consumerProperties);
+		source.setRawMessageHeader(true);
+
+		Message<?> received = source.receive();
+
+		listener.get().onPartitionsAssigned(assigned);
+		assertThat(partitionsAssignedCalled.get()).isTrue();
+		assertThat(partitionsAssignedConsumer.get()).isEqualTo(consumer);
+
+		listener.get().onPartitionsRevoked(assigned);
+		assertThat(partitionsRevokedCalled.get()).isTrue();
+		assertThat(partitionsRevokedConsumer.get()).isEqualTo(consumer);
+	}
+
+	@Test
+	public void testRebalanceListener() {
+		Consumer consumer = mock(Consumer.class);
+		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		List<TopicPartition> assigned = Collections.singletonList(topicPartition);
+		AtomicReference<ConsumerRebalanceListener> listener = new AtomicReference<>();
+		willAnswer(i -> {
+			listener.set(i.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(anyCollection(), any(ConsumerRebalanceListener.class));
+
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
+				.getConfigurationProperties();
+		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
+		ConsumerProperties consumerProperties = new ConsumerProperties("foo");
+		AtomicBoolean partitionsAssignedCalled = new AtomicBoolean();
+		AtomicBoolean partitionsRevokedCalled = new AtomicBoolean();
+		consumerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				partitionsRevokedCalled.getAndSet(true);
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				partitionsAssignedCalled.getAndSet(true);
+			}
+		});
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory, consumerProperties);
+		source.setRawMessageHeader(true);
+
+		Message<?> received = source.receive();
+
+		listener.get().onPartitionsAssigned(assigned);
+		assertThat(partitionsAssignedCalled.get()).isTrue();
+
+		listener.get().onPartitionsRevoked(assigned);
+		assertThat(partitionsRevokedCalled.get()).isTrue();
+	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
@@ -577,8 +687,7 @@ public class MessageSourceTests {
 		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
 				.getConfigurationProperties();
 		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
-		KafkaMessageSource<String, String> source = new KafkaMessageSource<>(consumerFactory);
-		source.setTopicPattern(Pattern.compile("[a-zA-Z0-9_]*?foo"));
+		KafkaMessageSource<String, String> source = new KafkaMessageSource<>(consumerFactory, new ConsumerProperties(Pattern.compile("[a-zA-Z0-9_]*?foo")));
 		source.setRawMessageHeader(true);
 		source.start();
 		// force consumer creation
@@ -618,4 +727,93 @@ public class MessageSourceTests {
 		source.destroy();
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void testStaticPartitionAssignment() {
+		Consumer consumer = mock(Consumer.class);
+		TopicPartition beginning = new TopicPartition("foo", 0);
+		TopicPartition end = new TopicPartition("foo", 1);
+		TopicPartition timestamp = new TopicPartition("foo", 2);
+		TopicPartition negativeOffset = new TopicPartition("foo", 3);
+		TopicPartition negativeRelativeToCurrent = new TopicPartition("foo", 4);
+		TopicPartition positiveRelativeToCurrent = new TopicPartition("foo", 5);
+
+		List<TopicPartition> topicPartitions = Arrays.asList(beginning, end, timestamp,
+				negativeOffset, negativeRelativeToCurrent, positiveRelativeToCurrent);
+
+		doAnswer(invocation -> {
+			assertEquals(topicPartitions, invocation.getArgument(0));
+			return null;
+		}).when(consumer).assign(anyCollection());
+
+		doAnswer(invocation -> {
+			assertEquals(Collections.singleton(beginning), invocation.getArgument(0));
+			return null;
+		}).when(consumer).seekToBeginning(anyCollection());
+
+		doAnswer(invocation -> {
+			assertEquals(Collections.singleton(end), invocation.getArgument(0));
+			return null;
+		}).doAnswer(invocation -> {
+			assertEquals(Collections.singleton(negativeOffset), invocation.getArgument(0));
+			return null;
+		}).when(consumer).seekToEnd(anyCollection());
+
+		willReturn(5L).given(consumer).position(negativeRelativeToCurrent);
+		willDoNothing().given(consumer).seek(negativeRelativeToCurrent, 4L);
+
+		willReturn(4L).given(consumer).position(positiveRelativeToCurrent);
+		willDoNothing().given(consumer).seek(positiveRelativeToCurrent, 5L);
+
+		doAnswer(invocation -> {
+			assertEquals(topicPartitions, invocation.getArgument(0));
+			return null;
+		}).when(consumer).pause(anyCollection());
+
+		doAnswer(invocation -> {
+			assertEquals(topicPartitions, invocation.getArgument(0));
+			return null;
+		}).when(consumer).resume(anyCollection());
+
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		willReturn(Collections.singletonMap(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)).given(consumerFactory)
+				.getConfigurationProperties();
+		given(consumerFactory.createConsumer(isNull(), anyString(), isNull())).willReturn(consumer);
+
+		TopicPartitionOffset beginningTpo = new TopicPartitionOffset(beginning, null, TopicPartitionOffset.SeekPosition.BEGINNING);
+		TopicPartitionOffset endTpo = new TopicPartitionOffset(end, null, TopicPartitionOffset.SeekPosition.END);
+		TopicPartitionOffset timestampTpo = new TopicPartitionOffset(timestamp, null, TopicPartitionOffset.SeekPosition.TIMESTAMP);
+		TopicPartitionOffset negativeOffsetTpo = new TopicPartitionOffset(negativeOffset, -1L, null);
+		TopicPartitionOffset negativeRelativeToCurrentTpo = new TopicPartitionOffset(negativeRelativeToCurrent.topic(),
+				negativeRelativeToCurrent.partition(), -1L, true);
+		TopicPartitionOffset positiveRelativeToCurrentTpo = new TopicPartitionOffset(positiveRelativeToCurrent.topic(),
+				positiveRelativeToCurrent.partition(), 1L, true);
+		KafkaMessageSource source = new KafkaMessageSource(consumerFactory,
+				new ConsumerProperties(beginningTpo, endTpo, timestampTpo,
+						negativeOffsetTpo, negativeRelativeToCurrentTpo, positiveRelativeToCurrentTpo));
+
+		source.receive();
+		source.pause();
+		source.receive();
+		source.resume();
+		source.receive();
+		source.destroy();
+
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer, times(0)).subscribe(anyCollection(), any(ConsumerRebalanceListener.class));
+		inOrder.verify(consumer).assign(anyCollection());
+		inOrder.verify(consumer).seekToBeginning(anyCollection());
+		inOrder.verify(consumer, times(2)).seekToEnd(anyCollection());
+		inOrder.verify(consumer).position(negativeRelativeToCurrent);
+		inOrder.verify(consumer).seek(negativeRelativeToCurrent, 4L);
+		inOrder.verify(consumer).position(positiveRelativeToCurrent);
+		inOrder.verify(consumer).seek(positiveRelativeToCurrent, 5L);
+		inOrder.verify(consumer).poll(any(Duration.class));
+		inOrder.verify(consumer).pause(anyCollection());
+		inOrder.verify(consumer).poll(any(Duration.class));
+		inOrder.verify(consumer).resume(anyCollection());
+		inOrder.verify(consumer).poll(any(Duration.class));
+		inOrder.verify(consumer).close();
+		inOrder.verifyNoMoreInteractions();
+	}
 }
