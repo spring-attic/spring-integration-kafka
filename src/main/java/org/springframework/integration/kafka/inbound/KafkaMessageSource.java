@@ -54,7 +54,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerProperties;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -116,7 +115,7 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 	private final AtomicInteger remainingCount = new AtomicInteger();
 
-	private final ContainerProperties consumerProperties;
+	private final ConsumerProperties consumerProperties;
 
 	private Duration pollTimeout;
 
@@ -246,13 +245,13 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
 		if (consumerProperties.getTopics() != null) {
-			this.consumerProperties = new ContainerProperties(consumerProperties.getTopics());
+			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopics());
 		}
 		else if (consumerProperties.getTopicPattern() != null) {
-			this.consumerProperties = new ContainerProperties(consumerProperties.getTopicPattern());
+			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopicPattern());
 		}
 		else if (consumerProperties.getTopicPartitionsToAssign() != null) {
-			this.consumerProperties = new ContainerProperties(consumerProperties.getTopicPartitionsToAssign());
+			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopicPartitionsToAssign());
 		}
 		else {
 			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
