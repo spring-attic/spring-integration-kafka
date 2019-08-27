@@ -244,28 +244,17 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
-		if (consumerProperties.getTopics() != null) {
-			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopics());
-		}
-		else if (consumerProperties.getTopicPattern() != null) {
-			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopicPattern());
-		}
-		else if (consumerProperties.getTopicPartitionsToAssign() != null) {
-			this.consumerProperties = new ConsumerProperties(consumerProperties.getTopicPartitionsToAssign());
-		}
-		else {
-			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
-		}
-
-		BeanUtils.copyProperties(consumerProperties, this.consumerProperties,
-				"topics", "topicPartitions", "topicPattern", "clientId");
+		Assert.isTrue(
+				(consumerProperties.getTopics() != null && consumerProperties.getTopics().length > 0)
+				|| (consumerProperties.getTopicPartitionsToAssign() != null && consumerProperties.getTopicPartitionsToAssign().length > 0)
+				|| (consumerProperties.getTopicPattern() != null),
+				"topics, topicPattern, or topicPartitions must be provided"
+		);
+		this.consumerProperties = consumerProperties;
 
 		this.consumerFactory = fixOrRejectConsumerFactory(consumerFactory, allowMultiFetch);
 		this.ackCallbackFactory = ackCallbackFactory;
-		if (StringUtils.hasText(consumerProperties.getClientId())) {
-			this.consumerProperties.setClientId(consumerProperties.getClientId());
-		}
-		else {
+		if (!StringUtils.hasText(this.consumerProperties.getClientId())) {
 			this.consumerProperties.setClientId("message.source");
 		}
 		this.pollTimeout = Duration.ofMillis(consumerProperties.getPollTimeout());

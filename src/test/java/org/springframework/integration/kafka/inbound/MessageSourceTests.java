@@ -93,7 +93,7 @@ public class MessageSourceTests {
 	public void testIllegalArgs() {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		assertThatThrownBy(() -> new KafkaMessageSource(consumerFactory, new ConsumerProperties((Pattern) null)))
-				.isInstanceOf(IllegalStateException.class)
+				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("topics, topicPattern, or topicPartitions must be provided");
 	}
 
