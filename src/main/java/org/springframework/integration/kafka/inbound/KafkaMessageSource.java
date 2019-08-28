@@ -62,6 +62,7 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -244,9 +245,9 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 		Assert.notNull(consumerFactory, "'consumerFactory' must not be null");
 		Assert.notNull(ackCallbackFactory, "'ackCallbackFactory' must not be null");
 		Assert.isTrue(
-				(consumerProperties.getTopics() != null && consumerProperties.getTopics().length > 0)
-				|| (consumerProperties.getTopicPartitionsToAssign() != null && consumerProperties.getTopicPartitionsToAssign().length > 0)
-				|| (consumerProperties.getTopicPattern() != null),
+				!ObjectUtils.isEmpty(consumerProperties.getTopics())
+				|| !ObjectUtils.isEmpty(consumerProperties.getTopicPartitionsToAssign())
+				|| consumerProperties.getTopicPattern() != null,
 				"topics, topicPattern, or topicPartitions must be provided"
 		);
 		this.consumerProperties = consumerProperties;
