@@ -254,13 +254,17 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 
 		this.consumerFactory = fixOrRejectConsumerFactory(consumerFactory, allowMultiFetch);
 		this.ackCallbackFactory = ackCallbackFactory;
-		if (!StringUtils.hasText(this.consumerProperties.getClientId())) {
-			this.consumerProperties.setClientId("message.source");
-		}
 		this.pollTimeout = Duration.ofMillis(consumerProperties.getPollTimeout());
 		this.assignTimeout = this.minTimeoutProvider.get();
 		this.commitTimeout = consumerProperties.getSyncCommitTimeout();
 		this.ackCallbackFactory.setCommitTimeout(consumerProperties.getSyncCommitTimeout());
+	}
+
+	@Override
+	protected void onInit() {
+		if (!StringUtils.hasText(this.consumerProperties.getClientId())) {
+			this.consumerProperties.setClientId(getComponentName());
+		}
 	}
 
 	protected String getGroupId() {
