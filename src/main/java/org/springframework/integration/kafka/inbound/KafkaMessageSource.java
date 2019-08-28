@@ -596,7 +596,8 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 					}
 					else if (TopicPartitionOffset.SeekPosition.END.equals(partition.getPosition())) {
 						this.consumer.seekToEnd(Collections.singleton(partition.getTopicPartition()));
-					} else {
+					}
+					else {
 						TopicPartition topicPartition = partition.getTopicPartition();
 						Long offset = partition.getOffset();
 						if (offset != null) {
