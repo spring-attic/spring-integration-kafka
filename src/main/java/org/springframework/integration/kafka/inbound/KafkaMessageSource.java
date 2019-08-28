@@ -588,55 +588,38 @@ public class KafkaMessageSource<K, V> extends AbstractMessageSource<Object> impl
 				this.consumer.assign(topicPartitionsToAssign);
 				this.assignedPartitions = new ArrayList<>(topicPartitionsToAssign);
 
-				List<TopicPartitionOffset> partitions = Arrays
-						.asList(this.consumerProperties.getTopicPartitionsToAssign());
+				TopicPartitionOffset[] partitions = this.consumerProperties.getTopicPartitionsToAssign();
 
-				Set<TopicPartition> beginnings = partitions
-						.stream()
-						.filter(tpo -> TopicPartitionOffset.SeekPosition.BEGINNING.equals(tpo.getPosition()))
-						.map(TopicPartitionOffset::getTopicPartition)
-						.collect(Collectors.toSet());
+				for (TopicPartitionOffset partition : partitions) {
+					if (TopicPartitionOffset.SeekPosition.BEGINNING.equals(partition.getPosition())) {
+						this.consumer.seekToBeginning(Collections.singleton(partition.getTopicPartition()));
+					}
+					else if (TopicPartitionOffset.SeekPosition.END.equals(partition.getPosition())) {
+						this.consumer.seekToEnd(Collections.singleton(partition.getTopicPartition()));
+					} else {
+						TopicPartition topicPartition = partition.getTopicPartition();
+						Long offset = partition.getOffset();
+						if (offset != null) {
+							long newOffset = offset;
 
-				Set<TopicPartition> ends = partitions
-						.stream()
-						.filter(tpo -> TopicPartitionOffset.SeekPosition.END.equals(tpo.getPosition()))
-						.map(TopicPartitionOffset::getTopicPartition)
-						.collect(Collectors.toSet());
-
-				List<TopicPartitionOffset> others = partitions
-						.stream()
-						.filter(tpo -> tpo.getPosition() != TopicPartitionOffset.SeekPosition.BEGINNING)
-						.filter(tpo -> tpo.getPosition() != TopicPartitionOffset.SeekPosition.END)
-						.collect(Collectors.toList());
-				if (beginnings.size() > 0) {
-					this.consumer.seekToBeginning(beginnings);
-				}
-				if (ends.size() > 0) {
-					this.consumer.seekToEnd(ends);
-				}
-				for (TopicPartitionOffset entry : others) {
-					TopicPartition topicPartition = entry.getTopicPartition();
-					Long offset = entry.getOffset();
-					if (offset != null) {
-						long newOffset = offset;
-
-						if (offset < 0) {
-							if (!entry.isRelativeToCurrent()) {
-								this.consumer.seekToEnd(Collections.singleton(topicPartition));
-								continue;
+							if (offset < 0) {
+								if (!partition.isRelativeToCurrent()) {
+									this.consumer.seekToEnd(Collections.singleton(topicPartition));
+									continue;
+								}
+								newOffset = Math.max(0, this.consumer.position(topicPartition) + offset);
 							}
-							newOffset = Math.max(0, this.consumer.position(topicPartition) + offset);
-						}
-						else if (entry.isRelativeToCurrent()) {
-							newOffset = this.consumer.position(topicPartition) + offset;
-						}
+							else if (partition.isRelativeToCurrent()) {
+								newOffset = this.consumer.position(topicPartition) + offset;
+							}
 
-						try {
-							this.consumer.seek(topicPartition, newOffset);
-						}
-						catch (Exception e) {
-							this.logger.error("Failed to set initial offset for " + topicPartition
-									+ " at " + newOffset + ". Position is " + this.consumer.position(topicPartition), e);
+							try {
+								this.consumer.seek(topicPartition, newOffset);
+							}
+							catch (Exception e) {
+								this.logger.error("Failed to set initial offset for " + topicPartition
+										+ " at " + newOffset + ". Position is " + this.consumer.position(topicPartition), e);
+							}
 						}
 					}
 				}
