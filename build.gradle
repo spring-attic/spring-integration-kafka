@@ -56,7 +56,7 @@ compileTestKotlin {
 
 ext {
 	assertkVersion = '0.19'
-	jacksonVersion = '2.9.9.20190807'
+	jacksonVersion = '2.10.0'
 	junitJupiterVersion = '5.5.1'
 	junitPlatformVersion = '1.5.1'
 	log4jVersion = '2.12.1'
