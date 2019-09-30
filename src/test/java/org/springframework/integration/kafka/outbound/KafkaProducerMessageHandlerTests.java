@@ -196,7 +196,7 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(key(2));
 		assertThat(record).has(partition(1));
 		assertThat(record.value()).isNull();
-		
+
 		producerFactory.destroy();
 	}
 
