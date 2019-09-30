@@ -104,6 +104,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Gary Russell
  * @author Biju Kunjummen
  * @author Artem Bilan
+ * @author Tom van den Berge
  *
  * @since 2.0
  */
@@ -195,8 +196,6 @@ public class KafkaProducerMessageHandlerTests {
 		assertThat(record).has(key(2));
 		assertThat(record).has(partition(1));
 		assertThat(record.value()).isNull();
-
-		producerFactory.destroy();
 	}
 
 	@Test
@@ -347,6 +346,8 @@ public class KafkaProducerMessageHandlerTests {
 
 		ConsumerRecord<Integer, String> record = KafkaTestUtils.getSingleRecord(consumer, topic1);
 		assertThat(record.headers().toArray().length).isEqualTo(0);
+
+		producerFactory.destroy();
 	}
 
 	@Test

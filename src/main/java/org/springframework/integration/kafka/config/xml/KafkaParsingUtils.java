@@ -27,6 +27,7 @@ import org.springframework.integration.config.xml.IntegrationNamespaceUtils;
  * Utilities to assist with parsing XML.
  *
  * @author Gary Russell
+ * @author Tom van den Berge
  * @since 3.2
  *
  */
