@@ -81,6 +81,8 @@ public final class KafkaParsingUtils {
 		if (timestampExpressionDef != null) {
 			builder.addPropertyValue("timestampExpression", timestampExpressionDef);
 		}
+
+		IntegrationNamespaceUtils.setReferenceIfAttributeDefined(builder, element, "header-mapper");
 	}
 
 }

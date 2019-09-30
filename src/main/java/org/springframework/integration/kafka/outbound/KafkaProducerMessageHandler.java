@@ -186,6 +186,10 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		this.headerMapper = headerMapper;
 	}
 
+	public KafkaHeaderMapper getHeaderMapper() {
+		return this.headerMapper;
+	}
+
 	public KafkaTemplate<?, ?> getKafkaTemplate() {
 		return this.kafkaTemplate;
 	}

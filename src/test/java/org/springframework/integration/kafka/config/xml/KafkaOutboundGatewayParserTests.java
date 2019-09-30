@@ -66,6 +66,8 @@ public class KafkaOutboundGatewayParserTests {
 				.isSameAs(this.context.getBean("failures"));
 		assertThat(TestUtils.getPropertyValue(this.messageHandler, "sendSuccessChannel"))
 				.isSameAs(this.context.getBean("successes"));
+		assertThat(TestUtils.getPropertyValue(this.messageHandler, "headerMapper"))
+		.isSameAs(this.context.getBean("customHeaderMapper"));
 	}
 
 	public static class EMS extends DefaultErrorMessageStrategy {
