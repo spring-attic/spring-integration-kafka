@@ -55,13 +55,12 @@ compileTestKotlin {
 }
 
 ext {
-	assertkVersion = '0.19'
+	assertkVersion = '0.20'
 	jacksonVersion = '2.10.0'
-	junitJupiterVersion = '5.5.1'
-	junitPlatformVersion = '1.5.1'
+	junitJupiterVersion = '5.5.2'
 	log4jVersion = '2.12.1'
-	springIntegrationVersion = '5.2.0.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.0.BUILD-SNAPSHOT'
+	springIntegrationVersion = '5.2.0.RELEASE'
+	springKafkaVersion = '2.3.0.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -86,6 +85,8 @@ dependencyManagement {
 	}
 	imports {
 		mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonVersion"
+		mavenBom "org.junit:junit-bom:$junitJupiterVersion"
+		mavenBom "org.springframework.integration:spring-integration-bom:$springIntegrationVersion"
 	}
 }
 
@@ -93,30 +94,27 @@ dependencyManagement {
 eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 jacoco {
-	toolVersion = "0.8.4"
+	toolVersion = '0.8.4'
 }
 
 dependencies {
-	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
+	compile 'org.springframework.integration:spring-integration-core'
 	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
-	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
+	testCompile 'org.springframework.integration:spring-integration-test'
 	testCompile "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
-	testCompile "org.jetbrains.kotlin:kotlin-reflect"
-	testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-	testCompile "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
-	testRuntime "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
-	testRuntime "org.junit.platform:junit-platform-launcher:$junitPlatformVersion"
-
-	// To support JUnit 4 tests
-	testRuntime "org.junit.vintage:junit-vintage-engine:$junitJupiterVersion"
+	testCompile 'org.jetbrains.kotlin:kotlin-reflect'
+	testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+	testCompile 'org.junit.jupiter:junit-jupiter-api'
+	testRuntime 'org.junit.jupiter:junit-jupiter-engine'
+	testRuntime 'org.junit.platform:junit-platform-launcher'
 
 	// To avoid compiler warnings about @API annotations in JUnit code
 	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
-	testRuntime "com.fasterxml.jackson.core:jackson-core"
-	testRuntime "com.fasterxml.jackson.core:jackson-databind"
+	testRuntime 'com.fasterxml.jackson.core:jackson-core'
+	testRuntime 'com.fasterxml.jackson.core:jackson-databind'
 	testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 }
 
@@ -126,7 +124,7 @@ dependencies {
 test {
 	// suppress all console output during testing unless running `gradle -i`
 	logging.captureStandardOutput(LogLevel.INFO)
-	maxHeapSize = "1024m"
+	maxHeapSize = '1024m'
 	jacoco {
 		append = false
 		destinationFile = file("$buildDir/jacoco.exec")
@@ -135,7 +133,7 @@ test {
 }
 
 checkstyle {
-	configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
+	configFile = new File(rootDir, 'src/checkstyle/checkstyle.xml')
 	toolVersion = '8.24'
 }
 
@@ -211,13 +209,13 @@ artifacts {
 
 sonarqube {
 	properties {
-		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
-		property "sonar.links.homepage", linkHomepage
-		property "sonar.links.ci", linkCi
-		property "sonar.links.issue", linkIssue
-		property "sonar.links.scm", linkScmUrl
-		property "sonar.links.scm_dev", linkScmDevConnection
-		property "sonar.java.coveragePlugin", "jacoco"
+		property 'sonar.jacoco.reportPath', "${buildDir.name}/jacoco.exec"
+		property 'sonar.links.homepage', linkHomepage
+		property 'sonar.links.ci', linkCi
+		property 'sonar.links.issue', linkIssue
+		property 'sonar.links.scm', linkScmUrl
+		property 'sonar.links.scm_dev', linkScmDevConnection
+		property 'sonar.java.coveragePlugin', 'jacoco'
 	}
 }
 
@@ -232,7 +230,7 @@ task api(type: Javadoc) {
 
 	source = sourceSets.main.allJava
 	classpath = project.sourceSets.main.compileClasspath
-	destinationDir = new File(buildDir, "api")
+	destinationDir = new File(buildDir, 'api')
 }
 
 task schemaZip(type: Zip) {

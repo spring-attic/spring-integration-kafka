@@ -57,15 +57,26 @@ def customizePom(pom, gradleProject) {
 
 			scm {
 				url = linkScmUrl
-				connection = 'scm:git:' + linkScmConnection
-				developerConnection = 'scm:git:' + linkScmDevConnection
+				connection = "scm:git:$linkScmConnection"
+				developerConnection = "scm:git:$linkScmDevConnection"
+			}
+
+			issueManagement {
+				system = 'GutHub'
+				url = linkIssue
 			}
 
 			developers {
 				developer {
-					id = 'schacko'
-					name = 'Soby Chacko'
-					email = 'schacko@pivotal.io'
+					id = 'garyrussell'
+					name = 'Gary Russell'
+					email = 'grussell@pivotal.io'
+					roles = ['project lead']
+				}
+				developer {
+					id = 'abilan'
+					name = 'Artem Bilan'
+					email = 'abilan@pivotal.io'
 				}
 			}
 		}
