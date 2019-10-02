@@ -1,6 +1,6 @@
 = Spring Integration Adapter for Apache Kafka
 
-image::https://build.spring.io/plugins/servlet/buildStatusImage/INTEXT-KAFKA[]
+image::https://build.spring.io/plugins/servlet/wittified/build-status/INTEXT-KAFKA[]
 
 The *Spring Integration for Apache Kafka* extension project provides inbound and outbound channel adapters and gateways for Apache Kafka.
 Apache Kafka is a distributed publish-subscribe messaging system that is designed for high throughput (terabytes of data) and low latency (milliseconds).
