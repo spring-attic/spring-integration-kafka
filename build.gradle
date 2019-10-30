@@ -59,9 +59,8 @@ ext {
 	jacksonVersion = '2.10.0'
 	junitJupiterVersion = '5.5.2'
 	log4jVersion = '2.12.1'
-	springIntegrationVersion = '5.2.1.BUILD-SNAPSHOT'
-	springIntegrationKotlinVersion = '0.0.2.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.1.BUILD-SNAPSHOT'
+	springIntegrationVersion = '5.2.0.RELEASE'
+	springKafkaVersion = '2.3.0.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -103,13 +102,11 @@ dependencies {
 	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
-	testCompile "org.springframework.integration:spring-integration-kotlin-dsl:$springIntegrationKotlinVersion"
 	testCompile 'org.springframework.integration:spring-integration-test'
 	testCompile "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
 	testCompile 'org.jetbrains.kotlin:kotlin-reflect'
 	testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	testCompile 'org.junit.jupiter:junit-jupiter-api'
-
 	testRuntime 'org.junit.jupiter:junit-jupiter-engine'
 	testRuntime 'org.junit.platform:junit-platform-launcher'
 
