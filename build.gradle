@@ -11,10 +11,10 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'jacoco'
-	id 'org.sonarqube' version '2.7.1'
+	id 'org.sonarqube' version '2.8'
 	id 'checkstyle'
 	id 'org.ajoberstar.grgit' version '3.1.1'
-	id "io.spring.dependency-management" version "1.0.8.RELEASE"
+	id 'io.spring.dependency-management' version '1.0.8.RELEASE'
 }
 
 description = 'Spring Integration Kafka Support'
@@ -59,8 +59,9 @@ ext {
 	jacksonVersion = '2.10.0'
 	junitJupiterVersion = '5.5.2'
 	log4jVersion = '2.12.1'
-	springIntegrationVersion = '5.2.1.RELEASE'
-	springKafkaVersion = '2.3.2.RELEASE'
+	springIntegrationVersion = '5.2.1.BUILD-SNAPSHOT'
+	springIntegrationKotlinVersion = '0.0.2.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.3.1.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
@@ -103,12 +104,11 @@ dependencies {
 
 	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testCompile 'org.springframework.integration:spring-integration-test'
+	testCompile "org.springframework.integration:spring-integration-kotlin-dsl:$springIntegrationKotlinVersion"
 	testCompile "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
 	testCompile 'org.jetbrains.kotlin:kotlin-reflect'
 	testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	testCompile 'org.junit.jupiter:junit-jupiter-api'
-	testRuntime 'org.junit.jupiter:junit-jupiter-engine'
-	testRuntime 'org.junit.platform:junit-platform-launcher'
 
 	// To avoid compiler warnings about @API annotations in JUnit code
 	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
@@ -116,6 +116,8 @@ dependencies {
 	testRuntime 'com.fasterxml.jackson.core:jackson-core'
 	testRuntime 'com.fasterxml.jackson.core:jackson-databind'
 	testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+	testRuntime 'org.junit.jupiter:junit-jupiter-engine'
+	testRuntime 'org.junit.platform:junit-platform-launcher'
 }
 
 // enable all compiler warnings; individual projects may customize further
@@ -134,7 +136,7 @@ test {
 
 checkstyle {
 	configFile = new File(rootDir, 'src/checkstyle/checkstyle.xml')
-	toolVersion = '8.24'
+	toolVersion = '8.25'
 }
 
 task updateCopyrights {
@@ -179,19 +181,19 @@ jacocoTestReport {
 build.dependsOn jacocoTestReport
 
 task sourcesJar(type: Jar) {
-	classifier = 'sources'
+	archiveClassifier = 'sources'
 	from sourceSets.main.allJava
 }
 
 task javadocJar(type: Jar) {
-	classifier = 'javadoc'
+	archiveClassifier = 'javadoc'
 	from javadoc
 }
 
 jar {
 	manifest {
 		attributes(
-				'Implementation-Version': version,
+				'Implementation-Version': archiveClassifier,
 				'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
 				'Implementation-Title': project.name,
 				'Implementation-Vendor-Id': project.group,
@@ -235,8 +237,8 @@ task api(type: Javadoc) {
 
 task schemaZip(type: Zip) {
 	group = 'Distribution'
-	classifier = 'schema'
-	description = "Builds -${classifier} archive containing all " +
+	archiveClassifier = 'schema'
+	description = "Builds -${archiveClassifier} archive containing all " +
 			"XSDs for deployment at static.springframework.org/schema."
 
 	def Properties schemas = new Properties();
@@ -260,8 +262,8 @@ task schemaZip(type: Zip) {
 
 task docsZip(type: Zip) {
 	group = 'Distribution'
-	classifier = 'docs'
-	description = "Builds -${classifier} archive containing api " +
+	archiveClassifier = 'docs'
+	description = "Builds -${archiveClassifier} archive containing api " +
 			"for deployment at static.spring.io/spring-integration/docs."
 
 	from('src/dist') {
@@ -275,8 +277,8 @@ task docsZip(type: Zip) {
 
 task distZip(type: Zip, dependsOn: [docsZip, schemaZip]) {
 	group = 'Distribution'
-	classifier = 'dist'
-	description = "Builds -${classifier} archive, containing all jars and docs, " +
+	archiveClassifier = 'dist'
+	description = "Builds -${archiveClassifier} archive, containing all jars and docs, " +
 			"suitable for community download page."
 
 	ext.baseDir = "${project.name}-${project.version}";
@@ -288,11 +290,11 @@ task distZip(type: Zip, dependsOn: [docsZip, schemaZip]) {
 		into "${baseDir}"
 	}
 
-	from(zipTree(docsZip.archivePath)) {
+	from(zipTree(docsZip.archiveFile)) {
 		into "${baseDir}/docs"
 	}
 
-	from(zipTree(schemaZip.archivePath)) {
+	from(zipTree(schemaZip.archiveFile)) {
 		into "${baseDir}/schema"
 	}
 
@@ -307,9 +309,9 @@ task distZip(type: Zip, dependsOn: [docsZip, schemaZip]) {
 // Not published by default; only for use when building from source.
 task depsZip(type: Zip, dependsOn: distZip) { zipTask ->
 	group = 'Distribution'
-	classifier = 'dist-with-deps'
-	description = "Builds -${classifier} archive, containing everything " +
-			"in the -${distZip.classifier} archive plus all dependencies."
+	archiveClassifier = 'dist-with-deps'
+	description = "Builds -${archiveClassifier} archive, containing everything " +
+			"in the -${distZip.archiveClassifier} archive plus all dependencies."
 
 	from zipTree(distZip.archivePath)
 
