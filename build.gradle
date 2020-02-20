@@ -60,7 +60,7 @@ ext {
 	log4jVersion = '2.13.0'
 	springIntegrationVersion = '5.2.3.RELEASE'
 	springIntegrationKotlinVersion = '0.0.3.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.5.RELEASE'
+	springKafkaVersion = '2.4.3.BUILD-SNAPSHOT'
 
 	idPrefix = 'kafka'
 
