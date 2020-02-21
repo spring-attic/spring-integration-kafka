@@ -54,6 +54,10 @@ public class PollableKafkaChannel extends AbstractKafkaChannel
 	public PollableKafkaChannel(KafkaTemplate<?, ?> template, KafkaMessageSource<?, ?> source) {
 		super(template, topic(source));
 		this.source = source;
+		if (source.getConsumerProperties().getGroupId() == null) {
+			String groupId = getGroupId();
+			source.getConsumerProperties().setGroupId(groupId != null ? groupId : getBeanName());
+		}
 	}
 
 	private static String topic(KafkaMessageSource<?, ?> source) {

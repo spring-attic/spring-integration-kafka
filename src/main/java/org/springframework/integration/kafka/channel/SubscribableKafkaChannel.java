@@ -52,8 +52,6 @@ public class SubscribableKafkaChannel extends AbstractKafkaChannel implements Su
 
 	private MessageListenerContainer container;
 
-	private String groupId;
-
 	private boolean autoStartup = true;
 
 	private int phase = DEFAULT_PHASE;
@@ -85,14 +83,6 @@ public class SubscribableKafkaChannel extends AbstractKafkaChannel implements Su
 		super(template, channelTopic);
 		this.pubSub = pubSub;
 		this.factory = factory;
-	}
-
-	/**
-	 * Set the group id for the consumer; if not set, the bean name will be used.
-	 * @param groupId the group id.
-	 */
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
 	}
 
 	@Override
@@ -141,7 +131,8 @@ public class SubscribableKafkaChannel extends AbstractKafkaChannel implements Su
 			this.dispatcher = unicastingDispatcher;
 		}
 		this.container = this.factory.createContainer(this.topic);
-		this.container.getContainerProperties().setGroupId(this.groupId != null ? this.groupId : getBeanName());
+		String groupId = getGroupId();
+		this.container.getContainerProperties().setGroupId(groupId != null ? groupId : getBeanName());
 		this.container.getContainerProperties().setMessageListener(
 				new RecordMessagingMessageListenerAdapter<Object, Object>(null, null) {
 

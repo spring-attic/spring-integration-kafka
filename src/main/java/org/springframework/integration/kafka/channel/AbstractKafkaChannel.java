@@ -26,6 +26,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.Assert;
 
 /**
  * Abstract MessageChannel backed by a Kafka topic.
@@ -42,14 +43,30 @@ public abstract class AbstractKafkaChannel extends AbstractMessageChannel {
 
 	protected final String topic; // NOSONAR final
 
+	private String groupId;
+
 	/**
 	 * Construct an instance with the provided paramters.
 	 * @param template the template.
 	 * @param topic the topic.
 	 */
 	public AbstractKafkaChannel(KafkaTemplate<?, ?> template, String topic) {
+		Assert.notNull(template, "'template' cannot be null");
+		Assert.notNull(topic, "'topic' cannot be null");
 		this.template = template;
 		this.topic = topic;
+	}
+
+	/**
+	 * Set the group id for the consumer; if not set, the bean name will be used.
+	 * @param groupId the group id.
+	 */
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
+	protected String getGroupId() {
+		return this.groupId;
 	}
 
 	@Override
