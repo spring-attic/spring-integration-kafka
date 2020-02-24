@@ -26,12 +26,13 @@ import org.springframework.integration.dispatcher.MessageDispatcher;
 import org.springframework.integration.dispatcher.RoundRobinLoadBalancingStrategy;
 import org.springframework.integration.dispatcher.UnicastingDispatcher;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.SubscribableChannel;
+import org.springframework.util.Assert;
 
 /**
  * Subscribable channel backed by a Kafka topic.
@@ -64,7 +65,7 @@ public class SubscribableKafkaChannel extends AbstractKafkaChannel implements Su
 	 * @param factory factory for creating a container for receiving.
 	 * @param channelTopic the topic.
 	 */
-	public SubscribableKafkaChannel(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
+	public SubscribableKafkaChannel(KafkaOperations<?, ?> template, KafkaListenerContainerFactory<?> factory,
 			String channelTopic) {
 
 		this(template, factory, channelTopic, false);
@@ -77,12 +78,13 @@ public class SubscribableKafkaChannel extends AbstractKafkaChannel implements Su
 	 * @param channelTopic the topic.
 	 * @param pubSub true for a publish/subscribe channel.
 	 */
-	public SubscribableKafkaChannel(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
+	public SubscribableKafkaChannel(KafkaOperations<?, ?> template, KafkaListenerContainerFactory<?> factory,
 			String channelTopic, boolean pubSub) {
 
 		super(template, channelTopic);
-		this.pubSub = pubSub;
+		Assert.notNull(factory, "'factory' cannot be null");
 		this.factory = factory;
+		this.pubSub = pubSub;
 	}
 
 	@Override

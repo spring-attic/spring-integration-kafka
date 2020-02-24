@@ -16,7 +16,6 @@
 
 package org.springframework.integration.kafka.dsl;
 
-import org.springframework.integration.kafka.channel.AbstractKafkaChannel;
 import org.springframework.integration.kafka.channel.SubscribableKafkaChannel;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -30,23 +29,11 @@ import org.springframework.kafka.core.KafkaTemplate;
  */
 public class KafkaSubscribableChannelSpec extends AbstractKafkaChannelSpec<KafkaSubscribableChannelSpec> {
 
-	private final KafkaListenerContainerFactory<?> factory;
-
-	private final boolean pubSub;
-
 	protected KafkaSubscribableChannelSpec(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
 			String topic, boolean pubSub) {
 
 		super(template, topic);
-		this.factory = factory;
-		this.pubSub = pubSub;
-	}
-
-	@Override
-	protected AbstractKafkaChannel doGet() {
-		this.channel = new SubscribableKafkaChannel(this.template, this.factory, this.topic, this.pubSub);
-		AbstractKafkaChannel kafkaChannel = super.doGet();
-		return kafkaChannel;
+		this.channel = new SubscribableKafkaChannel(template, factory, topic, pubSub);
 	}
 
 }

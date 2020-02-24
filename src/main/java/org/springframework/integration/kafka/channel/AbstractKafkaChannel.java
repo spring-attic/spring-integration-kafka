@@ -22,7 +22,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.integration.channel.AbstractMessageChannel;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
@@ -39,7 +39,7 @@ public abstract class AbstractKafkaChannel extends AbstractMessageChannel {
 
 	protected final LogAccessor logger = new LogAccessor(super.logger); // NOSONAR final
 
-	private final KafkaTemplate<?, ?> template;
+	private final KafkaOperations<?, ?> template;
 
 	protected final String topic; // NOSONAR final
 
@@ -50,7 +50,7 @@ public abstract class AbstractKafkaChannel extends AbstractMessageChannel {
 	 * @param template the template.
 	 * @param topic the topic.
 	 */
-	public AbstractKafkaChannel(KafkaTemplate<?, ?> template, String topic) {
+	public AbstractKafkaChannel(KafkaOperations<?, ?> template, String topic) {
 		Assert.notNull(template, "'template' cannot be null");
 		Assert.notNull(topic, "'topic' cannot be null");
 		this.template = template;

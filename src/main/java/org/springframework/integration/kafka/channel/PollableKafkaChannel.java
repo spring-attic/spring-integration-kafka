@@ -26,7 +26,7 @@ import org.springframework.integration.kafka.inbound.KafkaMessageSource;
 import org.springframework.integration.support.management.PollableChannelManagement;
 import org.springframework.integration.support.management.metrics.CounterFacade;
 import org.springframework.integration.support.management.metrics.MetricsCaptor;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.PollableChannel;
@@ -46,12 +46,16 @@ public class PollableKafkaChannel extends AbstractKafkaChannel
 
 	private final KafkaMessageSource<?, ?> source;
 
+	private CounterFacade receiveCounter;
+
+	private volatile int executorInterceptorsSize;
+
 	/**
 	 * Construct an instance with the provided parameters.
 	 * @param template the template for sending.
 	 * @param source the source for receiving.
 	 */
-	public PollableKafkaChannel(KafkaTemplate<?, ?> template, KafkaMessageSource<?, ?> source) {
+	public PollableKafkaChannel(KafkaOperations<?, ?> template, KafkaMessageSource<?, ?> source) {
 		super(template, topic(source));
 		this.source = source;
 		if (source.getConsumerProperties().getGroupId() == null) {
@@ -61,13 +65,10 @@ public class PollableKafkaChannel extends AbstractKafkaChannel
 	}
 
 	private static String topic(KafkaMessageSource<?, ?> source) {
+		Assert.notNull(source, "'source' cannot be null");
 		Assert.isTrue(source.getConsumerProperties().getTopics().length == 1, "Only one topic is allowed");
 		return source.getConsumerProperties().getTopics()[0];
 	}
-
-	private CounterFacade receiveCounter;
-
-	private volatile int executorInterceptorsSize;
 
 	@Override
 	public int getReceiveCount() {

@@ -521,44 +521,6 @@ public final class Kafka {
 	}
 
 	/**
-	 * Create a spec for a subscribable channel with the provided parameters.
-	 * @param template the template.
-	 * @param containerFactory the container factory.
-	 * @param topic the topic.
-	 * @return the spec.
-	 */
-	public static KafkaSubscribableChannelSpec channel(KafkaTemplate<?, ?> template,
-			KafkaListenerContainerFactory<?> containerFactory, String topic) {
-
-		return new KafkaSubscribableChannelSpec(template, containerFactory, topic, false);
-	}
-
-	/**
-	 * Create a spec for a publish/subscribe channel with the provided parameters.
-	 * @param template the template.
-	 * @param containerFactory the container factory.
-	 * @param topic the topic.
-	 * @return the spec.
-	 */
-	public static KafkaSubscribableChannelSpec publishSubscribeChannel(KafkaTemplate<?, ?> template,
-			KafkaListenerContainerFactory<?> containerFactory, String topic) {
-
-		return new KafkaSubscribableChannelSpec(template, containerFactory, topic, true);
-	}
-
-	/**
-	 * Create a spec for a publish/subscribe channel with the provided parameters.
-	 * @param template the template.
-	 * @param source the source.
-	 * @return the spec.
-	 */
-	public static KafkaPollableChannelSpec pollableChannel(KafkaTemplate<?, ?> template,
-			KafkaMessageSource<?, ?> source) {
-
-		return new KafkaPollableChannelSpec(template, source);
-	}
-
-	/**
 	 * Create an initial {@link KafkaInboundGatewaySpec} with the provided container and
 	 * template specs.
 	 * @param containerSpec the container spec.
@@ -573,6 +535,47 @@ public final class Kafka {
 			KafkaMessageListenerContainerSpec<K, V> containerSpec, KafkaTemplateSpec<K, R> templateSpec) {
 
 		return new KafkaInboundGatewaySpec.KafkaInboundGatewayListenerContainerSpec<>(containerSpec, templateSpec);
+	}
+
+	/**
+	 * Create a spec for a subscribable channel with the provided parameters.
+	 * @param template the template.
+	 * @param containerFactory the container factory.
+	 * @param topic the topic.
+	 * @return the spec.
+	 * @since 3.3
+	 */
+	public static KafkaSubscribableChannelSpec channel(KafkaTemplate<?, ?> template,
+			KafkaListenerContainerFactory<?> containerFactory, String topic) {
+
+		return new KafkaSubscribableChannelSpec(template, containerFactory, topic, false);
+	}
+
+	/**
+	 * Create a spec for a publish/subscribe channel with the provided parameters.
+	 * @param template the template.
+	 * @param containerFactory the container factory.
+	 * @param topic the topic.
+	 * @return the spec.
+	 * @since 3.3
+	 */
+	public static KafkaSubscribableChannelSpec publishSubscribeChannel(KafkaTemplate<?, ?> template,
+			KafkaListenerContainerFactory<?> containerFactory, String topic) {
+
+		return new KafkaSubscribableChannelSpec(template, containerFactory, topic, true);
+	}
+
+	/**
+	 * Create a spec for a pollable channel with the provided parameters.
+	 * @param template the template.
+	 * @param source the source.
+	 * @return the spec.
+	 * @since 3.3
+	 */
+	public static KafkaPollableChannelSpec pollableChannel(KafkaTemplate<?, ?> template,
+			KafkaMessageSource<?, ?> source) {
+
+		return new KafkaPollableChannelSpec(template, source);
 	}
 
 	private static <K, V>
