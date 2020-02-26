@@ -25,13 +25,14 @@ import org.springframework.kafka.core.KafkaTemplate;
  * Spec for a message channel backed by a Kafka topic.
  *
  * @param <S> the spec type.
+ * @param <C> the channel type.
  *
  * @author Gary Russell
  * @since 3.3
  *
  */
-public abstract class AbstractKafkaChannelSpec<S extends AbstractKafkaChannelSpec<S>>
-		extends MessageChannelSpec<S, AbstractKafkaChannel> {
+public abstract class AbstractKafkaChannelSpec<S extends AbstractKafkaChannelSpec<S, C>, C extends AbstractKafkaChannel>
+		extends MessageChannelSpec<S, C> {
 
 	protected final KafkaTemplate<?, ?> template; // NOSONAR final
 

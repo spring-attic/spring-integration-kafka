@@ -16,30 +16,24 @@
 
 package org.springframework.integration.kafka.dsl;
 
-import org.springframework.integration.kafka.channel.PublishSubscribeKafkaChannel;
 import org.springframework.integration.kafka.channel.SubscribableKafkaChannel;
-import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 
 /**
  * Spec for a subscribable channel.
  *
+ * @param <C> the channeel type.
+ *
  * @author Gary Russell
  * @since 3.3
  *
  */
-public class KafkaSubscribableChannelSpec extends AbstractKafkaChannelSpec<KafkaSubscribableChannelSpec> {
+public abstract class KafkaSubscribableChannelSpec<C extends SubscribableKafkaChannel>
+		extends AbstractKafkaChannelSpec<KafkaSubscribableChannelSpec<C>, C> {
 
-	protected KafkaSubscribableChannelSpec(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
-			String topic, boolean pubSub) {
+	protected KafkaSubscribableChannelSpec(KafkaTemplate<?, ?> template, String topic) {
 
 		super(template, topic);
-		if (pubSub) {
-			this.channel = new PublishSubscribeKafkaChannel(template, factory, topic);
-		}
-		else {
-			this.channel = new SubscribableKafkaChannel(template, factory, topic);
-		}
 	}
 
 }

@@ -95,7 +95,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @DirtiesContext
 @EmbeddedKafka(topics = { KafkaDslTests.TEST_TOPIC1, KafkaDslTests.TEST_TOPIC2, KafkaDslTests.TEST_TOPIC3,
 		KafkaDslTests.TEST_TOPIC4, KafkaDslTests.TEST_TOPIC5, KafkaDslTests.TEST_TOPIC6, KafkaDslTests.TEST_TOPIC7,
-		KafkaDslTests.TEST_TOPIC8 })
+		KafkaDslTests.TEST_TOPIC8, KafkaDslTests.TEST_TOPIC9 })
 public class KafkaDslTests {
 
 	static final String TEST_TOPIC1 = "test-topic1";
@@ -113,6 +113,8 @@ public class KafkaDslTests {
 	static final String TEST_TOPIC7 = "test-topic7";
 
 	static final String TEST_TOPIC8 = "test-topic8";
+
+	static final String TEST_TOPIC9 = "test-topic9";
 
 	@Autowired
 	@Qualifier("sendToKafkaFlow.input")
@@ -157,7 +159,7 @@ public class KafkaDslTests {
 	private Gate gate;
 
 	@Test
-	public void testKafkaAdapters() throws Exception {
+	void testKafkaAdapters() throws Exception {
 		this.sendToKafkaFlowInput.send(new GenericMessage<>("foo", Collections.singletonMap("foo", "bar")));
 
 		assertThat(TestUtils.getPropertyValue(this.kafkaProducer1, "headerMapper")).isSameAs(this.mapper);
@@ -218,20 +220,25 @@ public class KafkaDslTests {
 	}
 
 	@Test
-	public void testGateways() throws Exception {
+	void testGateways() throws Exception {
 		assertThat(this.config.replyContainerLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.gate.exchange(TEST_TOPIC4, "foo")).isEqualTo("FOO");
 	}
 
 	@Test
-	void channels(@Autowired MessageChannel topic6Channel, @Autowired PollableKafkaChannel topic8Channel) {
+	void channels(@Autowired MessageChannel topic6Channel, @Autowired PollableKafkaChannel topic8Channel,
+			@Autowired PollableKafkaChannel topic9Channel) {
 		topic6Channel.send(new GenericMessage<>("foo"));
 		Message<?> received = topic8Channel.receive();
 		assertThat(received)
 				.isNotNull()
 				.extracting("payload")
 				.isEqualTo("foo");
-	}
+		received = topic9Channel.receive();
+		assertThat(received)
+				.isNotNull()
+				.extracting("payload")
+				.isEqualTo("foo");	}
 
 	@Configuration
 	@EnableIntegration
@@ -380,8 +387,9 @@ public class KafkaDslTests {
 		}
 
 		@Bean
-		public KafkaSubscribableChannelSpec topic6Channel(KafkaTemplate<Integer, String> template,
+		public KafkaPointToPointChannelSpec topic6Channel(KafkaTemplate<Integer, String> template,
 				ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
 			return Kafka.channel(template, containerFactory, TEST_TOPIC6);
 		}
 
@@ -403,7 +411,9 @@ public class KafkaDslTests {
 			return IntegrationFlows.from(topic6Channel(template, containerFactory))
 					.publishSubscribeChannel(pubSub(template, containerFactory), channel -> channel
 							.subscribe(f -> f.channel(
-									Kafka.pollableChannel(template, channelSource).id("topic8Channel"))))
+									Kafka.pollableChannel(template, channelSource).id("topic8Channel")))
+							.subscribe(f -> f.channel(
+									Kafka.pollableChannel(template, channelSource).id("topic9Channel"))))
 					.get();
 		}
 
@@ -411,7 +421,7 @@ public class KafkaDslTests {
 		public BroadcastCapableChannel pubSub(KafkaTemplate<Integer, String> template,
 				ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
 
-			return (BroadcastCapableChannel) Kafka.publishSubscribeChannel(template, containerFactory, TEST_TOPIC7)
+			return Kafka.publishSubscribeChannel(template, containerFactory, TEST_TOPIC7)
 					.get();
 		}
 
