@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.MessageRejectedException;
+import org.springframework.integration.channel.BroadcastCapableChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
@@ -400,8 +401,17 @@ public class KafkaDslTests {
 				KafkaMessageSource<?, ?> channelSource) {
 
 			return IntegrationFlows.from(topic6Channel(template, containerFactory))
-					.channel(Kafka.publishSubscribeChannel(template, containerFactory, TEST_TOPIC7))
-					.channel(Kafka.pollableChannel(template, channelSource).id("topic8Channel"))
+					.publishSubscribeChannel(pubSub(template, containerFactory), channel -> channel
+							.subscribe(f -> f.channel(
+									Kafka.pollableChannel(template, channelSource).id("topic8Channel"))))
+					.get();
+		}
+
+		@Bean
+		public BroadcastCapableChannel pubSub(KafkaTemplate<Integer, String> template,
+				ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
+			return (BroadcastCapableChannel) Kafka.publishSubscribeChannel(template, containerFactory, TEST_TOPIC7)
 					.get();
 		}
 

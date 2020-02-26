@@ -16,6 +16,7 @@
 
 package org.springframework.integration.kafka.dsl;
 
+import org.springframework.integration.kafka.channel.PublishSubscribeKafkaChannel;
 import org.springframework.integration.kafka.channel.SubscribableKafkaChannel;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -33,7 +34,12 @@ public class KafkaSubscribableChannelSpec extends AbstractKafkaChannelSpec<Kafka
 			String topic, boolean pubSub) {
 
 		super(template, topic);
-		this.channel = new SubscribableKafkaChannel(template, factory, topic, pubSub);
+		if (pubSub) {
+			this.channel = new PublishSubscribeKafkaChannel(template, factory, topic);
+		}
+		else {
+			this.channel = new SubscribableKafkaChannel(template, factory, topic);
+		}
 	}
 
 }
