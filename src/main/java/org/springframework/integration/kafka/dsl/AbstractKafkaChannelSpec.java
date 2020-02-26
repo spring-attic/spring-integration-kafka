@@ -18,7 +18,6 @@ package org.springframework.integration.kafka.dsl;
 
 import org.springframework.integration.dsl.MessageChannelSpec;
 import org.springframework.integration.kafka.channel.AbstractKafkaChannel;
-import org.springframework.kafka.core.KafkaTemplate;
 
 /**
  *
@@ -34,16 +33,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 public abstract class AbstractKafkaChannelSpec<S extends AbstractKafkaChannelSpec<S, C>, C extends AbstractKafkaChannel>
 		extends MessageChannelSpec<S, C> {
 
-	protected final KafkaTemplate<?, ?> template; // NOSONAR final
-
-	protected final String topic; // NOSONAR final
-
 	protected String groupId; // NOSONAR
-
-	protected AbstractKafkaChannelSpec(KafkaTemplate<?, ?> template, String topic) {
-		this.template = template;
-		this.topic = topic;
-	}
 
 	@Override
 	public S id(String idToSet) { // NOSONAR - increase visibility

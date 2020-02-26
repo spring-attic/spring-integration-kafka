@@ -32,7 +32,6 @@ public class KafkaPointToPointChannelSpec extends KafkaSubscribableChannelSpec<S
 	protected KafkaPointToPointChannelSpec(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
 			String topic) {
 
-		super(template, topic);
 		this.channel = new SubscribableKafkaChannel(template, factory, topic);
 	}
 

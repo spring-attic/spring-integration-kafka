@@ -33,7 +33,6 @@ public class KafkaPublishSubscribeChannelSpec
 	protected KafkaPublishSubscribeChannelSpec(KafkaTemplate<?, ?> template, KafkaListenerContainerFactory<?> factory,
 			String topic) {
 
-		super(template, topic);
 		this.channel = new PublishSubscribeKafkaChannel(template, factory, topic);
 	}
 

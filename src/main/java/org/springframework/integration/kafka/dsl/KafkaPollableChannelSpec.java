@@ -30,7 +30,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 public class KafkaPollableChannelSpec extends AbstractKafkaChannelSpec<KafkaPollableChannelSpec, PollableKafkaChannel> {
 
 	protected KafkaPollableChannelSpec(KafkaTemplate<?, ?> template, KafkaMessageSource<?, ?> source) {
-		super(null, null);
 		this.channel = new PollableKafkaChannel(template, source);
 	}
 
