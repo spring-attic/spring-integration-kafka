@@ -14,13 +14,26 @@ plugins {
 	id 'org.sonarqube' version '2.8'
 	id 'checkstyle'
 	id 'org.ajoberstar.grgit' version '4.0.1'
+	id 'com.jfrog.artifactory' version '4.14.1' apply false
 	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
 }
 
 description = 'Spring Integration Kafka Support'
 
+apply plugin: 'java-library'
 apply plugin: 'kotlin'
 apply plugin: 'kotlin-spring'
+
+java {
+	withJavadocJar()
+	withSourcesJar()
+	registerFeature('optional') {
+		usingSourceSet(sourceSets.main)
+	}
+	registerFeature('provided') {
+		usingSourceSet(sourceSets.main)
+	}
+}
 
 apply from: "${rootProject.projectDir}/publish-maven.gradle"
 
@@ -103,27 +116,28 @@ jacoco {
 
 dependencies {
 	compileOnly "com.google.code.findbugs:jsr305:$googleJsr305Version"
-	compile 'org.springframework.integration:spring-integration-core'
-	compile "org.springframework.kafka:spring-kafka:$springKafkaVersion"
+	api 'org.springframework.integration:spring-integration-core'
+	api "org.springframework.kafka:spring-kafka:$springKafkaVersion"
 
-	testCompile "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
-	testCompile 'org.springframework.integration:spring-integration-test'
-	testCompile "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
-	testCompile 'org.jetbrains.kotlin:kotlin-reflect'
-	testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-	testCompile 'org.junit.jupiter:junit-jupiter-api'
+	testImplementation "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
+	testImplementation 'org.springframework.integration:spring-integration-test'
+	testImplementation "org.springframework.integration:spring-integration-kotlin-dsl:$springIntegrationKotlinVersion"
+	testImplementation "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
+	testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
+	testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+	testImplementation 'org.junit.jupiter:junit-jupiter-api'
 
 	// temporary - gradle bug prevents getting this transitively
-	testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
+	testImplementation "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
 
 	// To avoid compiler warnings about @API annotations in JUnit code
 	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
-	testRuntime 'com.fasterxml.jackson.core:jackson-core'
-	testRuntime 'com.fasterxml.jackson.core:jackson-databind'
-	testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
-	testRuntime 'org.junit.jupiter:junit-jupiter-engine'
-	testRuntime 'org.junit.platform:junit-platform-launcher'
+	testRuntimeOnly 'com.fasterxml.jackson.core:jackson-core'
+	testRuntimeOnly 'com.fasterxml.jackson.core:jackson-databind'
+	testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+	testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 // enable all compiler warnings; individual projects may customize further
@@ -142,6 +156,27 @@ test {
 checkstyle {
 	configFile = file("$rootDir/src/checkstyle/checkstyle.xml")
 	toolVersion = '8.29'
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			suppressAllPomMetadataWarnings()
+			from components.java
+			pom.withXml {
+				def pomDeps = asNode().dependencies.first()
+				subproject.configurations.providedImplementation.allDependencies.each { dep ->
+					pomDeps.remove(pomDeps.'*'.find { it.artifactId.text() == dep.name })
+					pomDeps.appendNode('dependency').with {
+						it.appendNode('groupId', dep.group)
+						it.appendNode('artifactId', dep.name)
+						it.appendNode('version', dep.version)
+						it.appendNode('scope', 'provided')
+					}
+				}
+			}
+		}
+	}
 }
 
 task updateCopyrights {
@@ -185,20 +220,10 @@ jacocoTestReport {
 
 build.dependsOn jacocoTestReport
 
-task sourcesJar(type: Jar) {
-	archiveClassifier = 'sources'
-	from sourceSets.main.allJava
-}
-
-task javadocJar(type: Jar) {
-	archiveClassifier = 'javadoc'
-	from javadoc
-}
-
 jar {
 	manifest {
 		attributes(
-				'Implementation-Version': archiveClassifier,
+				'Implementation-Version': archiveVersion,
 				'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
 				'Implementation-Title': project.name,
 				'Implementation-Vendor-Id': project.group,
@@ -207,11 +232,6 @@ jar {
 				'Automatic-Module-Name': project.name.replace('-', '.')  // for Jigsaw
 		)
 	}
-}
-
-artifacts {
-	archives sourcesJar
-	archives javadocJar
 }
 
 sonarqube {
@@ -246,6 +266,7 @@ task schemaZip(type: Zip) {
 	description = "Builds -${archiveClassifier} archive containing all " +
 			"XSDs for deployment at static.springframework.org/schema."
 
+	def Set files = new HashSet()
 	def Properties schemas = new Properties();
 	def shortName = idPrefix.replaceFirst("${idPrefix}-", '')
 
@@ -258,8 +279,11 @@ task schemaZip(type: Zip) {
 			it.path.replaceAll('\\\\', '/').endsWith(schemas.get(key))
 		}
 		assert xsdFile != null
-		into ("integration/${shortName}") {
-			from xsdFile.path
+		if (!files.contains(xsdFile.path)) {
+			into ("integration/${shortName}") {
+				from xsdFile.path
+			}
+			files.add(xsdFile.path)
 		}
 	}
 
