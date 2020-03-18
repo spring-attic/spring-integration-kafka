@@ -76,9 +76,6 @@ ext {
 	springIntegrationKotlinVersion = '0.0.3.BUILD-SNAPSHOT'
 	springKafkaVersion = '2.5.0.BUILD-SNAPSHOT'
 
-	kafkaVersion = '2.4.1'
-	scalaVersion = '2.12'
-
 	idPrefix = 'kafka'
 
 	linkHomepage = 'https://github.com/spring-projects/spring-integration-kafka'
@@ -126,9 +123,6 @@ dependencies {
 	testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 	testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	testImplementation 'org.junit.jupiter:junit-jupiter-api'
-
-	// temporary - gradle bug prevents getting this transitively
-	testImplementation "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
 
 	// To avoid compiler warnings about @API annotations in JUnit code
 	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
