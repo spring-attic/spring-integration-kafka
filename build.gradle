@@ -321,7 +321,7 @@ task depsZip(type: Zip, dependsOn: distZip) { zipTask ->
 	description = "Builds -${archiveClassifier} archive, containing everything " +
 			"in the -${distZip.archiveClassifier} archive plus all dependencies."
 
-	from zipTree(distZip.archivePath)
+	from zipTree(distZip.archiveFile)
 
 	gradle.taskGraph.whenReady { taskGraph ->
 		if (taskGraph.hasTask(":${zipTask.name}")) {
