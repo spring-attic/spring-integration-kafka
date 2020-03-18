@@ -27,12 +27,6 @@ apply plugin: 'kotlin-spring'
 java {
 	withJavadocJar()
 	withSourcesJar()
-	registerFeature('optional') {
-		usingSourceSet(sourceSets.main)
-	}
-	registerFeature('provided') {
-		usingSourceSet(sourceSets.main)
-	}
 }
 
 apply from: "${rootProject.projectDir}/publish-maven.gradle"
@@ -118,7 +112,6 @@ dependencies {
 
 	testImplementation "org.springframework.kafka:spring-kafka-test:$springKafkaVersion"
 	testImplementation 'org.springframework.integration:spring-integration-test'
-	testImplementation "org.springframework.integration:spring-integration-kotlin-dsl:$springIntegrationKotlinVersion"
 	testImplementation "com.willowtreeapps.assertk:assertk-jvm:$assertkVersion"
 	testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 	testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
@@ -157,18 +150,6 @@ publishing {
 		mavenJava(MavenPublication) {
 			suppressAllPomMetadataWarnings()
 			from components.java
-			pom.withXml {
-				def pomDeps = asNode().dependencies.first()
-				subproject.configurations.providedImplementation.allDependencies.each { dep ->
-					pomDeps.remove(pomDeps.'*'.find { it.artifactId.text() == dep.name })
-					pomDeps.appendNode('dependency').with {
-						it.appendNode('groupId', dep.group)
-						it.appendNode('artifactId', dep.name)
-						it.appendNode('version', dep.version)
-						it.appendNode('scope', 'provided')
-					}
-				}
-			}
 		}
 	}
 }
@@ -276,6 +257,10 @@ task schemaZip(type: Zip) {
 		if (!files.contains(xsdFile.path)) {
 			into ("integration/${shortName}") {
 				from xsdFile.path
+				rename { String fileName ->
+					String[] versionNumbers = project.version.split(/\./, 3)
+					fileName.replace('.xsd', "-${versionNumbers[0]}.${versionNumbers[1]}.xsd")
+				}
 			}
 			files.add(xsdFile.path)
 		}
