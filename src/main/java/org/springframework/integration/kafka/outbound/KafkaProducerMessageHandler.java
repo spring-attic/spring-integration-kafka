@@ -43,6 +43,7 @@ import org.springframework.integration.MessageTimeoutException;
 import org.springframework.integration.expression.ExpressionUtils;
 import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.handler.AbstractReplyProducingMessageHandler;
+import org.springframework.integration.kafka.support.KafkaIntegrationHeaders;
 import org.springframework.integration.kafka.support.KafkaSendFailureException;
 import org.springframework.integration.support.DefaultErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageStrategy;
@@ -390,12 +391,16 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 	@Override
 	protected Object handleRequestMessage(final Message<?> message) {
 		final ProducerRecord<K, V> producerRecord;
+		boolean flush = Boolean.TRUE.equals(message.getHeaders().get(KafkaIntegrationHeaders.FLUSH));
 		boolean preBuilt = message.getPayload() instanceof ProducerRecord;
 		if (preBuilt) {
 			producerRecord = (ProducerRecord<K, V>) message.getPayload();
 		}
 		else {
 			producerRecord = createProducerRecord(message);
+			if (flush) {
+				producerRecord.headers().remove(KafkaIntegrationHeaders.FLUSH);
+			}
 		}
 		ListenableFuture<SendResult<K, V>> sendFuture;
 		RequestReplyFuture<K, V, Object> gatewayFuture = null;
@@ -425,6 +430,9 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 		}
 		catch (ExecutionException e) {
 			throw new MessageHandlingException(message, e.getCause());
+		}
+		if (flush) {
+			this.kafkaTemplate.flush();
 		}
 		return processReplyFuture(gatewayFuture);
 	}
