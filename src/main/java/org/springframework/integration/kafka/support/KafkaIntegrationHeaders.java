@@ -22,7 +22,7 @@ import org.springframework.kafka.support.KafkaHeaders;
  * Headers specifically for Spring Integration components.
  *
  * @author Gary Russell
- * @since 5.2
+ * @since 3.3
  *
  */
 public final class KafkaIntegrationHeaders {
