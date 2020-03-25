@@ -55,12 +55,12 @@ compileTestKotlin {
 
 ext {
 	assertkVersion = '0.20'
-	jacksonVersion = '2.10.1'
+	jacksonVersion = '2.10.3'
 	junitJupiterVersion = '5.6.0'
 	log4jVersion = '2.13.0'
-	springIntegrationVersion = '5.2.3.RELEASE'
+	springIntegrationVersion = '5.2.5.RELEASE'
 	springIntegrationKotlinVersion = '0.0.3.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.3.5.RELEASE'
+	springKafkaVersion = '2.3.7.RELEASE'
 
 	idPrefix = 'kafka'
 
