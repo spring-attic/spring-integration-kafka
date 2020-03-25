@@ -63,7 +63,7 @@ compileTestKotlin {
 ext {
 	assertkVersion = '0.20'
 	googleJsr305Version = '3.0.2'
-	jacksonVersion = '2.10.1'
+	jacksonVersion = '2.10.3'
 	junitJupiterVersion = '5.6.0'
 	log4jVersion = '2.13.0'
 	springIntegrationVersion = '5.3.0.BUILD-SNAPSHOT'
