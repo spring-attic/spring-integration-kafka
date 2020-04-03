@@ -371,7 +371,7 @@ public class KafkaProducerMessageHandler<K, V> extends AbstractReplyProducingMes
 
 	@Override
 	public void stop() {
-		if (this.running.compareAndSet(true, false)) {
+		if (this.running.compareAndSet(true, false) && !this.transactional) {
 			this.kafkaTemplate.flush();
 		}
 	}
