@@ -474,7 +474,6 @@ class KafkaProducerMessageHandlerTests {
 		inOrder.verify(producer).beginTransaction();
 		inOrder.verify(producer).send(any(ProducerRecord.class), any(Callback.class));
 		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).flush();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -584,7 +583,6 @@ class KafkaProducerMessageHandlerTests {
 		inOrder.verify(producer).beginTransaction();
 		inOrder.verify(producer).send(any(ProducerRecord.class), any(Callback.class));
 		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).flush();
 		assertThat(txId.get()).isEqualTo("overridden.tx.id.");
 	}
 
