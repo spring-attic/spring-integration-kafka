@@ -65,9 +65,9 @@ ext {
 	googleJsr305Version = '3.0.2'
 	jacksonVersion = '2.11.0'
 	junitJupiterVersion = '5.6.2'
-	log4jVersion = '2.13.2'
-	springIntegrationVersion = '5.3.1.RELEASE'
-	springKafkaVersion = '2.5.4.BUILD-SNAPSHOT'
+	log4jVersion = '2.13.3'
+	springIntegrationVersion = '5.3.2.RELEASE'
+	springKafkaVersion = '2.5.4.RELEASE'
 
 	idPrefix = 'kafka'
 
