@@ -61,13 +61,13 @@ compileTestKotlin {
 }
 
 ext {
-	assertkVersion = '0.22'
+	assertkVersion = '0.23'
 	googleJsr305Version = '3.0.2'
-	jacksonVersion = '2.11.0'
-	junitJupiterVersion = '5.6.2'
+	jacksonVersion = '2.11.2'
+	junitJupiterVersion = '5.6.3'
 	log4jVersion = '2.13.3'
-	springIntegrationVersion = '5.3.2.RELEASE'
-	springKafkaVersion = '2.5.4.RELEASE'
+	springIntegrationVersion = '5.3.4.BUILD-SNAPSHOT'
+	springKafkaVersion = '2.5.7.RELEASE'
 
 	idPrefix = 'kafka'
 
