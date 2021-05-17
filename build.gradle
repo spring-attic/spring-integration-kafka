@@ -42,7 +42,8 @@ sourceSets {
 group = 'org.springframework.integration'
 
 repositories {
-	maven { url 'https://repo.spring.io/libs-milestone' }
+	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
 	if (version.endsWith('BUILD-SNAPSHOT')) {
 		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
@@ -63,11 +64,11 @@ compileTestKotlin {
 ext {
 	assertkVersion = '0.23'
 	googleJsr305Version = '3.0.2'
-	jacksonVersion = '2.11.2'
+	jacksonVersion = '2.11.4'
 	junitJupiterVersion = '5.6.3'
 	log4jVersion = '2.13.3'
-	springIntegrationVersion = '5.3.4.BUILD-SNAPSHOT'
-	springKafkaVersion = '2.5.7.RELEASE'
+	springIntegrationVersion = '5.3.7.RELEASE'
+	springKafkaVersion = '2.5.13.RELEASE'
 
 	idPrefix = 'kafka'
 
@@ -115,6 +116,7 @@ dependencies {
 	testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 	testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	testImplementation 'org.junit.jupiter:junit-jupiter-api'
+	testImplementation 'org.scala-lang:scala-library:2.12.11'
 
 	// To avoid compiler warnings about @API annotations in JUnit code
 	testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
@@ -140,8 +142,8 @@ test {
 }
 
 checkstyle {
-	configFile = file("$rootDir/src/checkstyle/checkstyle.xml")
-	toolVersion = '8.32'
+	configDirectory.set(rootProject.file('src/checkstyle'))
+	toolVersion = '8.41.1'
 }
 
 publishing {
