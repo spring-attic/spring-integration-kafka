@@ -6,9 +6,8 @@ The *Spring Integration for Apache Kafka* extension project provides inbound and
 Apache Kafka is a distributed publish-subscribe messaging system that is designed for high throughput (terabytes of data) and low latency (milliseconds).
 For more information on Kafka and its design goals, see the https://kafka.apache.org/[Apache Kafka main page].
 
-NOTE: Starting with Spring Integration 5.4.0, this project has been absorbed by the core one under respective `spring-integration-kafka` module.
-The project remain here in maintenance mode until Spring Integration support its `5.3.x` generation.
-After that it is going to be archived.
+NOTE: Starting with Spring Integration 5.4.0, this project has been absorbed by the core one under respective `spring-integration-kafka` https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#kafka[module].
+This repository is archived and remain in read-only mode for informational purpose.
 
 Starting from _version 2.0_ version this project is a complete rewrite based on the new
 https://github.com/spring-projects/spring-kafka[spring-kafka] project which uses the pure java "new" `Producer` and
