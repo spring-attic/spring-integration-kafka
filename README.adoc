@@ -1,3 +1,5 @@
+= This repository is no longer actively maintained by VMware, Inc.
+
 = Spring Integration Adapter for Apache Kafka
 
 image::https://build.spring.io/plugins/servlet/wittified/build-status/INTEXT-KAFKA[]
